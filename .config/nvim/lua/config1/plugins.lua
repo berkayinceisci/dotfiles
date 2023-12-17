@@ -27,6 +27,7 @@ return require('packer').startup(function(use)
   use 'wbthomason/packer.nvim'
   use 'nvim-lua/plenary.nvim'
   use 'nvim-tree/nvim-web-devicons'
+  use 'nvim-tree/nvim-tree.lua'
   use 'christoomey/vim-tmux-navigator'
   use 'szw/vim-maximizer'
   use 'tpope/vim-fugitive'
