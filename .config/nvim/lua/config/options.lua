@@ -28,9 +28,8 @@ opt.incsearch = true
 opt.ignorecase = true
 opt.smartcase = true
 
--- appearance (does not work)
+-- appearance
 opt.termguicolors = true
--- opt.background = "light"
 
 -- scroll
 opt.scrolloff = 8
@@ -38,14 +37,17 @@ opt.scrolloff = 8
 -- backspace
 opt.backspace = "indent,eol,start"
 
--- clipboard
+-- clipboard (merge vim yank register with system clipboard)
 -- opt.clipboard:append("unnamedplus")
+-- instead, <leader> y is used to copy from vim into clipboard
+-- and Ctrl Shift v to paste from system clipboard to vim buffer
 
 -- split windows
 opt.splitright = true
 opt.splitbelow = true
 
--- fix comment issue (does not work)
--- vim.cmd('set formatoptions-=cro')
+-- fix comment issue
+vim.cmd [[au BufEnter * set fo-=c fo-=r fo-=o]]
 
-vim.opt.updatetime = 50
+opt.updatetime = 50
+
