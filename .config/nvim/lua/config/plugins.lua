@@ -34,6 +34,7 @@ return require('packer').startup(function(use)
   use 'tpope/vim-surround'
   use 'tpope/vim-commentary'
   use 'tpope/vim-repeat'
+
   use {
     'nvim-lualine/lualine.nvim',
     requires = { 'nvim-tree/nvim-web-devicons', opt = true }
@@ -49,7 +50,9 @@ return require('packer').startup(function(use)
   }
 
   -- color scheme
-  use({ 'rose-pine/neovim', as = 'rose-pine' })
+  use 'wincent/base16-nvim'
+  use { 'rose-pine/neovim', as = 'rose-pine' }
+  use { "catppuccin/nvim", as = "catppuccin" }
 
   -- lsp
   use {
