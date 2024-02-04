@@ -1,0 +1,31 @@
+import = [
+    "~/.config/alacritty/color-themes/base16-atelier-forest.toml"
+]
+
+[font]
+size = 20.0
+
+[font.bold]
+family = "Hack Nerd Font Mono"
+style = "Bold"
+
+[font.bold_italic]
+family = "Hack Nerd Font Mono"
+style = "Bold Italic"
+
+[font.italic]
+family = "Hack Nerd Font Mono"
+style = "Italic"
+
+[font.normal]
+family = "Hack Nerd Font Mono"
+style = "Regular"
+
+[window]
+startup_mode = "Fullscreen"
+# opacity = 0.9
+
+[window.padding]
+x = 10
+y = 10
+
