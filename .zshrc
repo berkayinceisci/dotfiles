@@ -100,7 +100,9 @@ source $ZSH/oh-my-zsh.sh
 alias zshconfig="nvim ~/.zshrc"
 alias dotfiles="nvim ~/.config/"
 
-if [[ -e ~/.cargo/bin/eza ]]; then
+alias tmux="tmux -f ~/.config/tmux/tmux.conf"
+
+if [[ ":$PATH:" == *":$HOME/.cargo/bin:"* && -e ~/.cargo/bin/eza ]]; then
     alias ls="eza"
     alias ll="eza -l"
     alias la="eza -a"
@@ -110,3 +112,4 @@ else
     alias la="ls -a"
     alias lla="ls -la"
 fi
+

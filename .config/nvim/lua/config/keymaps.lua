@@ -31,9 +31,9 @@ keymap.set("n", "N", "Nzzzv")
 -- replaces the selection with paste contents and keeps paste contents the same
 keymap.set("x", "<leader>p", [["_dP]])
 
+-- copy contents to the system clipboard
 keymap.set({ "n", "v" }, "<leader>y", [["+y]])
 keymap.set("n", "<leader>Y", [["+Y]])
-
 keymap.set({ "n", "v" }, "<leader>d", [["+d]])
 
 keymap.set("n", "Q", "<nop>")
@@ -49,7 +49,8 @@ keymap.set("n", "<leader>fmt", vim.lsp.buf.format)
 keymap.set("n", "<leader>c", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]])
 keymap.set("n", "<leader>exe", "<cmd>!chmod +x %<CR>", { silent = true })
 
-keymap.set("n", "<leader>cwd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true, silent = true })
+-- copy the current working directory of the buffer to the clipboard
+keymap.set("n", "<leader>cd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true, silent = true })
 
 -- useful if nvimtree is used and therefore netrw is disabled
 keymap.set("n", "gx", [[:silent execute '!open ' . shellescape(expand('<cfile>'), 1)<CR>]],
@@ -71,7 +72,7 @@ vim.keymap.set('n', '?', '?\\v')
 vim.keymap.set('n', '/', '/\\v')
 vim.keymap.set('c', '%s/', '%sm/')
 
--- <leader><leader> toggles between buffers
+-- toggles between buffers
 vim.keymap.set('n', '<leader><leader>', '<c-^>zz')
 
 -- Jump to start and end of line using the home row keys
