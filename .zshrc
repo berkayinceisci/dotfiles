@@ -101,6 +101,7 @@ alias zshconfig="nvim ~/.zshrc"
 alias dotfiles="nvim ~/.config/"
 
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
+alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
 
 if [[ ":$PATH:" == *":$HOME/.cargo/bin:"* && -e ~/.cargo/bin/eza ]]; then
     alias ls="eza"
@@ -112,4 +113,12 @@ else
     alias la="ls -a"
     alias lla="ls -la"
 fi
+
+bcd() {
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        cd $(xclip -o -selection clipboard)
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        cd $(pbpaste)
+    fi
+}
 
