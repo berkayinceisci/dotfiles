@@ -1,53 +1,90 @@
-local lsp = require('lsp-zero').preset({})
+vim.api.nvim_create_autocmd('LspAttach', {
+    desc = 'LSP actions',
+    callback = function(event)
+        local opts = { buffer = event.buf }
 
-lsp.ensure_installed({
-    "clangd",
-    "cmake",
-    "dockerls",
-    "docker_compose_language_service",
-    "bashls",
-    "cssls",
-    "html",
-    "jsonls",
-    "tsserver",
-    "lua_ls",
-    "pyright",
-    "rust_analyzer",
-    "taplo",
-    "svlangserver"
+        vim.keymap.set('n', 'K', '<CMD>lua vim.lsp.buf.hover()<CR>', opts)
+        vim.keymap.set('n', 'gd', '<CMD>lua vim.lsp.buf.definition()<CR>', opts)
+        vim.keymap.set('n', 'gD', '<CMD>lua vim.lsp.buf.declaration()<CR>', opts)
+        vim.keymap.set('n', 'gt', '<CMD>lua vim.lsp.buf.type_definition()<CR>', opts)
+        vim.keymap.set('n', 'gi', '<CMD>lua vim.lsp.buf.implementation()<CR>', opts)
+        vim.keymap.set('n', 'gs', '<CMD>lua vim.lsp.buf.signature_help()<CR>', opts)
+        vim.keymap.set('n', '<F2>', '<CMD>lua vim.lsp.buf.rename()<CR>', opts)
+        vim.keymap.set({ 'n', 'x' }, '<F3>', '<CMD>lua vim.lsp.buf.format({async = true})<CR>', opts)
+        vim.keymap.set('n', '<F4>', '<CMD>lua vim.lsp.buf.code_action()<CR>', opts)
+
+        vim.keymap.set('n', '<leader>fp', "<CMD>Telescope diagnostics<CR>", opts)
+        vim.keymap.set('n', 'gr', require('telescope.builtin').lsp_references, opts)
+    end
 })
 
-lsp.on_attach(function(_, bufnr)
-    -- see :help lsp-zero-keybindings
-    -- to learn the available actions
-    lsp.default_keymaps({ buffer = bufnr })
-end)
+local lsp_capabilities = require('cmp_nvim_lsp').default_capabilities()
 
--- (Optional) Configure lua language server for neovim
--- If omitted, "vim" variable cannot be detected by lsp
-require('lspconfig').lua_ls.setup(lsp.nvim_lua_ls())
+local default_setup = function(server)
+    require('lspconfig')[server].setup({
+        capabilities = lsp_capabilities,
+    })
+end
 
-lsp.setup_nvim_cmp({
-    preselect = 'none',
-    completion = {
-        completeopt = 'menu,menuone,noinsert,noselect'
+require('mason').setup()
+
+require('mason-lspconfig').setup({
+    ensure_installed = {
+        "clangd",
+        "cmake",
+        "dockerls",
+        "docker_compose_language_service",
+        "bashls",
+        "cssls",
+        "html",
+        "jsonls",
+        "tsserver",
+        "lua_ls",
+        "pyright",
+        "rust_analyzer",
+        "taplo",
+        "svlangserver"
+    },
+    handlers = {
+        default_setup,
+        lua_ls = function()
+            require('lspconfig').lua_ls.setup({
+                capabilities = lsp_capabilities,
+                settings = {
+                    Lua = {
+                        runtime = {
+                            version = 'LuaJIT'
+                        },
+                        diagnostics = {
+                            globals = { 'vim' },
+                        },
+                        workspace = {
+                            library = {
+                                vim.env.VIMRUNTIME,
+                            }
+                        }
+                    }
+                }
+            })
+        end
     },
 })
 
-lsp.setup()
+-- setup borders
+local _border = "single"
 
--- setup signature plugin
-local cfg = {
-    bind = true,
-    doc_lines = 0, -- will show two lines of comment/doc(if there are more than two lines in doc, will be truncated);
-    -- set to 0 if you DO NOT want any API comments be shown
-    -- This setting only take effect in insert mode, it does not affect signature help in normal
-    -- mode, 10 by default
+vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(
+    vim.lsp.handlers.hover, {
+        border = _border
+    }
+)
 
-    floating_window = true,                    -- show hint in a floating window, set to false for virtual text only mode
-    hint_enable = false,                        -- virtual hint enable
+vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(
+    vim.lsp.handlers.signature_help, {
+        border = _border
+    }
+)
+
+vim.diagnostic.config {
+    float = { border = _border }
 }
-
--- recommended:
-require 'lsp_signature'.setup(cfg) -- no need to specify bufnr if you don't use toggle_key
-

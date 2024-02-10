@@ -38,7 +38,6 @@ keymap.set({ "n", "v" }, "<leader>d", [["+d]])
 
 keymap.set("n", "Q", "<nop>")
 -- keymap.set("n", "<C-f>", "<cmd>silent !tmux neww tmux-sessionizer<CR>")
-keymap.set("n", "<leader>fmt", vim.lsp.buf.format)
 
 -- for quick list navigation
 -- keymap.set("n", "<C-k>", "<cmd>cnext<CR>zz")
@@ -46,16 +45,16 @@ keymap.set("n", "<leader>fmt", vim.lsp.buf.format)
 -- keymap.set("n", "<leader>k", "<cmd>lnext<CR>zz")
 -- keymap.set("n", "<leader>j", "<cmd>lprev<CR>zz")
 
--- its advantage over F2 is that the changes are being shown on the screen
+-- its advantage over F2 is that the changes are being shown on the screen, but F2 renames the variables on different files too
 keymap.set("n", "<leader>cw", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]])
+
+-- copy the current working directory of the buffer to the clipboard (not works in ssh)
+keymap.set("n", "<leader>cd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true, silent = true })
 
 -- make the current file executable (not that useful, the command itself is easy enough)
 -- keymap.set("n", "<leader>exe", "<cmd>!chmod +x %<CR>", { silent = true })
 
--- copy the current working directory of the buffer to the clipboard
-keymap.set("n", "<leader>cd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true, silent = true })
-
--- useful if nvimtree is used and therefore netrw is disabled
+-- useful if nvimtree is used and therefore netrw is disabled (opens link under the cursor in the browser)
 keymap.set("n", "gx", [[:silent execute '!open ' . shellescape(expand('<cfile>'), 1)<CR>]],
     { noremap = true, silent = true })
 
@@ -67,17 +66,37 @@ keymap.set('n', 'j', 'gj')
 keymap.set('n', 'k', 'gk')
 
 -- let the left and right arrows be useful: they can switch buffers
-vim.keymap.set('n', '<left>', ':bp<cr>zz')
-vim.keymap.set('n', '<right>', ':bn<cr>zz')
+keymap.set('n', '<left>', ':bp<cr>zz')
+keymap.set('n', '<right>', ':bn<cr>zz')
 
 -- "very magic" (less escaping needed) regexes by default
-vim.keymap.set('n', '?', '?\\v')
-vim.keymap.set('n', '/', '/\\v')
-vim.keymap.set('c', '%s/', '%sm/')
+keymap.set('n', '?', '?\\v')
+keymap.set('n', '/', '/\\v')
+keymap.set('c', '%s/', '%sm/')
 
 -- toggles between buffers
-vim.keymap.set('n', '<leader><leader>', '<c-^>zz')
+keymap.set('n', '<leader><leader>', '<c-^>zz')
 
 -- Jump to start and end of line using the home row keys
-vim.keymap.set('', 'H', '^')
-vim.keymap.set('', 'L', '$')
+keymap.set('', 'H', '^')
+keymap.set('', 'L', '$')
+
+keymap.set('n', 'gl', '<cmd>lua vim.diagnostic.open_float()<cr>')
+keymap.set('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<cr>')
+keymap.set('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<cr>')
+
+-- If this is a script, make it executable, and execute it in a split pane on the right
+-- Had to include quotes around "%" because there are some apple dirs that contain spaces, like iCloud
+keymap.set("n", "<leader>./", function()
+  local file = vim.fn.expand("%") -- Get the current file name
+  local first_line = vim.fn.getline(1) -- Get the first line of the file
+  if string.match(first_line, "^#!/") then -- If first line contains shebang
+    local escaped_file = vim.fn.shellescape(file) -- Properly escape the file name for shell commands
+    vim.cmd("!chmod +x " .. escaped_file) -- Make the file executable
+    vim.cmd("vsplit") -- Split the window vertically
+    vim.cmd("terminal " .. escaped_file) -- Open terminal and execute the file
+    vim.cmd("startinsert") -- Enter insert mode, recommended by echasnovski on Reddit
+  else
+    vim.cmd("echo 'Not a script. Shebang line not found.'")
+  end
+end, { desc = "Execute current file in terminal (if it's a script)" })
