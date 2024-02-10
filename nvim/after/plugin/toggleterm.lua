@@ -27,19 +27,20 @@ vim.keymap.set("n", "<leader>.r", function()
 end, { noremap = true, silent = true })
 
 -- custom terminal integration
-local Terminal  = require('toggleterm.terminal').Terminal
+local Terminal = require('toggleterm.terminal').Terminal
 
 -- lazygit
-local lazygit = Terminal:new({ cmd = "lazygit --use-config-dir ~/.config/lazygit", hidden = true })
+local lazygit  = Terminal:new({ cmd = "lazygit --use-config-dir ~/.config/lazygit", hidden = true })
 function _LAZYGIT_TOGGLE()
-  lazygit:toggle()
+    lazygit:toggle()
 end
-vim.keymap.set("n", "<leader>.g", "<cmd>lua _LAZYGIT_TOGGLE()<CR>", {noremap = true, silent = true})
+
+vim.keymap.set("n", "<leader>.g", "<cmd>lua _LAZYGIT_TOGGLE()<CR>", { noremap = true, silent = true })
 
 -- htop
 local htop = Terminal:new({ cmd = "htop", hidden = true })
 function _HTOP_TOGGLE()
-  htop:toggle()
+    htop:toggle()
 end
-vim.keymap.set("n", "<leader>.h", "<cmd>lua _HTOP_TOGGLE()<CR>", {noremap = true, silent = true})
 
+vim.keymap.set("n", "<leader>.h", "<cmd>lua _HTOP_TOGGLE()<CR>", { noremap = true, silent = true })
