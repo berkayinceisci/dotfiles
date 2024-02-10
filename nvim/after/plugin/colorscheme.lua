@@ -18,7 +18,7 @@ function Color(color)
         })
     elseif color == "catppuccin" then
         require("catppuccin").setup({
-            flavour = "frappe",            -- latte (light), frappe, macchiato, mocha
+            flavour = "mocha",            -- latte (light), frappe, macchiato, mocha
             transparent_background = true, -- disables setting the background color
             no_italic = false,             -- Force no italic
             no_bold = false,               -- Force no bold

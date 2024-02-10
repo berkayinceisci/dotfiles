@@ -17,7 +17,11 @@ require("nvim-tree").setup({
         enable = true,
         update_root = true,
     },
+    actions = {
+        open_file = {
+            quit_on_open = true,
+        },
+    },
 })
 
 vim.keymap.set("n", "<leader>fe", ":NvimTreeToggle<CR>")
-

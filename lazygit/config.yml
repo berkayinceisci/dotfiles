@@ -1,0 +1,14 @@
+gui:
+  theme:
+    selectedLineBgColor:
+      - underline
+git:
+  paging:
+    colorArg: always
+    pager: delta --dark --paging=never
+
+keybinding:
+  universal:
+    quit-alt1: ''
+    return: '<c-o>' # return to previous menu, will quit if there's nowhere to return
+    copyToClipboard: '<c-c>'
