@@ -97,10 +97,11 @@ source $ZSH/oh-my-zsh.sh
 # For a full list of active aliases, run `alias`.
 #
 
-alias zshconfig="nvim ~/.zshrc"
-alias dotfiles="nvim ~/.config/"
+alias zshconfig="cd ~; nvim ~/.zshrc; cd -"
+alias dotfiles="cd ~/.config/; nvim ~/.config/; cd -"
 
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
+alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
 
@@ -123,7 +124,9 @@ bcd() {
     fi
 }
 
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# node is installed through brew in mac, therefore nvm does not exist
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+fi

@@ -29,22 +29,6 @@ cmp.setup({
         }),
     },
     mapping = cmp.mapping.preset.insert({
-        ['<Tab>'] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-                if #cmp.get_entries() == 1 then
-                    cmp.confirm({ select = true })
-                else
-                    cmp.select_next_item()
-                end
-            elseif has_words_before() then
-                cmp.complete()
-                if #cmp.get_entries() == 1 then
-                    cmp.confirm({ select = true })
-                end
-            else
-                fallback()
-            end
-        end, { "i", "s" }),
         ["<CR>"] = cmp.mapping({
             i = function(fallback)
                 if cmp.visible() and cmp.get_active_entry() then
