@@ -101,7 +101,8 @@ alias zshconfig="nvim ~/.zshrc"
 alias dotfiles="nvim ~/.config/"
 
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
-alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
+alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
+alias ldoc="lazydocker"
 
 if [[ ":$PATH:" == *":$HOME/.cargo/bin:"* && -e ~/.cargo/bin/eza ]]; then
     alias ls="eza"
@@ -122,3 +123,7 @@ bcd() {
     fi
 }
 
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
