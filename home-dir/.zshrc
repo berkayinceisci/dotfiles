@@ -97,8 +97,8 @@ source $ZSH/oh-my-zsh.sh
 # For a full list of active aliases, run `alias`.
 #
 
-alias zshconfig="cd ~; nvim ~/.zshrc; cd -"
-alias dotfiles="cd ~/.config/; nvim ~/.config/; cd -"
+alias zshconfig="cd ~; nvim ~/.zshrc; cd - > /dev/null"
+alias dotfiles="cd ~/.config/; nvim ~/.config/; cd - > /dev/null"
 
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
 alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
