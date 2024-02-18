@@ -6,8 +6,16 @@ function Color(color)
             atelier_dune = "base16-atelier-dune",
             atelier_forest = "base16-atelier-forest",
             atelier_estuary = "base16-atelier-estuary",
+            bright = "base16-bright",
+            macintosh = "base16-macintosh",
+            isotope = "base16-isotope",
+            dracula = "base16-dracula",
+            gruvbox_light_hard = "base16-gruvbox-light-hard",
+            harmonic_light = "base16-harmonic-light",
+            irblack = "base16-irblack",
+            paraiso = "base16-paraiso",
         }
-        color = fav_base16_colors.atelier_estuary or "base16-classic-dark"
+        color = fav_base16_colors.irblack or "base16-classic-dark"
     elseif color == "rose-pine" then
         require("rose-pine").setup({
             variant = "main", -- main (dark), dawn (light), moon,
@@ -18,7 +26,7 @@ function Color(color)
         })
     elseif color == "catppuccin" then
         require("catppuccin").setup({
-            flavour = "mocha",             -- latte (light), frappe, macchiato, mocha
+            flavour = "latte",             -- latte (light), frappe, macchiato, mocha
             transparent_background = true, -- disables setting the background color
             no_italic = false,             -- Force no italic
             no_bold = false,               -- Force no bold
@@ -36,6 +44,6 @@ function Color(color)
     vim.cmd.colorscheme(color)
 end
 
--- Color("base16")     -- has a bug (not that harmful) when used with lualine
+-- Color("base16")
 -- Color("rose-pine")
 Color("catppuccin")

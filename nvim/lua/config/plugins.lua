@@ -58,7 +58,7 @@ return require('packer').startup(function(use)
     }
 
     -- color scheme
-    use 'wincent/base16-nvim'
+    use 'RRethy/base16-nvim'
     use {
         'rose-pine/neovim',
         as = 'rose-pine'
