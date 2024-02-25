@@ -125,6 +125,7 @@ bcd() {
 }
 
 # node is installed through brew in mac, therefore nvm does not exist
+# nvm installation script does not add the following lines if they already exist
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm

@@ -1,9 +1,9 @@
 import = [
-    "~/.config/alacritty/color-themes/base16-bright.toml"
+    "~/.config/alacritty/color-themes/base16-atelier-forest.toml"
 ]
 
 [font]
-size = 20.0
+size = 16.0
 
 [font.bold]
 family = "Hack Nerd Font Mono"
