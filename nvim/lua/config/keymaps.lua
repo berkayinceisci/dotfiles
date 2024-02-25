@@ -28,9 +28,6 @@ keymap.set("n", "G", "Gzz")
 keymap.set("n", "n", "nzzzv")
 keymap.set("n", "N", "Nzzzv")
 
--- replaces the selection with paste contents and keeps paste contents the same
-keymap.set("x", "<leader>p", [["_dP]])
-
 -- copy contents to the system clipboard
 keymap.set({ "n", "v" }, "<leader>y", [["+y]])
 keymap.set("n", "<leader>Y", [["+Y]])
