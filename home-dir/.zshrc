@@ -134,3 +134,4 @@ fi
 
 export PATH=$PATH:~/go/bin
 
+export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
