@@ -52,7 +52,7 @@ keymap.set("n", "<leader>cd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true,
 -- keymap.set("n", "<leader>exe", "<cmd>!chmod +x %<CR>", { silent = true })
 
 -- useful if nvimtree is used and therefore netrw is disabled (opens link under the cursor in the browser)
-keymap.set("n", "gx", [[:silent execute '!open ' . shellescape(expand('<cfile>'), 1)<CR>]],
+keymap.set("n", "gx", [[:silent execute has ("mac") ? '!open ' : '!xdg-open ' . shellescape(expand('<cfile>'), 1)<CR>]],
     { noremap = true, silent = true })
 
 -- auto complete curly brackets
