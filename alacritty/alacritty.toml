@@ -29,3 +29,8 @@ startup_mode = "Fullscreen"
 x = 10
 y = 10
 
+[keyboard]
+bindings = [
+	{ key = "N", mods = "Control", action = "CreateNewWindow" }
+]
+
