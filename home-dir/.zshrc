@@ -132,6 +132,6 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 fi
 
+export PATH=$PATH:/usr/local/go/bin
 export PATH=$PATH:~/go/bin
-
 export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
