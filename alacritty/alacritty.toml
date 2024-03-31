@@ -1,5 +1,5 @@
 import = [
-    "~/.config/alacritty/color-themes/base16-atelier-forest.toml"
+    "~/.config/alacritty/color-themes/base16-bright.toml"
 ]
 
 [font]
@@ -22,7 +22,7 @@ family = "Hack Nerd Font Mono"
 style = "Regular"
 
 [window]
-startup_mode = "Fullscreen"
+startup_mode = "Maximized"
 # opacity = 0.9
 
 [window.padding]
@@ -31,6 +31,6 @@ y = 10
 
 [keyboard]
 bindings = [
-	{ key = "N", mods = "Control", action = "CreateNewWindow" }
+	{ key = "P", mods = "Control", action = "CreateNewWindow" }
 ]
 
