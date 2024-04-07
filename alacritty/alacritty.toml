@@ -31,6 +31,6 @@ y = 10
 
 [keyboard]
 bindings = [
-	{ key = "P", mods = "Control", action = "CreateNewWindow" }
+	{ key = "N", mods = "Control|Shift", action = "SpawnNewInstance" }
 ]
 
