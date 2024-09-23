@@ -8,13 +8,13 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
+alias stow="stow --target='$HOME'"
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
 alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
 
-alias zshconfig="cd ~; nvim ~/.zshrc; cd - > /dev/null"
-alias dotfiles="cd ~/.config/; nvim ~/.config/; cd - > /dev/null"
+alias dotfiles="cd ~/repos/dotfiles/; nvim .; cd - > /dev/null"
 
 if [[ ":$PATH:" == *":$HOME/.cargo/bin:"* && -e ~/.cargo/bin/eza ]]; then
     alias ls="eza"
@@ -35,9 +35,9 @@ bcd() {
     fi
 }
 
-# node is installed through brew in mac, therefore nvm does not exist
-# nvm installation script does not add the following lines if they already exist
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # node is installed through brew in mac, therefore nvm does not exist
+    # nvm installation script does not add the following lines if they already exist
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
