@@ -38,7 +38,7 @@ require('mason-lspconfig').setup({
         "cssls",
         "html",
         "jsonls",
-        "tsserver",
+        "ts_ls",
         "lua_ls",
         "pyright",
         "rust_analyzer",

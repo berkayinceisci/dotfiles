@@ -4,4 +4,16 @@ if not status then
     return
 end
 
-lualine.setup()
+lualine.setup {
+    options = {
+        icons_enabled = true,
+        component_separators = '|',
+        section_separators = '',
+    },
+    sections = {
+        lualine_a = { 'buffers' },
+        lualine_b = { 'branch', 'diff', 'diagnostics' },
+        lualine_c = {},
+    }
+
+}

@@ -28,9 +28,7 @@ return require('packer').startup(function(use)
     use 'nvim-lua/plenary.nvim'
     use 'nvim-tree/nvim-web-devicons'
     use 'nvim-tree/nvim-tree.lua'
-    use 'christoomey/vim-tmux-navigator'
     use 'szw/vim-maximizer'
-    use 'tpope/vim-fugitive'
     use 'tpope/vim-surround'
     use 'tpope/vim-commentary'
     use 'tpope/vim-repeat'
@@ -43,7 +41,6 @@ return require('packer').startup(function(use)
         'nvim-treesitter/nvim-treesitter-context',
         run = ':TSUpdate'
     }
-    use 'theprimeagen/harpoon'
     use 'mbbill/undotree'
     use 'ggandor/leap.nvim'
     use {
