@@ -21,18 +21,8 @@ done
 
 echo ""
 
-echo "${yellow}alacritty${reset}"
-rsync -vaR --delete alacritty/ ~/.config/
-
-echo ""
-
 echo "${yellow}lazygit${reset}"
 rsync -vaR lazygit/config.yml ~/.config/
-
-echo ""
-
-echo "${yellow}neofetch${reset}"
-rsync -vaR --delete neofetch/ ~/.config/
 
 echo ""
 
