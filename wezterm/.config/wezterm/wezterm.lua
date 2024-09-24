@@ -27,8 +27,12 @@ if hostname == 'berkays-air' then
     config.macos_window_background_blur = 50
     config.window_background_opacity = 0.5
 else
-    -- TODO: changing wallpapers
-    config.window_background_image = wezterm.home_dir .. '/Wallpapers/1.png'
+    local wallpapers = {}
+    local wallpapers_glob = wezterm.home_dir .. '/Wallpapers/**'
+    for _, v in ipairs(wezterm.glob(wallpapers_glob)) do
+        table.insert(wallpapers, v)
+    end
+    config.window_background_image = wallpapers[math.random(1, #wallpapers)]
     config.window_background_image_hsb = {
         -- Darken the background image by reducing it to 1/3rd
         brightness = 0.08,
