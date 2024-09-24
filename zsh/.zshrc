@@ -8,7 +8,6 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
-alias stow="stow --target='$HOME'"
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
 alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
