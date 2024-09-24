@@ -56,7 +56,7 @@ return require('packer').startup(function(use)
 
     -- fuzzy finding
     use {
-        'nvim-telescope/telescope.nvim', tag = '0.1.2',
+        'nvim-telescope/telescope.nvim', tag = '0.1.x',
         requires = { 'nvim-lua/plenary.nvim' }
     }
 
