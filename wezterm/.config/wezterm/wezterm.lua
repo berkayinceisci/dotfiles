@@ -7,7 +7,6 @@ config.font_size = 18.0
 
 config.color_scheme = 'Gruvbox Dark (Gogh)'
 config.window_decorations = 'RESIZE'
-config.hide_tab_bar_if_only_one_tab = true
 config.use_fancy_tab_bar = false
 
 -- Dim inactive panes
@@ -21,7 +20,7 @@ if hostname == 'berkays-air' then
     config.window_background_opacity = 0.5
 else
     -- TODO: changing wallpapers
-    config.window_background_image = wezterm.home_dir .. '/Wallpapers/1.jpg'
+    config.window_background_image = wezterm.home_dir .. '/Wallpapers/1.png'
     config.window_background_image_hsb = {
         -- Darken the background image by reducing it to 1/3rd
         brightness = 0.08,
@@ -102,7 +101,6 @@ wezterm.on('update-right-status', function(window, pane)
     local cwd_uri = pane:get_current_working_dir()
     if cwd_uri then
         local cwd = ''
-        local hostname = ''
 
         if type(cwd_uri) == 'userdata' then
             -- Running on a newer version of wezterm and we have
