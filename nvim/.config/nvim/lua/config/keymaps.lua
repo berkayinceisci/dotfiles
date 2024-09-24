@@ -36,8 +36,8 @@ keymap.set({ "n", "v" }, "<leader>d", [["+d]])
 keymap.set("n", "Q", "<nop>")
 -- keymap.set("n", "<C-f>", "<cmd>silent !tmux neww tmux-sessionizer<CR>")
 
-keymap.set("n", "<C-h>", "<cmd>bprevious<CR>")
-keymap.set("n", "<C-l>", "<cmd>bnext<CR>")
+keymap.set("n", "<C-h>", "<cmd>bp<CR>")
+keymap.set("n", "<C-l>", "<cmd>bn<CR>")
 
 -- for quick list navigation
 -- keymap.set("n", "<C-k>", "<cmd>cnext<CR>zz")
