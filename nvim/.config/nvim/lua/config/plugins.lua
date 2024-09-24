@@ -28,10 +28,7 @@ return require('packer').startup(function(use)
     use 'nvim-lua/plenary.nvim'
     use 'nvim-tree/nvim-web-devicons'
     use 'nvim-tree/nvim-tree.lua'
-    use {
-        'b0o/nvim-tree-preview.lua',
-        requires = { 'nvim-tree/nvim-tree.lua' }
-    }
+    use { 'b0o/nvim-tree-preview.lua', requires = { 'nvim-tree/nvim-tree.lua' } }
     use 'szw/vim-maximizer'
     use 'tpope/vim-surround'
     use 'tpope/vim-commentary'
@@ -40,6 +37,7 @@ return require('packer').startup(function(use)
     use 'ggandor/leap.nvim'
     use 'folke/which-key.nvim'
     use { 'kevinhwang91/nvim-ufo', requires = 'kevinhwang91/promise-async' }
+    use { 'akinsho/bufferline.nvim', tag = "*", requires = 'nvim-tree/nvim-web-devicons' }
     use {
         'nvim-lualine/lualine.nvim',
         requires = { 'nvim-tree/nvim-web-devicons', opt = true }

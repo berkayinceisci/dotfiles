@@ -10,10 +10,4 @@ lualine.setup {
         component_separators = '|',
         section_separators = '',
     },
-    sections = {
-        lualine_a = { 'buffers' },
-        lualine_b = { 'branch', 'diff', 'diagnostics' },
-        lualine_c = {},
-    }
-
 }
