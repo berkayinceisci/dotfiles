@@ -54,17 +54,17 @@ else
 end
 
 config.keys = {
-    { key = '\r', mods = 'ALT', action = wezterm.action.DisableDefaultAssignment },
+    { key = '\r', mods = 'ALT',        action = wezterm.action.DisableDefaultAssignment },
     { key = '\r', mods = tab_mode_key, action = act.ToggleFullScreen },
-    { key = 'y', mods = tab_mode_key, action = act.ActivateCopyMode },
-    { key = '-', mods = tab_mode_key, action = act.SplitVertical { domain = "CurrentPaneDomain" } },
-    { key = ';', mods = tab_mode_key, action = act.SplitHorizontal { domain = "CurrentPaneDomain" } },
-    { key = 'h', mods = tab_mode_key, action = act.ActivatePaneDirection("Left") },
-    { key = 'j', mods = tab_mode_key, action = act.ActivatePaneDirection("Down") },
-    { key = 'k', mods = tab_mode_key, action = act.ActivatePaneDirection("Up") },
-    { key = 'l', mods = tab_mode_key, action = act.ActivatePaneDirection("Right") },
-    { key = 'c', mods = tab_mode_key, action = act.CloseCurrentPane { confirm = true } },
-    { key = 'f', mods = tab_mode_key, action = act.TogglePaneZoomState },
+    { key = 'y',  mods = tab_mode_key, action = act.ActivateCopyMode },
+    { key = '-',  mods = tab_mode_key, action = act.SplitVertical { domain = "CurrentPaneDomain" } },
+    { key = ';',  mods = tab_mode_key, action = act.SplitHorizontal { domain = "CurrentPaneDomain" } },
+    { key = 'h',  mods = tab_mode_key, action = act.ActivatePaneDirection("Left") },
+    { key = 'j',  mods = tab_mode_key, action = act.ActivatePaneDirection("Down") },
+    { key = 'k',  mods = tab_mode_key, action = act.ActivatePaneDirection("Up") },
+    { key = 'l',  mods = tab_mode_key, action = act.ActivatePaneDirection("Right") },
+    { key = 'c',  mods = tab_mode_key, action = act.CloseCurrentPane { confirm = true } },
+    { key = 'f',  mods = tab_mode_key, action = act.TogglePaneZoomState },
     {
         key = 'r',
         mods = tab_mode_key,
