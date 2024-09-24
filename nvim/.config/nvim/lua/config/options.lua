@@ -53,6 +53,6 @@ vim.cmd [[au BufEnter * set fo-=c fo-=r fo-=o]]
 opt.updatetime = 50
 
 opt.foldcolumn = '1' -- '0' is not bad
-opt.foldlevel = 99 -- Using ufo provider need a large value, feel free to decrease the value
+opt.foldlevel = 99   -- Using ufo provider need a large value, feel free to decrease the value
 opt.foldlevelstart = 99
 opt.foldenable = true

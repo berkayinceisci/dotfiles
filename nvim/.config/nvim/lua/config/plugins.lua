@@ -39,7 +39,7 @@ return require('packer').startup(function(use)
     use 'mbbill/undotree'
     use 'ggandor/leap.nvim'
     use 'folke/which-key.nvim'
-    use {'kevinhwang91/nvim-ufo', requires = 'kevinhwang91/promise-async'}
+    use { 'kevinhwang91/nvim-ufo', requires = 'kevinhwang91/promise-async' }
     use {
         'nvim-lualine/lualine.nvim',
         requires = { 'nvim-tree/nvim-web-devicons', opt = true }
