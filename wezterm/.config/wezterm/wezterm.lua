@@ -3,11 +3,15 @@ local config = wezterm.config_builder()
 local hostname = wezterm.hostname()
 local act = wezterm.action
 
-config.font_size = 18.0
-config.font = wezterm.font_with_fallback {
-    'Jetbrains Mono',
-    'Hack Nerd Font Mono',
-}
+if hostname == 'berkays-air' then
+    config.font_size = 18.0
+else
+    config.font_size = 18.0
+    config.font = wezterm.font_with_fallback {
+        'Jetbrains Mono',
+        'Hack Nerd Font Mono',
+    }
+end
 
 config.color_scheme = 'Gruvbox Dark (Gogh)'
 config.window_decorations = 'RESIZE'
