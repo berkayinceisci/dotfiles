@@ -18,7 +18,7 @@ autocmd BufWritePost plugins.lua source <afile> | PackerSync
 augroup end
 ]])
 
-local status, packer = pcall(require, "packer")
+local status, _ = pcall(require, "packer")
 if not status then
     return
 end
@@ -28,10 +28,18 @@ return require('packer').startup(function(use)
     use 'nvim-lua/plenary.nvim'
     use 'nvim-tree/nvim-web-devicons'
     use 'nvim-tree/nvim-tree.lua'
+    use {
+        'b0o/nvim-tree-preview.lua',
+        requires = { 'nvim-tree/nvim-tree.lua' }
+    }
     use 'szw/vim-maximizer'
     use 'tpope/vim-surround'
     use 'tpope/vim-commentary'
     use 'tpope/vim-repeat'
+    use 'mbbill/undotree'
+    use 'ggandor/leap.nvim'
+    use 'folke/which-key.nvim'
+    use {'kevinhwang91/nvim-ufo', requires = 'kevinhwang91/promise-async'}
     use {
         'nvim-lualine/lualine.nvim',
         requires = { 'nvim-tree/nvim-web-devicons', opt = true }
@@ -41,8 +49,6 @@ return require('packer').startup(function(use)
         'nvim-treesitter/nvim-treesitter-context',
         run = ':TSUpdate'
     }
-    use 'mbbill/undotree'
-    use 'ggandor/leap.nvim'
     use {
         "akinsho/toggleterm.nvim",
         tag = '*'
@@ -51,7 +57,7 @@ return require('packer').startup(function(use)
     -- fuzzy finding
     use {
         'nvim-telescope/telescope.nvim', tag = '0.1.2',
-        requires = { { 'nvim-lua/plenary.nvim' } }
+        requires = { 'nvim-lua/plenary.nvim' }
     }
 
     -- color scheme

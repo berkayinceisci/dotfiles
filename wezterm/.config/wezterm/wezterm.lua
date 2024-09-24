@@ -4,6 +4,10 @@ local hostname = wezterm.hostname()
 local act = wezterm.action
 
 config.font_size = 18.0
+config.font = wezterm.font_with_fallback {
+    'Jetbrains Mono',
+    'Hack Nerd Font Mono',
+}
 
 config.color_scheme = 'Gruvbox Dark (Gogh)'
 config.window_decorations = 'RESIZE'
@@ -41,33 +45,45 @@ config.window_padding = {
     bottom = 0,
 }
 
+-- Location(super key on normal keyboard layout) == Location(alt key on mac keyboard layout)
+local tab_mode_key
+if hostname == 'berkays-air' then
+    tab_mode_key = 'ALT'
+else
+    tab_mode_key = 'SUPER'
+end
+
 config.keys = {
-    { key = 'y', mods = 'ALT', action = act.ActivateCopyMode },
-    { key = '-', mods = 'ALT', action = act.SplitVertical { domain = "CurrentPaneDomain" } },
-    { key = ';', mods = 'ALT', action = act.SplitHorizontal { domain = "CurrentPaneDomain" } },
-    { key = 'h', mods = 'ALT', action = act.ActivatePaneDirection("Left") },
-    { key = 'j', mods = 'ALT', action = act.ActivatePaneDirection("Down") },
-    { key = 'k', mods = 'ALT', action = act.ActivatePaneDirection("Up") },
-    { key = 'l', mods = 'ALT', action = act.ActivatePaneDirection("Right") },
-    { key = 'c', mods = 'ALT', action = act.CloseCurrentPane { confirm = true } },
-    { key = 'f', mods = 'ALT', action = act.TogglePaneZoomState },
+    { key = '\r', mods = 'ALT', action = wezterm.action.DisableDefaultAssignment },
+    { key = '\r', mods = tab_mode_key, action = act.ToggleFullScreen },
+    { key = 'y', mods = tab_mode_key, action = act.ActivateCopyMode },
+    { key = '-', mods = tab_mode_key, action = act.SplitVertical { domain = "CurrentPaneDomain" } },
+    { key = ';', mods = tab_mode_key, action = act.SplitHorizontal { domain = "CurrentPaneDomain" } },
+    { key = 'h', mods = tab_mode_key, action = act.ActivatePaneDirection("Left") },
+    { key = 'j', mods = tab_mode_key, action = act.ActivatePaneDirection("Down") },
+    { key = 'k', mods = tab_mode_key, action = act.ActivatePaneDirection("Up") },
+    { key = 'l', mods = tab_mode_key, action = act.ActivatePaneDirection("Right") },
+    { key = 'c', mods = tab_mode_key, action = act.CloseCurrentPane { confirm = true } },
+    { key = 'f', mods = tab_mode_key, action = act.TogglePaneZoomState },
     {
         key = 'r',
-        mods = 'ALT',
+        mods = tab_mode_key,
         action = act.ActivateKeyTable {
             name = 'resize_pane',
             one_shot = false,
         },
     },
-    { key = '{', mods = 'SHIFT|ALT', action = act.MoveTabRelative(-1) },
-    { key = '}', mods = 'SHIFT|ALT', action = act.MoveTabRelative(1) },
+    { key = '[', mods = tab_mode_key, action = act.ActivateTabRelative(-1) },
+    { key = ']', mods = tab_mode_key, action = act.ActivateTabRelative(1) },
+    { key = '{', mods = tab_mode_key, action = act.MoveTabRelative(-1) },
+    { key = '}', mods = tab_mode_key, action = act.MoveTabRelative(1) },
 }
 
 for i = 1, 9 do
     -- ALT + number to activate that tab
     table.insert(config.keys, {
         key = tostring(i),
-        mods = 'ALT',
+        mods = tab_mode_key,
         action = act.ActivateTab(i - 1),
     })
 end
@@ -86,8 +102,7 @@ config.key_tables = {
         { key = 'DownArrow',  action = act.AdjustPaneSize { 'Down', 1 } },
         { key = 'j',          action = act.AdjustPaneSize { 'Down', 1 } },
 
-        { key = 'Escape',     action = 'PopKeyTable' },
-        { key = 'r',          mods = 'ALT',                              action = 'PopKeyTable' },
+        { key = 'r',          mods = tab_mode_key,                       action = 'PopKeyTable' },
     },
 }
 
