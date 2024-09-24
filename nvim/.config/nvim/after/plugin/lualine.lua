@@ -6,8 +6,13 @@ end
 
 lualine.setup {
     options = {
+        theme = 'auto',
         icons_enabled = true,
         component_separators = '|',
         section_separators = '',
     },
+}
+
+vim.opt.fillchars = {
+    stlnc = "─",
 }
