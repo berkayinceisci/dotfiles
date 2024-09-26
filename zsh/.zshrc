@@ -1,3 +1,8 @@
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt SHARE_HISTORY
+
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
@@ -28,9 +33,9 @@ fi
 
 bcd() {
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        cd $(xclip -o -selection clipboard)
+        cd "$(xclip -o -selection clipboard)"
     elif [[ "$OSTYPE" == "darwin"* ]]; then
-        cd $(pbpaste)
+        cd "$(pbpaste)"
     fi
 }
 

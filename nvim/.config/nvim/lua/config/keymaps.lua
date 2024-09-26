@@ -2,8 +2,10 @@ vim.g.mapleader = " "
 
 local keymap = vim.keymap
 
-keymap.set("n", "<C-w>%", "<C-w>v")     -- split window vertically
-keymap.set("n", "<C-w>\"", "<C-w>s")    -- split window horizontally
+keymap.set("n", "<C-w>%", "<C-w>v")  -- split window vertically
+keymap.set("n", "<C-w>\"", "<C-w>s") -- split window horizontally
+keymap.set("n", "H", "<C-w>h")
+keymap.set("n", "L", "<C-w>l")
 
 -- switch between buffers
 keymap.set("n", "<C-h>", "<cmd>bp<CR>")
@@ -38,7 +40,6 @@ keymap.set("n", "<leader>Y", [["+Y]])
 keymap.set({ "n", "v" }, "<leader>d", [["+d]])
 
 keymap.set("n", "Q", "<nop>")
--- keymap.set("n", "<C-f>", "<cmd>silent !tmux neww tmux-sessionizer<CR>")
 
 -- its advantage over F2 is that the changes are being shown on the screen, but F2 renames the variables on different files too
 keymap.set("n", "<leader>cw", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]])
@@ -72,10 +73,6 @@ keymap.set('c', '%s/', '%sm/')
 
 -- toggles between buffers
 keymap.set('n', '<leader><leader>', '<c-^>zz')
-
--- Jump to start and end of line using the home row keys
-keymap.set('', 'H', '^')
-keymap.set('', 'L', '$')
 
 keymap.set('n', 'gl', '<cmd>lua vim.diagnostic.open_float()<cr>')
 keymap.set('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<cr>')

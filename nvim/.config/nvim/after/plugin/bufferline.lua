@@ -11,6 +11,3 @@ require("bufferline").setup {
         }
     }
 }
-
--- choose buffer
-vim.keymap.set("n", "<leader>cb", ":BufferLinePick<CR>")
