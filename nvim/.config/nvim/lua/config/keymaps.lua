@@ -4,8 +4,8 @@ local keymap = vim.keymap
 
 keymap.set("n", "<C-w>%", "<C-w>v")  -- split window vertically
 keymap.set("n", "<C-w>\"", "<C-w>s") -- split window horizontally
-keymap.set("n", "H", "<C-w>h")
-keymap.set("n", "L", "<C-w>l")
+keymap.set("n", "H", "<C-w>=")
+keymap.set("n", "L", "<C-w>|")
 
 -- switch between buffers
 keymap.set("n", "<C-h>", "<cmd>bp<CR>")

@@ -17,6 +17,7 @@ alias tmux="tmux -f ~/.config/tmux/tmux.conf"
 alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
+alias img="wezterm imgcat"
 
 alias dotfiles="cd ~/repos/dotfiles/; nvim .; cd - > /dev/null"
 
