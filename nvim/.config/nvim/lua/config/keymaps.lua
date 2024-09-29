@@ -43,7 +43,7 @@ keymap.set("n", "Q", "<nop>")
 
 -- its advantage over F2 is that the changes are being shown on the screen, but F2 renames the variables on different files too
 keymap.set("n", "<leader>cw", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]])
-keymap.set("v", "<leader>cw", [["ay:%s/\<<C-r>a\>/<C-r>a/gI<Left><Left><Left>]])
+keymap.set("v", "<leader>cw", [["ay:%s/<C-r>a/<C-r>a/gI<Left><Left><Left>]])
 
 -- copy the current working directory of the buffer to the clipboard (not works in ssh)
 keymap.set("n", "<leader>cd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true, silent = true })
