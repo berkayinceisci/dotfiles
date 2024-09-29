@@ -32,6 +32,10 @@ else
     alias lla="ls -la"
 fi
 
+if [[ ":$PATH:" == *":$HOME/.cargo/bin:"* && -e ~/.cargo/bin/bat ]]; then
+    alias cat="bat"
+fi
+
 bcd() {
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         cd "$(xclip -o -selection clipboard)"
