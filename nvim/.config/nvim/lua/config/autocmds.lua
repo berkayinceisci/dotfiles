@@ -1,14 +1,13 @@
--- Create group to assign commands
--- "clear = true" must be set to prevent loading an
--- auto-command repeatedly every time a file is resourced
-local autocmd_group = vim.api.nvim_create_augroup("Custom auto-commands", { clear = true })
+local autocmd_group = vim.api.nvim_create_augroup("lsp", { clear = true })
 
-vim.api.nvim_create_autocmd({ "BufWritePost" }, {
-    pattern = { "*.sh" },
-    desc = "Auto-format sh/bash/zsh files after saving",
-    callback = function()
-        local fileName = vim.api.nvim_buf_get_name(0)
-        vim.cmd(":silent !beautysh " .. fileName)
-    end,
+vim.api.nvim_create_autocmd("LspAttach", {
     group = autocmd_group,
+    callback = function(args)
+        vim.api.nvim_create_autocmd("BufWritePre", {
+            buffer = args.buf,
+            callback = function()
+                vim.lsp.buf.format { async = false, id = args.data.client_id }
+            end,
+        })
+    end
 })
