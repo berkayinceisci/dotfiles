@@ -3,7 +3,7 @@ local config = wezterm.config_builder()
 local hostname = wezterm.hostname()
 local act = wezterm.action
 
-if hostname == 'berkays-air' then
+if hostname == 'berkays-air' or hostname == 'berkays-air.local' then
     config.font_size = 18.0
 else
     config.font_size = 18.0
@@ -23,7 +23,7 @@ config.inactive_pane_hsb = {
     saturation = 0.6
 }
 
-if hostname == 'berkays-air' then
+if hostname == 'berkays-air' or hostname == 'berkays-air.local' then
     config.macos_window_background_blur = 50
     config.window_background_opacity = 0.5
 else
