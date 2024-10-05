@@ -73,6 +73,7 @@ return require('packer').startup(function(use)
     use 'neovim/nvim-lspconfig'
     use 'williamboman/mason.nvim'
     use 'williamboman/mason-lspconfig.nvim'
+    use 'WhoIsSethDaniel/mason-tool-installer.nvim'
 
     -- Autocompletion
     use 'hrsh7th/nvim-cmp'

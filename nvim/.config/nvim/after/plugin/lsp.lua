@@ -10,10 +10,10 @@ vim.api.nvim_create_autocmd('LspAttach', {
         vim.keymap.set('n', 'gi', '<CMD>lua vim.lsp.buf.implementation()<CR>', opts)
         vim.keymap.set('n', 'gs', '<CMD>lua vim.lsp.buf.signature_help()<CR>', opts)
         vim.keymap.set('n', '<F2>', '<CMD>lua vim.lsp.buf.rename()<CR>', opts)
-        vim.keymap.set({ 'n', 'x' }, '<F3>', '<CMD>lua vim.lsp.buf.format({async = true})<CR>', opts)
+        -- vim.keymap.set({ 'n', 'x' }, '<F3>', '<CMD>lua vim.lsp.buf.format({async = true})<CR>', opts)
         vim.keymap.set('n', '<F4>', '<CMD>lua vim.lsp.buf.code_action()<CR>', opts)
 
-        vim.keymap.set('n', '<leader>fp', "<CMD>Telescope diagnostics<CR>", opts)
+        vim.keymap.set('n', '<leader>fd', "<CMD>Telescope diagnostics<CR>", opts)
         vim.keymap.set('n', 'gr', require('telescope.builtin').lsp_references, opts)
     end
 })
@@ -26,10 +26,15 @@ local default_setup = function(server)
     })
 end
 
-require('mason').setup()
+require('mason').setup({
+    ui = {
+        border = "rounded",
+    }
+})
 
-require('mason-lspconfig').setup({
+require('mason-tool-installer').setup({
     ensure_installed = {
+        -- lsp
         "clangd",
         "cmake",
         "dockerls",
@@ -43,8 +48,14 @@ require('mason-lspconfig').setup({
         "pyright",
         "rust_analyzer",
         "taplo",
-        "svlangserver"
+        "verible",
+        "svlangserver",
+        -- formatters
+        "shfmt"
     },
+})
+
+require('mason-lspconfig').setup({
     handlers = {
         default_setup,
         lua_ls = function()
@@ -65,6 +76,11 @@ require('mason-lspconfig').setup({
                         }
                     }
                 }
+            })
+        end,
+        verible = function()
+            require('lspconfig').verible.setup({
+                root_dir = vim.fn.getcwd()
             })
         end
     },
