@@ -84,19 +84,40 @@ return require('packer').startup(function(use)
     use 'L3MON4D3/LuaSnip'
     use 'saadparwaiz1/cmp_luasnip'
 
+    -- LLM
+    use {
+        'yetone/avante.nvim',
+        requires = {
+            "nvim-treesitter/nvim-treesitter",
+            "stevearc/dressing.nvim",
+            "nvim-lua/plenary.nvim",
+            "MunifTanjim/nui.nvim",
+            "MeanderingProgrammer/render-markdown.nvim",
+        },
+        run = "make",
+        lazy = false,
+        version = false,
+        config = function()
+            require("avante_lib").load()
+            require("avante").setup({})
+        end,
+    }
+
     -- Note taking
-    use({
+    use {
         'MeanderingProgrammer/render-markdown.nvim',
         after = { 'nvim-treesitter' },
         requires = { 'nvim-tree/nvim-web-devicons', opt = true }, -- if you prefer nvim-web-devicons
         config = function()
-            require('render-markdown').setup({})
+            require('render-markdown').setup({
+                file_types = { 'markdown', 'Avante' }
+            })
         end,
-    })
-    use({
+    }
+    use {
         "iamcco/markdown-preview.nvim",
         run = function() vim.fn["mkdp#util#install"]() end,
-    })
+    }
 
     -- Automatically set up your configuration after cloning packer.nvim
     -- Put this at the end after all plugins
