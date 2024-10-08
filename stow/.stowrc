@@ -1,1 +1,2 @@
 --target="$HOME"
+--ignore=".DS_Store"
