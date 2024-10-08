@@ -62,10 +62,6 @@ keymap.set("i", "{<CR>", "{<CR>}<Esc>O", { noremap = true })
 keymap.set('n', 'j', 'gj')
 keymap.set('n', 'k', 'gk')
 
--- let the left and right arrows be useful: they can switch buffers
-keymap.set('n', '<left>', ':bp<cr>zz')
-keymap.set('n', '<right>', ':bn<cr>zz')
-
 -- "very magic" (less escaping needed) regexes by default
 keymap.set('n', '?', '?\\v')
 keymap.set('n', '/', '/\\v')
