@@ -1,6 +1,6 @@
 require 'nvim-treesitter.configs'.setup {
     -- A list of parser names, or "all" (the five listed parsers should always be installed)
-    ensure_installed = { "c", "lua", "vim", "vimdoc", "query", "lua", "rust", "javascript", "typescript", "python", "cpp" },
+    ensure_installed = { "bash", "c", "lua", "vim", "toml", "vimdoc", "markdown", "markdown_inline", "query", "lua", "rust", "javascript", "typescript", "python", "cpp" },
 
     -- Install parsers synchronously (only applied to `ensure_installed`)
     sync_install = false,
@@ -38,4 +38,3 @@ require 'treesitter-context'.setup {
 vim.keymap.set("n", "[c", function()
     require("treesitter-context").go_to_context(vim.v.count1)
 end, { silent = true })
-
