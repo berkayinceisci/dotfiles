@@ -1,24 +1,16 @@
-vim.g.mapleader = " "
-
 local keymap = vim.keymap
 
 keymap.set("n", "<C-w>%", "<C-w>v")  -- split window vertically
 keymap.set("n", "<C-w>\"", "<C-w>s") -- split window horizontally
-keymap.set("n", "H", "<C-w>=")
-keymap.set("n", "L", "<C-w>|")
 
 -- switch between buffers
 keymap.set("n", "<C-h>", "<cmd>bp<CR>")
 keymap.set("n", "<C-l>", "<cmd>bn<CR>")
 
+-- TODO: <C-j>, <C-k>, <leader>j, <leader>k still unmapped
+
 -- close buffer without messing up with the window layout
 keymap.set("n", "<leader>q", "<cmd>bp|bd#<CR>", { noremap = true })
-
--- for quick list navigation
-keymap.set("n", "<C-k>", "<cmd>cnext<CR>zz")
-keymap.set("n", "<C-j>", "<cmd>cprev<CR>zz")
-keymap.set("n", "<leader>k", "<cmd>lnext<CR>zz")
-keymap.set("n", "<leader>j", "<cmd>lprev<CR>zz")
 
 keymap.set("v", "J", ":m '>+1<CR>gv=gv")
 keymap.set("v", "K", ":m '<-2<CR>gv=gv")
@@ -28,8 +20,6 @@ keymap.set("v", "<", "<gv", { noremap = true, silent = true })
 keymap.set("v", ">", ">gv", { noremap = true, silent = true })
 
 keymap.set("n", "J", "mzJ`z")
-keymap.set("n", "<C-d>", "<C-d>zz")
-keymap.set("n", "<C-u>", "<C-u>zz")
 keymap.set("n", "G", "Gzz")
 keymap.set("n", "n", "nzzzv")
 keymap.set("n", "N", "Nzzzv")

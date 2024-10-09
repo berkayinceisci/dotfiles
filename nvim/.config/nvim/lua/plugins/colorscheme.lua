@@ -22,6 +22,7 @@ function Color(color)
             styles = {
                 italic = false,
                 bold = true,
+                transparency = true,
             },
         })
     elseif color == "catppuccin" then
@@ -44,6 +45,22 @@ function Color(color)
     vim.cmd.colorscheme(color)
 end
 
--- Color("base16")
--- Color("rose-pine")
-Color("catppuccin")
+return {
+    {
+        "RRethy/base16-nvim",
+        name = "base16",
+    },
+    {
+        "rose-pine/neovim",
+        name = "rose-pine",
+    },
+    {
+        "catppuccin/nvim",
+        name = "catppuccin",
+        priority = 1000,
+        lazy = false,
+        config = function()
+            Color()
+        end
+    },
+}
