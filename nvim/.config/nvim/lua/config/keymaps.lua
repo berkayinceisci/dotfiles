@@ -7,7 +7,11 @@ keymap.set("n", "<C-w>\"", "<C-w>s") -- split window horizontally
 keymap.set("n", "<C-h>", "<cmd>bp<CR>")
 keymap.set("n", "<C-l>", "<cmd>bn<CR>")
 
--- TODO: <C-j>, <C-k>, <leader>j, <leader>k still unmapped
+-- insert blank lines without entering insert mode
+keymap.set("n", "<leader>j", "o<Esc>k")
+keymap.set("n", "<leader>k", "O<Esc>j")
+
+-- TODO: <C-j>, <C-k> still unmapped
 
 -- close buffer without messing up with the window layout
 keymap.set("n", "<leader>q", "<cmd>bp|bd#<CR>", { noremap = true })
