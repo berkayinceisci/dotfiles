@@ -3,6 +3,7 @@ return {
     "tpope/vim-commentary",
     "tpope/vim-repeat",
     "folke/which-key.nvim",
+    "szw/vim-maximizer",
     {
         "karb94/neoscroll.nvim",
         config = function()
@@ -15,12 +16,6 @@ return {
         "norcalli/nvim-colorizer.lua",
         config = function()
             require('colorizer').setup()
-        end
-    },
-    {
-        "szw/vim-maximizer",
-        config = function()
-            vim.keymap.set("n", "<leader>m", vim.cmd.MaximizerToggle)
         end
     },
     {
