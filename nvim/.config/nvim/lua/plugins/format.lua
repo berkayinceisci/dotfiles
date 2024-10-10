@@ -5,7 +5,7 @@ return {
     lazy = false,
     keys = {
         {
-            "<leader>fr",
+            "<F8>",
             function()
                 require("conform").format({ async = false }, function(err)
                     if not err then
@@ -16,7 +16,7 @@ return {
                     end
                 end)
             end,
-            mode = "",
+            mode = { "n", "v", "i" },
             desc = "Format buffer",
         },
     },
