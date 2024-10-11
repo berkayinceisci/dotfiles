@@ -3,12 +3,20 @@ return {
     "tpope/vim-commentary",
     "tpope/vim-repeat",
     "folke/which-key.nvim",
-    "szw/vim-maximizer",
+    {
+        "anuvyklack/windows.nvim",
+        dependencies = "anuvyklack/middleclass",
+        config = function()
+            require('windows').setup()
+            vim.keymap.set('n', '<C-w>m', vim.cmd.WindowsMaximize)
+        end
+    },
     {
         "karb94/neoscroll.nvim",
         config = function()
+            vim.keymap.set("n", "zz", "zz5<C-e>")
             require('neoscroll').setup({
-                mappings = { '<C-u>', '<C-d>', 'zz' }
+                mappings = { '<C-u>', '<C-d>', 'zz', 'zt', 'zb' }
             })
         end,
     },
