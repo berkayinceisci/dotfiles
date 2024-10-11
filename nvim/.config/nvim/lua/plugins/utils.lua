@@ -14,7 +14,6 @@ return {
     {
         "karb94/neoscroll.nvim",
         config = function()
-            vim.keymap.set("n", "zz", "zz5<C-e>")
             require('neoscroll').setup({
                 mappings = { '<C-u>', '<C-d>', 'zz', 'zt', 'zb' }
             })
