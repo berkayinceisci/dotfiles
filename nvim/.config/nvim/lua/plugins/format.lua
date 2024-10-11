@@ -5,7 +5,7 @@ return {
     lazy = false,
     keys = {
         {
-            "<F8>",
+            "<F3>",
             function()
                 require("conform").format({ async = false }, function(err)
                     if not err then
