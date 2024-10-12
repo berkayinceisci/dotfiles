@@ -1,6 +1,6 @@
 return {
     "nvim-telescope/telescope.nvim",
-    version = "0.1.x",
+    -- version = "0.1.x",
     dependencies = "nvim-lua/plenary.nvim",
     config = function()
         local status, telescope = pcall(require, 'telescope')
@@ -19,8 +19,8 @@ return {
                         -- map actions.which_key to <C-h> (default: <C-/>)
                         -- actions.which_key shows the mappings for your picker,
                         -- e.g. git_{create, delete, ...}_branch for the git_branches picker
-                        ["<C-k>"] = actions.move_selection_previous,
-                        ["<C-j>"] = actions.move_selection_next
+                        ["<C-h>"] = actions.preview_scrolling_left,
+                        ["<C-l>"] = actions.preview_scrolling_right,
                     }
                 },
                 vimgrep_arguments = {

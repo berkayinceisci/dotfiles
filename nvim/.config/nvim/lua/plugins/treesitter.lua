@@ -26,10 +26,10 @@ return {
                     -- Automatically jump forward to textobj, similar to targets.vim
                     lookahead = true,
                     keymaps = {
-                        ["a="] = { query = "@assignment.outer", desc = "Select outer part of an assignment" },
-                        ["i="] = { query = "@assignment.inner", desc = "Select inner part of an assignment" },
-                        ["l="] = { query = "@assignment.lhs", desc = "Select left hand side of an assignment" },
-                        ["r="] = { query = "@assignment.rhs", desc = "Select right hand side of an assignment" },
+                        ["ae"] = { query = "@assignment.outer", desc = "Select outer part of an assignment" },
+                        ["ie"] = { query = "@assignment.inner", desc = "Select inner part of an assignment" },
+                        ["le"] = { query = "@assignment.lhs", desc = "Select left hand side of an assignment" },
+                        ["re"] = { query = "@assignment.rhs", desc = "Select right hand side of an assignment" },
 
                         ["aa"] = { query = "@parameter.outer", desc = "Select outer part of a parameter/argument" },
                         ["ia"] = { query = "@parameter.inner", desc = "Select inner part of a parameter/argument" },
@@ -60,12 +60,14 @@ return {
                     enable = true,
                     set_jumps = true, -- whether to set jumps in the jumplist
                     goto_next_start = {
+                        ["]a"] = { query = "@parameter.outer", desc = "Next argument/parameter start" },
                         ["]f"] = { query = "@function.outer", desc = "Next method/function def start" },
                         ["]s"] = { query = "@class.outer", desc = "Next struct/class start" },
                         ["]i"] = { query = "@conditional.outer", desc = "Next conditional start" },
                         ["]l"] = { query = "@loop.outer", desc = "Next loop start" },
                     },
                     goto_next_end = {
+                        ["]A"] = { query = "@function.outer", desc = "Next argument/parameter end" },
                         ["]F"] = { query = "@function.outer", desc = "Next method/function def end" },
                         ["]S"] = { query = "@class.outer", desc = "Next struct/class end" },
                         ["]I"] = { query = "@conditional.outer", desc = "Next conditional end" },
