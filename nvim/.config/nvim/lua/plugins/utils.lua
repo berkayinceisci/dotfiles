@@ -9,13 +9,14 @@ return {
         config = function()
             require('windows').setup()
             vim.keymap.set('n', '<C-w>m', vim.cmd.WindowsMaximize)
+            vim.cmd('WindowsDisableAutowidth')
         end
     },
     {
         "karb94/neoscroll.nvim",
         config = function()
             require('neoscroll').setup({
-                mappings = { '<C-u>', '<C-d>', 'zz', 'zt', 'zb' }
+                mappings = { '<C-u>', '<C-d>' },
             })
         end,
     },

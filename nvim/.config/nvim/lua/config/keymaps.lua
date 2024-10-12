@@ -2,19 +2,29 @@ local keymap = vim.keymap
 
 keymap.set("n", "<C-w>%", "<C-w>v")  -- split window vertically
 keymap.set("n", "<C-w>\"", "<C-w>s") -- split window horizontally
+keymap.set("n", "<C-,>", "<C-w><")   -- decrease window width
+keymap.set("n", "<C-.>", "<C-w>>")   -- increase window width
+keymap.set("n", "-", "<C-w>-")       -- decrease window height
+keymap.set("n", "+", "<C-w>+")       -- increase window height
 
 -- switch between buffers
 keymap.set("n", "<C-h>", "<cmd>bp<CR>")
 keymap.set("n", "<C-l>", "<cmd>bn<CR>")
 
+-- quickfix list navigation
+keymap.set("n", "<C-n>", "<cmd>cnext<CR>zz")
+keymap.set("n", "<C-p>", "<cmd>cprev<CR>zz")
+
+-- TODO: <C-j> and <C-k> still unmapped
+
 -- insert blank lines without entering insert mode
 keymap.set("n", "<leader>j", "o<Esc>k")
 keymap.set("n", "<leader>k", "O<Esc>j")
 
--- TODO: <C-j>, <C-k> still unmapped
-
 -- close buffer without messing up with the window layout
 keymap.set("n", "<leader>q", "<cmd>bp|bd#<CR>", { noremap = true })
+-- close tab
+keymap.set("n", "Q", "<CMD>tabclose<CR>")
 
 keymap.set("v", "J", ":m '>+1<CR>gv=gv")
 keymap.set("v", "K", ":m '<-2<CR>gv=gv")
@@ -32,8 +42,6 @@ keymap.set("n", "N", "Nzzzv")
 keymap.set({ "n", "v" }, "<leader>y", [["+y]])
 keymap.set("n", "<leader>Y", [["+Y]])
 keymap.set({ "n", "v" }, "<leader>d", [["+d]])
-
-keymap.set("n", "Q", "<nop>")
 
 -- its advantage over F2 is that the changes are being shown on the screen, but F2 renames the variables on different files too
 keymap.set("n", "<leader>cw", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]])
