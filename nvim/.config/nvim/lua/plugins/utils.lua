@@ -4,6 +4,19 @@ return {
     "tpope/vim-repeat",
     "folke/which-key.nvim",
     {
+        'kevinhwang91/nvim-bqf',
+        ft = 'qf'
+    },
+    {
+        'MagicDuck/grug-far.nvim',
+        config = function()
+            require('grug-far').setup();
+            vim.keymap.set('n', '<leader>S',
+                ":lua require('grug-far').open({ prefills = { search = vim.fn.expand(\"<cword>\") } })<CR>")
+            vim.keymap.set('v', '<leader>S', ":<C-u>lua require('grug-far').with_visual_selection()<CR>")
+        end
+    },
+    {
         "anuvyklack/windows.nvim",
         dependencies = "anuvyklack/middleclass",
         config = function()
