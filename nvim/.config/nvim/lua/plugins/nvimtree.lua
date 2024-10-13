@@ -26,9 +26,9 @@ return {
                     quit_on_open = true,
                 },
             },
-            -- nvim-tree-preview
             on_attach = function(bufnr)
                 local api = require('nvim-tree.api')
+                local lib = require('nvim-tree.lib')
 
                 -- Important: When you supply an `on_attach` function, nvim-tree won't
                 -- automatically set up the default keymaps. To set up the default keymaps,
@@ -39,6 +39,35 @@ return {
                     return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
                 end
 
+                -- grug-far
+                local grug_far_replace = function()
+                    local node = lib.get_node_at_cursor()
+                    if node then
+                        local prefills = {
+                            -- get the current path and get the parent directory if a file is selected
+                            paths = node.type == "directory" and node.absolute_path or
+                                vim.fn.fnamemodify(node.absolute_path, ":h"),
+                        }
+
+                        local grug_far = require("grug-far")
+                        -- instance check
+                        if not grug_far.has_instance("explorer") then
+                            grug_far.open {
+                                instanceName = "explorer",
+                                prefills = prefills,
+                                staticTitle = "Find and Replace from Explorer",
+                            }
+                        else
+                            grug_far.open_instance("explorer")
+                            -- updating the prefills without clearing the search and other fields
+                            grug_far.update_instance_prefills("explorer", prefills, false)
+                        end
+                    end
+                end
+
+                vim.keymap.set('n', 'S', grug_far_replace, opts 'Search in directory')
+
+                -- nvim-tree-preview
                 local preview = require('nvim-tree-preview')
 
                 vim.keymap.set('n', 'P', preview.watch, opts 'Preview (Watch)')
