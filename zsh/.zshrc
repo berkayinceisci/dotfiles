@@ -56,7 +56,4 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
 fi
 
-export PATH=$PATH:/usr/local/go/bin
-export PATH=$PATH:~/go/bin
-
 source "$HOME/.export_api_keys.sh"
