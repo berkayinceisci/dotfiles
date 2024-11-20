@@ -59,7 +59,6 @@ M.config = function()
             "rust_analyzer",
             "taplo",
             "verible",
-            "svlangserver",
         },
     })
 
