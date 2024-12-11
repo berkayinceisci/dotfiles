@@ -25,6 +25,11 @@ M.config = function()
 
             vim.keymap.set('n', '<leader>fd', "<CMD>Telescope diagnostics<CR>", opts)
             vim.keymap.set('n', 'gr', require('telescope.builtin').lsp_references, opts)
+
+            vim.keymap.set("n", 'gh',
+                function()
+                    vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ 0 }), { 0 })
+                end)
         end
     })
 
@@ -87,7 +92,33 @@ M.config = function()
             end,
             verible = function()
                 require('lspconfig').verible.setup({
+                    capabilities = lsp_capabilities,
                     root_dir = vim.fn.getcwd()
+                })
+            end,
+            rust_analyzer = function()
+                require('lspconfig').rust_analyzer.setup({
+                    capabilities = lsp_capabilities,
+                    settings = {
+                        ['rust-analyzer'] = {
+                            inlayHints = {
+                                reborrowHints = {
+                                    enable = true
+                                },
+                                lifetimeElisionHints = {
+                                    enable = "always",
+                                },
+                                genericParameterHints = {
+                                    const = true,
+                                    lifetime = true,
+                                    type = true,
+                                },
+                                implicitDrops = {
+                                    enable = true
+                                }
+                            }
+                        }
+                    }
                 })
             end
         },

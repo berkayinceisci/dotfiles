@@ -25,7 +25,7 @@ config.inactive_pane_hsb = {
 
 if hostname == 'berkays-air' or hostname == 'berkays-air.local' then
     config.macos_window_background_blur = 50
-    config.window_background_opacity = 0.5
+    -- config.window_background_opacity = 0.5
 else
     local wallpapers = {}
     local wallpapers_glob = wezterm.home_dir .. '/Wallpapers/**'
