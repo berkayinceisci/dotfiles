@@ -73,7 +73,6 @@ M.config = function()
 			"prettierd",
 			"prettier",
 			"shfmt",
-			"prettierd",
 		},
 	})
 
