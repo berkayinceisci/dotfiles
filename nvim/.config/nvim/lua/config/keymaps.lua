@@ -1,11 +1,11 @@
 local keymap = vim.keymap
 
-keymap.set("n", "<C-w>%", "<C-w>v")  -- split window vertically
-keymap.set("n", "<C-w>\"", "<C-w>s") -- split window horizontally
-keymap.set("n", "<C-,>", "<C-w><")   -- decrease window width
-keymap.set("n", "<C-.>", "<C-w>>")   -- increase window width
-keymap.set("n", "-", "<C-w>-")       -- decrease window height
-keymap.set("n", "+", "<C-w>+")       -- increase window height
+keymap.set("n", "<C-w>%", "<C-w>v") -- split window vertically
+keymap.set("n", '<C-w>"', "<C-w>s") -- split window horizontally
+keymap.set("n", "<C-,>", "<C-w><") -- decrease window width
+keymap.set("n", "<C-.>", "<C-w>>") -- increase window width
+keymap.set("n", "-", "<C-w>-") -- decrease window height
+keymap.set("n", "+", "<C-w>+") -- increase window height
 
 -- switch between buffers
 keymap.set("n", "<C-h>", "<cmd>bp<CR>")
@@ -54,40 +54,44 @@ keymap.set("n", "<leader>cd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true,
 -- keymap.set("n", "<leader>exe", "<cmd>!chmod +x %<CR>", { silent = true })
 
 -- useful if nvimtree is used and therefore netrw is disabled (opens link under the cursor in the browser)
-keymap.set("n", "gx", [[:silent execute (has ("mac") ? '!open ' : '!xdg-open ') . shellescape(expand('<cfile>'), 1)<CR>]],
-    { noremap = true, silent = true })
+keymap.set(
+	"n",
+	"gx",
+	[[:silent execute (has ("mac") ? '!open ' : '!xdg-open ') . shellescape(expand('<cfile>'), 1)<CR>]],
+	{ noremap = true, silent = true }
+)
 
 -- auto complete curly brackets
 keymap.set("i", "{<CR>", "{<CR>}<Esc>O", { noremap = true })
 
 -- make j and k move by visual line, not actual line, when text is soft-wrapped
-keymap.set('n', 'j', 'gj')
-keymap.set('n', 'k', 'gk')
+keymap.set("n", "j", "gj")
+keymap.set("n", "k", "gk")
 
 -- "very magic" (less escaping needed) regexes by default
-keymap.set('n', '?', '?\\v')
-keymap.set('n', '/', '/\\v')
-keymap.set('c', '%s/', '%sm/')
+keymap.set("n", "?", "?\\v")
+keymap.set("n", "/", "/\\v")
+keymap.set("c", "%s/", "%sm/")
 
 -- toggles between buffers
-keymap.set('n', '<leader><leader>', '<c-^>zz')
+keymap.set("n", "<leader><leader>", "<c-^>zz")
 
-keymap.set('n', 'gl', '<cmd>lua vim.diagnostic.open_float()<cr>')
-keymap.set('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<cr>')
-keymap.set('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<cr>')
+keymap.set("n", "gl", "<cmd>lua vim.diagnostic.open_float()<cr>")
+keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<cr>")
+keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<cr>")
 
 -- If this is a script, make it executable, and execute it in a split pane on the right
 -- Had to include quotes around "%" because there are some apple dirs that contain spaces, like iCloud
 keymap.set("n", "<leader>./", function()
-    local file = vim.fn.expand("%:p")                 -- Get the current file name
-    local first_line = vim.fn.getline(1)              -- Get the first line of the file
-    if string.match(first_line, "^#!/") then          -- If first line contains shebang
-        local escaped_file = vim.fn.shellescape(file) -- Properly escape the file name for shell commands
-        vim.cmd("!chmod +x " .. escaped_file)         -- Make the file executable
-        vim.cmd("vsplit")                             -- Split the window vertically
-        vim.cmd("terminal " .. escaped_file)          -- Open terminal and execute the file
-        vim.cmd("startinsert")                        -- Enter insert mode, recommended by echasnovski on Reddit
-    else
-        vim.cmd("echo 'Not a script. Shebang line not found.'")
-    end
+	local file = vim.fn.expand("%:p") -- Get the current file name
+	local first_line = vim.fn.getline(1) -- Get the first line of the file
+	if string.match(first_line, "^#!/") then -- If first line contains shebang
+		local escaped_file = vim.fn.shellescape(file) -- Properly escape the file name for shell commands
+		vim.cmd("!chmod +x " .. escaped_file) -- Make the file executable
+		vim.cmd("vsplit") -- Split the window vertically
+		vim.cmd("terminal " .. escaped_file) -- Open terminal and execute the file
+		vim.cmd("startinsert") -- Enter insert mode, recommended by echasnovski on Reddit
+	else
+		vim.cmd("echo 'Not a script. Shebang line not found.'")
+	end
 end, { desc = "Execute current file in terminal (if it's a script)" })
