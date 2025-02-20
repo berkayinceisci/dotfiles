@@ -61,10 +61,10 @@ M.config = function()
 			"ts_ls",
 			"pyright",
 			"taplo",
-			"solidity_ls_nomicfoundation",
 			"lua_ls",
 			"rust_analyzer",
 			"verible",
+			"solidity_ls_nomicfoundation",
 
 			-- formatters
 			"stylua",
