@@ -29,6 +29,7 @@ return {
 			lua = { "stylua" },
 			python = { "isort", "black" },
 			rust = { "rustfmt" },
+			json = { "prettierd", "prettier", stop_after_first = true },
 			javascript = { "prettierd", "prettier", stop_after_first = true },
 			sh = { "shfmt" },
 			markdown = { "injected" },
