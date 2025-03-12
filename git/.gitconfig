@@ -4,7 +4,9 @@
 
 [core]
     pager = delta
-	editor = vim
+    editor = vim
+    fsmonitor = true
+    untrackedCache = true
 
 [interactive]
     diffFilter = delta --color-only
@@ -13,18 +15,51 @@
     navigate = true    # use n and N to move between diff sections
     light = false      # set to true if you're in a terminal w/ a light background color (e.g. the default macOS terminal)
 
-[merge]
-    conflictstyle = diff3
-
 [diff]
-    colorMoved = default
+    algorithm = histogram
+    mnemonicPrefix = true
+    renames = true
 
 [alias]
     lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
 
 [init]
-	defaultBranch = main
+    defaultBranch = main
+
+[column]
+    ui = auto
+
+[branch]
+    sort = -committerdate
+
+[tag]
+    sort = version:refname
 
 # Enforce SSH
 [url "ssh://git@github.com/"]
-  insteadOf = https://github.com/
+    insteadOf = https://github.com/
+
+[push]
+    default = simple
+    autoSetupRemote = true
+    followTags = true
+
+[fetch]
+    prune = true
+    pruneTags = true
+    all = true
+
+[pull]
+    rebase = true
+
+[merge]
+    conflictstyle = zdiff3 
+
+[rebase]
+    autoSquash = true
+    autoStash = true
+    updateRefs = true
+
+[rerere]
+    enabled = true
+    autoupdate = true
