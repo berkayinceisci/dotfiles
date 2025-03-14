@@ -20,6 +20,7 @@ alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
 alias img="wezterm imgcat"
 alias glow="glow -p"
+alias rgf='rg --files | rg'
 
 alias dotfiles="cd ~/repos/dotfiles/; nvim .; cd - > /dev/null"
 
@@ -54,6 +55,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
+    export PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"   # for compiling kernel on mac
+    export PATH="$(brew --prefix llvm)/bin/:$PATH"              # for compiling kernel on mac
 fi
 
 source "$HOME/.export_api_keys.sh"
