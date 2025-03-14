@@ -27,8 +27,9 @@ return {
 		-- Define your formatters
 		formatters_by_ft = {
 			lua = { "stylua" },
-			python = { "isort", "black" },
+			c = { lsp_format = "fallback" },
 			rust = { "rustfmt" },
+			python = { "isort", "black" },
 			json = { "prettierd", "prettier", stop_after_first = true },
 			javascript = { "prettierd", "prettier", stop_after_first = true },
 			sh = { "shfmt" },
@@ -39,7 +40,14 @@ return {
 		-- 	lsp_format = "fallback",
 		-- },
 		-- Set up format-on-save
-		format_on_save = { timeout_ms = 500 },
+		format_on_save = function(bufnr)
+			local disable_filetypes = { c = true }
+			if disable_filetypes[vim.bo[bufnr].filetype] then
+				return nil
+			end
+			return { timeout_ms = 1000 }
+		end,
+
 		-- Customize formatters
 		formatters = {
 			shfmt = {
