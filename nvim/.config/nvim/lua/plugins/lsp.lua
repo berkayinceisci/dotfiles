@@ -73,6 +73,9 @@ M.config = function()
 			"prettierd",
 			"prettier",
 			"shfmt",
+
+			-- dap
+			"codelldb",
 		},
 	})
 

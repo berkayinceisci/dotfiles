@@ -47,6 +47,12 @@ bcd() {
     fi
 }
 
+if command -v fzf 2>&1 >/dev/null; then
+    FZF_ALT_C_COMMAND=
+    FZF_CTRL_T_COMMAND=
+    source <(fzf --zsh)
+fi
+
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # node is installed through brew in mac, therefore nvm does not exist
     # nvm installation script does not add the following lines if they already exist
