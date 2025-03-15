@@ -66,4 +66,11 @@ return {
 			vim.keymap.set({ "n", "x", "o" }, "<leader>W", "<Plug>(leap-from-window)")
 		end,
 	},
+	{
+		"saecki/crates.nvim",
+		tag = "stable",
+		config = function()
+			require("crates").setup()
+		end,
+	},
 }
