@@ -35,6 +35,14 @@ M.config = function()
 	local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
 	local lspconfig = require("lspconfig")
 
+	-- using clangd via mason is not possible for some architectures (e.g. ubuntu vm on mac and raspberry pi)
+	lspconfig.clangd.setup({
+		cmd = { "clangd", "--background-index", "--clang-tidy", "--log=verbose" },
+		-- init_options = {
+		-- 	fallbackFlags = { "-std=c99" },
+		-- },
+	})
+
 	local default_setup = function(server)
 		lspconfig[server].setup({
 			capabilities = lsp_capabilities,
@@ -50,7 +58,6 @@ M.config = function()
 	require("mason-tool-installer").setup({
 		ensure_installed = {
 			-- lsp
-			"clangd",
 			"cmake",
 			"dockerls",
 			"docker_compose_language_service",
