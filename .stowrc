@@ -1,2 +1,2 @@
---target="$HOME"
---ignore=".DS_Store"
+--target=$HOME
+--ignore='\.DS_Store'
