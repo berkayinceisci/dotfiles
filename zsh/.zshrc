@@ -11,6 +11,8 @@ source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 autoload -Uz compinit && compinit
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
+export PATH=$PATH:~/.cargo/bin/
+
 eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
@@ -24,7 +26,7 @@ alias rgf='rg --files | rg'
 
 alias dotfiles="cd ~/repos/dotfiles/; nvim .; cd - > /dev/null"
 
-if [[ ":$PATH:" == *":$HOME/.cargo/bin:"* && -e ~/.cargo/bin/eza ]]; then
+if [[ -e ~/.cargo/bin/eza ]]; then
     alias ls="eza"
     alias ll="eza -l"
     alias la="eza -a"
@@ -35,7 +37,7 @@ else
     alias lla="ls -la"
 fi
 
-if [[ ":$PATH:" == *":$HOME/.cargo/bin:"* && -e ~/.cargo/bin/bat ]]; then
+if [[ -e ~/.cargo/bin/bat ]]; then
     alias cat="bat"
 fi
 

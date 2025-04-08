@@ -32,18 +32,23 @@ else
 	for _, v in ipairs(wezterm.glob(wallpapers_glob)) do
 		table.insert(wallpapers, v)
 	end
-	config.window_background_image = wallpapers[math.random(1, #wallpapers)]
-	config.window_background_image_hsb = {
-		-- Darken the background image by reducing it to 1/3rd
-		brightness = 0.2,
 
-		-- You can adjust the hue by scaling its value.
-		-- a multiplier of 1.0 leaves the value unchanged.
-		hue = 1.0,
+	if next(wallpapers) == nil then
+		-- empty
+	else
+		config.window_background_image = wallpapers[math.random(1, #wallpapers)]
+		config.window_background_image_hsb = {
+			-- Darken the background image by reducing it to 1/3rd
+			brightness = 0.2,
 
-		-- You can adjust the saturation also.
-		saturation = 1.0,
-	}
+			-- You can adjust the hue by scaling its value.
+			-- a multiplier of 1.0 leaves the value unchanged.
+			hue = 1.0,
+
+			-- You can adjust the saturation also.
+			saturation = 1.0,
+		}
+	end
 end
 
 config.window_padding = {
