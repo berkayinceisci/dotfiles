@@ -64,5 +64,6 @@ return {
 		vim.keymap.set("n", "<leader>fg", builtin.live_grep)
 		vim.keymap.set("n", "<leader>f?", builtin.help_tags)
 		vim.keymap.set("n", "<leader>fh", builtin.command_history)
+		vim.keymap.set("n", "<leader>fs", builtin.grep_string)
 	end,
 }
