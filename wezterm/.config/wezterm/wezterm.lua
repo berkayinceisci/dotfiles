@@ -71,6 +71,7 @@ config.leader = { key = "b", mods = "CTRL", timeout_milliseconds = 1000 }
 config.keys = {
 	{ key = "\r", mods = "ALT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "\r", mods = super_key, action = act.ToggleFullScreen },
+	{ key = "r", mods = super_key, action = act.ReloadConfiguration },
 	{ key = "y", mods = "LEADER", action = act.ActivateCopyMode },
 	{ key = "%", mods = "LEADER|SHIFT", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
 	{ key = '"', mods = "LEADER|SHIFT", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
