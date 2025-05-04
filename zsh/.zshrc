@@ -1,8 +1,10 @@
-HISTFILE=~/.zsh_history
+HISTFILE=$HOME/.zsh_history
 HISTSIZE=10000
 SAVEHIST=10000
 setopt SHARE_HISTORY
 alias history="history 1"
+bindkey '^[[A' history-search-backward
+bindkey '^[[B' history-search-forward
 
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -41,6 +43,11 @@ if [[ -e ~/.cargo/bin/bat ]]; then
     alias cat="bat"
 fi
 
+if [[ -e ~/.cargo/bin/zoxide ]]; then
+    eval "$(zoxide init zsh)"
+    alias cd="z"
+fi
+
 bcd() {
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         cd "$(xclip -o -selection clipboard)"
@@ -62,7 +69,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-    export PATH="/usr/local/texlive/2025/bin/x86_64-linux:$PATH"
+    export WLR_DRM_NO_MODIFIERS=1
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
     export PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"   # for compiling kernel on mac
