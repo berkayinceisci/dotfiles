@@ -32,6 +32,7 @@ if wezterm.target_triple == "aarch64-apple-darwin" then
 else
 	super_key = "SUPER" -- windows key
 	alt_key = "ALT" -- alt key
+	config.font_size = 16.0
 	select_random_wallpaper()
 end
 
@@ -63,6 +64,8 @@ wezterm.on("toggle-tabbar", function(window, _)
 	window:set_config_overrides(overrides)
 end)
 
+config.enable_kitty_keyboard = false
+
 config.keys = {
 	{ key = "\r", mods = super_key, action = act.ToggleFullScreen },
 	{ key = "r", mods = super_key, action = act.ReloadConfiguration },
@@ -74,10 +77,14 @@ config.keys = {
 	{ key = "Q", mods = super_key, action = act.CloseCurrentTab({ confirm = false }) },
 	{ key = "[", mods = super_key, action = act.MoveTabRelative(-1) },
 	{ key = "]", mods = super_key, action = act.MoveTabRelative(1) },
-	{ key = "h", mods = super_key, action = wezterm.action.DisableDefaultAssignment },
-	{ key = "j", mods = super_key, action = wezterm.action.DisableDefaultAssignment },
-	{ key = "k", mods = super_key, action = wezterm.action.DisableDefaultAssignment },
-	{ key = "l", mods = super_key, action = wezterm.action.DisableDefaultAssignment },
+	{ key = "h", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
+	{ key = "j", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
+	{ key = "k", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
+	{ key = "l", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
+	{ key = "LeftArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
+	{ key = "RightArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
+	{ key = "UpArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
+	{ key = "DownArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 }
 
 for i = 1, 9 do

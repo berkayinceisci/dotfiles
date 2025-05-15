@@ -5,7 +5,8 @@
 [core]
     pager = delta
     editor = vim
-    fsmonitor = true
+    # fsmonitor = true
+    fsmonitor = false
     untrackedCache = true
 
 [interactive]
@@ -53,7 +54,8 @@
     rebase = true
 
 [merge]
-    conflictstyle = zdiff3 
+    # conflictstyle = zdiff3 
+    conflictstyle = diff3 
 
 [rebase]
     autoSquash = true
