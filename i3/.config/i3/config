@@ -26,7 +26,7 @@ set $right l
 bindsym Mod1+Return exec wezterm
 
 # kill focused window
-bindsym Mod1+q kill
+bindsym Mod1+Q kill
 
 # fast keystrokes
 exec --no-startup-id xset r rate 250 50
