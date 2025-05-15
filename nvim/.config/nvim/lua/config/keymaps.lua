@@ -2,24 +2,18 @@ local keymap = vim.keymap
 
 keymap.set("n", "<C-w>%", "<C-w>v") -- split window vertically
 keymap.set("n", '<C-w>"', "<C-w>s") -- split window horizontally
-keymap.set("n", "<C-,>", "<C-w><") -- decrease window width
-keymap.set("n", "<C-.>", "<C-w>>") -- increase window width
-keymap.set("n", "-", "<C-w>-") -- decrease window height
-keymap.set("n", "+", "<C-w>+") -- increase window height
-
--- switch between buffers
-keymap.set("n", "<C-h>", "<cmd>bp<CR>")
-keymap.set("n", "<C-l>", "<cmd>bn<CR>")
 
 -- quickfix list navigation
 keymap.set("n", "<C-n>", "<cmd>cnext<CR>zz")
 keymap.set("n", "<C-p>", "<cmd>cprev<CR>zz")
 
--- TODO: <C-j> and <C-k> still unmapped
-
 -- insert blank lines without entering insert mode
 keymap.set("n", "<leader>j", "o<Esc>k")
 keymap.set("n", "<leader>k", "O<Esc>j")
+
+-- switch between buffers
+keymap.set("n", "<leader>h", "<cmd>bp<CR>")
+keymap.set("n", "<leader>l", "<cmd>bn<CR>")
 
 -- close buffer without messing up with the window layout
 keymap.set("n", "<leader>q", "<cmd>bp|bd#<CR>", { noremap = true })

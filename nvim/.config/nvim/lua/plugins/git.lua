@@ -18,7 +18,7 @@ return {
 			})
 			vim.keymap.set(
 				"n",
-				"<leader>hf",
+				"<leader>gf",
 				"<CMD>DiffviewFileHistory %<CR>",
 				{ desc = "Open git history for the current file" }
 			)
@@ -55,24 +55,24 @@ return {
 					end)
 
 					-- Actions
-					map("n", "<leader>hs", gitsigns.stage_hunk, { desc = "stage hunk" })
-					map("n", "<leader>hr", gitsigns.reset_hunk, { desc = "reset hunk" })
-					map("v", "<leader>hs", function()
+					map("n", "<leader>gs", gitsigns.stage_hunk, { desc = "stage hunk" })
+					map("n", "<leader>gr", gitsigns.reset_hunk, { desc = "reset hunk" })
+					map("v", "<leader>gs", function()
 						gitsigns.stage_hunk({ vim.fn.line("."), vim.fn.line("v") })
 					end, { desc = "stage hunk" })
-					map("v", "<leader>hr", function()
+					map("v", "<leader>gr", function()
 						gitsigns.reset_hunk({ vim.fn.line("."), vim.fn.line("v") })
 					end, { desc = "reset hunk" })
-					map("n", "<leader>hS", gitsigns.stage_buffer, { desc = "reset buffer" })
-					map("n", "<leader>hu", gitsigns.undo_stage_hunk, { desc = "undo stage hunk" })
-					map("n", "<leader>hR", gitsigns.reset_buffer, { desc = "reset buffer" })
-					map("n", "<leader>hp", gitsigns.preview_hunk, { desc = "preview hunk" })
-					map("n", "<leader>hb", function()
+					map("n", "<leader>gS", gitsigns.stage_buffer, { desc = "reset buffer" })
+					map("n", "<leader>gu", gitsigns.undo_stage_hunk, { desc = "undo stage hunk" })
+					map("n", "<leader>gR", gitsigns.reset_buffer, { desc = "reset buffer" })
+					map("n", "<leader>gp", gitsigns.preview_hunk, { desc = "preview hunk" })
+					map("n", "<leader>gb", function()
 						gitsigns.blame_line({ full = true })
 					end)
 					map("n", "<leader>tb", gitsigns.toggle_current_line_blame)
-					map("n", "<leader>hd", gitsigns.diffthis, { desc = "show diff" })
-					map("n", "<leader>hD", function()
+					map("n", "<leader>gd", gitsigns.diffthis, { desc = "show diff" })
+					map("n", "<leader>gD", function()
 						gitsigns.diffthis("~")
 					end)
 					map("n", "<leader>td", gitsigns.toggle_deleted)

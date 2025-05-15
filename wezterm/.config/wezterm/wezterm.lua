@@ -68,10 +68,16 @@ config.keys = {
 	{ key = "r", mods = super_key, action = act.ReloadConfiguration },
 	{ key = "t", mods = alt_key, action = wezterm.action.DisableDefaultAssignment },
 	{ key = "t", mods = super_key, action = act.SpawnTab("CurrentPaneDomain") },
+	{ key = "n", mods = alt_key, action = wezterm.action.DisableDefaultAssignment },
+	{ key = "n", mods = super_key, action = act.SpawnWindow },
 	{ key = "T", mods = super_key, action = act.EmitEvent("toggle-tabbar") },
 	{ key = "Q", mods = super_key, action = act.CloseCurrentTab({ confirm = false }) },
 	{ key = "[", mods = super_key, action = act.MoveTabRelative(-1) },
 	{ key = "]", mods = super_key, action = act.MoveTabRelative(1) },
+	{ key = "h", mods = super_key, action = wezterm.action.DisableDefaultAssignment },
+	{ key = "j", mods = super_key, action = wezterm.action.DisableDefaultAssignment },
+	{ key = "k", mods = super_key, action = wezterm.action.DisableDefaultAssignment },
+	{ key = "l", mods = super_key, action = wezterm.action.DisableDefaultAssignment },
 }
 
 for i = 1, 9 do
