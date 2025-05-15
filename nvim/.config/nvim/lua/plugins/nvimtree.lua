@@ -90,6 +90,6 @@ return {
 			end,
 		})
 
-		vim.keymap.set("n", "<leader>l", ":NvimTreeToggle<CR>")
+		vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>")
 	end,
 }
