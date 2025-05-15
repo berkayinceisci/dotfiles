@@ -2,6 +2,7 @@ local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 local act = wezterm.action
 local super_key
+local alt_key
 
 local function select_random_wallpaper()
 	local wallpapers = {}
@@ -24,16 +25,15 @@ end
 
 if wezterm.target_triple == "aarch64-apple-darwin" then
 	super_key = "ALT" -- option key
+	alt_key = "SUPER" -- cmd key
 	config.font_size = 18.0
 	config.macos_window_background_blur = 30
 	config.window_background_opacity = 0.7
 else
 	super_key = "SUPER" -- windows key
+	alt_key = "ALT" -- alt key
 	select_random_wallpaper()
 end
-
-config.hide_tab_bar_if_only_one_tab = true
-config.use_fancy_tab_bar = false
 
 config.font = wezterm.font_with_fallback({
 	"JetbrainsMono Nerd Font",
@@ -50,11 +50,36 @@ config.window_padding = {
 	bottom = 0,
 }
 
-config.disable_default_key_bindings = true
+config.hide_tab_bar_if_only_one_tab = true
+config.use_fancy_tab_bar = false
+
+wezterm.on("toggle-tabbar", function(window, _)
+	local overrides = window:get_config_overrides() or {}
+	if overrides.enable_tab_bar == false then
+		overrides.enable_tab_bar = true
+	else
+		overrides.enable_tab_bar = false
+	end
+	window:set_config_overrides(overrides)
+end)
 
 config.keys = {
 	{ key = "\r", mods = super_key, action = act.ToggleFullScreen },
 	{ key = "r", mods = super_key, action = act.ReloadConfiguration },
+	{ key = "t", mods = alt_key, action = wezterm.action.DisableDefaultAssignment },
+	{ key = "t", mods = super_key, action = act.SpawnTab("CurrentPaneDomain") },
+	{ key = "T", mods = super_key, action = act.EmitEvent("toggle-tabbar") },
+	{ key = "q", mods = super_key, action = act.CloseCurrentTab({ confirm = true }) },
+	{ key = "[", mods = super_key, action = act.MoveTabRelative(-1) },
+	{ key = "]", mods = super_key, action = act.MoveTabRelative(1) },
 }
+
+for i = 1, 9 do
+	table.insert(config.keys, {
+		key = tostring(i),
+		mods = super_key,
+		action = act.ActivateTab(i - 1),
+	})
+end
 
 return config
