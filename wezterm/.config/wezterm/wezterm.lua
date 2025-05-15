@@ -69,7 +69,7 @@ config.keys = {
 	{ key = "t", mods = alt_key, action = wezterm.action.DisableDefaultAssignment },
 	{ key = "t", mods = super_key, action = act.SpawnTab("CurrentPaneDomain") },
 	{ key = "T", mods = super_key, action = act.EmitEvent("toggle-tabbar") },
-	{ key = "q", mods = super_key, action = act.CloseCurrentTab({ confirm = true }) },
+	{ key = "Q", mods = super_key, action = act.CloseCurrentTab({ confirm = false }) },
 	{ key = "[", mods = super_key, action = act.MoveTabRelative(-1) },
 	{ key = "]", mods = super_key, action = act.MoveTabRelative(1) },
 }
