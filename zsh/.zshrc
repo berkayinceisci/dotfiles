@@ -60,6 +60,7 @@ if command -v fzf 2>&1 >/dev/null; then
     FZF_ALT_C_COMMAND=
     FZF_CTRL_T_COMMAND=
     source <(fzf --zsh)
+    alias history="history 1 | fzf --tac"
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
