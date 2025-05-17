@@ -55,6 +55,9 @@ bindsym Shift+Print exec --no-startup-id maim --select "/home/$USER/Pictures/$(d
 bindsym Ctrl+Print exec --no-startup-id maim | xclip -selection clipboard -t image/png
 bindsym Ctrl+Shift+Print exec --no-startup-id maim --select | xclip -selection clipboard -t image/png
 
+# Keyboard language options
+exec --no-startup-id setxkbmap -layout "us,tr" -option "grp:win_space_toggle"
+
 # shutdown
 bindsym Mod1+Shift+p exec systemctl poweroff -i
 
