@@ -40,7 +40,8 @@ else
 fi
 
 if [[ -e ~/.cargo/bin/bat ]]; then
-    alias cat="bat"
+    alias less="bat --paging=always"
+    alias cat="bat -pp"
 fi
 
 if [[ -e ~/.cargo/bin/zoxide ]]; then
