@@ -41,7 +41,7 @@ return {
 		-- },
 		-- Set up format-on-save
 		format_on_save = function(bufnr)
-			local disable_filetypes = { c = true }
+			local disable_filetypes = { c = true, sh = true, bash = true, python = true }
 			if disable_filetypes[vim.bo[bufnr].filetype] then
 				return nil
 			end
