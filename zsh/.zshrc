@@ -3,8 +3,10 @@ HISTSIZE=10000
 SAVEHIST=10000
 setopt SHARE_HISTORY
 alias history="history 1"
-bindkey '^[[A' history-search-backward
-bindkey '^[[B' history-search-forward
+bindkey '^P' history-search-backward
+bindkey '^N' history-search-forward
+
+setopt interactive_comments
 
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -13,11 +15,14 @@ source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 autoload -Uz compinit && compinit
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
+export MANPAGER="less -R --use-color -Dd+r -Du+b"
+
 export PATH=$PATH:~/.cargo/bin/
 
 eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
+alias v="nvim"
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
 alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
@@ -25,6 +30,7 @@ alias ldoc="lazydocker"
 alias img="wezterm imgcat"
 alias glow="glow -p"
 alias rgf='rg --files | rg'
+alias tldr='tldr -c'
 
 alias dotfiles="cd ~/repos/dotfiles/; nvim .; cd - > /dev/null"
 
