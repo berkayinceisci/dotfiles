@@ -1,5 +1,8 @@
 local keymap = vim.keymap
 
+keymap.set("i", "<C-w>", "<nop>")
+keymap.set("i", "<C-H>", "<Esc>ciw", { noremap = true }) -- C-Backspace
+
 keymap.set("n", "<C-w>%", "<C-w>v") -- split window vertically
 keymap.set("n", '<C-w>"', "<C-w>s") -- split window horizontally
 
@@ -12,8 +15,10 @@ keymap.set("n", "<leader>j", "o<Esc>k")
 keymap.set("n", "<leader>k", "O<Esc>j")
 
 -- switch between buffers
-keymap.set("n", "<leader>h", "<cmd>bp<CR>")
-keymap.set("n", "<leader>l", "<cmd>bn<CR>")
+keymap.set("n", "<C-h>", "<cmd>bp<CR>")
+keymap.set("n", "<C-l>", "<cmd>bn<CR>")
+
+-- TODO: find keymaps for <C-k>, <C-j>; they are currently not in use
 
 -- close buffer without messing up with the window layout
 keymap.set("n", "<leader>q", "<cmd>bp|bd#<CR>", { noremap = true })
