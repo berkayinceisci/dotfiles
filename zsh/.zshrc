@@ -32,7 +32,6 @@ alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
 alias img="wezterm imgcat"
 alias glow="glow -p"
-alias rgf='rg --files | rg'
 alias tldr='tldr -c'
 
 alias dotfiles="cd ~/repos/dotfiles/; nvim .; cd - > /dev/null"
