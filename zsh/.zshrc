@@ -6,10 +6,9 @@ alias history="history 1"
 bindkey '^P' history-search-backward
 bindkey '^N' history-search-forward
 
-bindkey '^[h' backward-char
-bindkey '^[l' forward-char
-bindkey '^[b' backward-word
-bindkey '^[w' forward-word
+bindkey '^[[1;5D' backward-word
+bindkey '^[[1;5C' forward-word
+bindkey '^H' backward-kill-word # ctrl-backspace
 setopt interactive_comments
 
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh

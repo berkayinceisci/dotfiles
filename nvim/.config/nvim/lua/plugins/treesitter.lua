@@ -75,10 +75,10 @@ return {
 				swap = {
 					enable = true,
 					swap_next = {
-						["L"] = "@parameter.inner", -- swap parameters/argument with next
+						[" l"] = "@parameter.inner", -- swap parameters/argument with next
 					},
 					swap_previous = {
-						["H"] = "@parameter.inner", -- swap parameters/argument with prev
+						[" h"] = "@parameter.inner", -- swap parameters/argument with prev
 					},
 				},
 				move = {
