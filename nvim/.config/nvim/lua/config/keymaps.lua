@@ -1,7 +1,6 @@
 local keymap = vim.keymap
 
-keymap.set("i", "<C-w>", "<nop>")
-keymap.set("i", "<C-H>", "<C-o>dB", { noremap = true }) -- C-Backspace
+keymap.set("i", "<C-H>", "<C-w>") -- C-Backspace
 
 keymap.set("n", "<C-w>%", "<C-w>v") -- split window vertically
 keymap.set("n", '<C-w>"', "<C-w>s") -- split window horizontally
