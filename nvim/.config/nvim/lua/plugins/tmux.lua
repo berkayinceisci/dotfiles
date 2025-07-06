@@ -4,6 +4,9 @@ local M = {
 }
 
 M.config = function()
+	require("smart-splits").setup({
+		cursor_follows_swapped_bufs = true,
+	})
 	-- moving between splits
 	vim.keymap.set("n", "<C-w>h", require("smart-splits").move_cursor_left)
 	vim.keymap.set("n", "<C-w>j", require("smart-splits").move_cursor_down)
