@@ -2,3 +2,4 @@
 **/state.yml
 **/lazy-lock.json
 tmux/.config/tmux/plugins/
+tmux/.config/tmux/resurrect/

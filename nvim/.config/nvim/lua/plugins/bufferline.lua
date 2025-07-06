@@ -17,5 +17,12 @@ return {
 				},
 			},
 		})
+
+		-- switch between buffers
+		vim.keymap.set("n", "<C-h>", "<cmd>BufferLineCyclePrev<CR>")
+		vim.keymap.set("n", "<C-l>", "<cmd>BufferLineCycleNext<CR>")
+		-- swap buffers
+		vim.keymap.set("n", "<C-j>", "<cmd>BufferLineMovePrev<CR>")
+		vim.keymap.set("n", "<C-k>", "<cmd>BufferLineMoveNext<CR>")
 	end,
 }

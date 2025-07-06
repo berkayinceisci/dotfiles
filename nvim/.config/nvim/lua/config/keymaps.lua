@@ -13,10 +13,6 @@ keymap.set("n", "<C-p>", "<cmd>cprev<CR>zz")
 keymap.set("n", "<leader>j", "o<Esc>k")
 keymap.set("n", "<leader>k", "O<Esc>j")
 
--- switch between buffers
-keymap.set("n", "<C-h>", "<cmd>bp<CR>")
-keymap.set("n", "<C-l>", "<cmd>bn<CR>")
-
 -- TODO: find keymaps for <C-k>, <C-j>; they are currently not in use
 
 -- close buffer without messing up with the window layout
