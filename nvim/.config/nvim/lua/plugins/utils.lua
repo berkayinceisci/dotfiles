@@ -73,4 +73,5 @@ return {
 			require("crates").setup()
 		end,
 	},
+	{ "sitiom/nvim-numbertoggle" },
 }
