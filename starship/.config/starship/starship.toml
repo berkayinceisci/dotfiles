@@ -46,3 +46,6 @@ style = "yellow"
 [python]
 format = "[$virtualenv]($style) "
 style = "bright-black"
+
+[hostname]
+ssh_symbol = '🌏 '
