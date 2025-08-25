@@ -25,8 +25,9 @@ if wezterm.target_triple == "aarch64-apple-darwin" then
 	super_key = "ALT" -- option key
 	alt_key = "SUPER" -- cmd key
 	config.font_size = 18.0
-	config.macos_window_background_blur = 30
-	config.window_background_opacity = 0.7
+	-- config.macos_window_background_blur = 30
+	-- config.window_background_opacity = 0.7
+	select_random_wallpaper()
 else
 	super_key = "SUPER" -- windows key
 	alt_key = "ALT" -- alt key
