@@ -12,11 +12,23 @@ local function select_random_wallpaper()
 	end
 
 	if next(wallpapers) ~= nil then
-		config.window_background_image = wallpapers[math.random(1, #wallpapers)]
-		config.window_background_image_hsb = {
-			brightness = 0.15,
-			hue = 1.0,
-			saturation = 1.0,
+		config.background = {
+			{
+				source = {
+					File = wallpapers[math.random(1, #wallpapers)],
+				},
+				hsb = {
+					brightness = 0.15,
+					hue = 1.0,
+					saturation = 1.0,
+				},
+				vertical_align = "Middle",
+				horizontal_align = "Center",
+				repeat_x = "NoRepeat",
+				repeat_y = "NoRepeat",
+				height = "100%",
+				width = "Cover",
+			},
 		}
 	end
 end
@@ -73,7 +85,7 @@ config.keys = {
 	{ key = "n", mods = alt_key, action = wezterm.action.DisableDefaultAssignment },
 	{ key = "n", mods = super_key, action = act.SpawnWindow },
 	{ key = "T", mods = super_key, action = act.EmitEvent("toggle-tabbar") },
-	{ key = "Q", mods = super_key, action = act.CloseCurrentTab({ confirm = false }) },
+	{ key = "q", mods = super_key, action = act.CloseCurrentTab({ confirm = false }) },
 	{ key = "[", mods = super_key, action = act.MoveTabRelative(-1) },
 	{ key = "]", mods = super_key, action = act.MoveTabRelative(1) },
 	{ key = "h", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
