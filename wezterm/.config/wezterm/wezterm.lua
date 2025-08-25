@@ -6,17 +6,15 @@ local alt_key
 
 local function select_random_wallpaper()
 	local wallpapers = {}
-	local wallpapers_glob = wezterm.home_dir .. "/Wallpapers/**"
+	local wallpapers_glob = wezterm.home_dir .. "/wallpapers/**"
 	for _, v in ipairs(wezterm.glob(wallpapers_glob)) do
 		table.insert(wallpapers, v)
 	end
 
-	if next(wallpapers) == nil then
-		-- empty
-	else
+	if next(wallpapers) ~= nil then
 		config.window_background_image = wallpapers[math.random(1, #wallpapers)]
 		config.window_background_image_hsb = {
-			brightness = 0.2,
+			brightness = 0.15,
 			hue = 1.0,
 			saturation = 1.0,
 		}
