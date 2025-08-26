@@ -20,8 +20,6 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 
-export PATH=$PATH:~/.cargo/bin/
-
 eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
