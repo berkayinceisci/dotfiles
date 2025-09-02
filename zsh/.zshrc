@@ -83,5 +83,3 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     export PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"   # for compiling kernel on mac
     export PATH="$(brew --prefix llvm)/bin/:$PATH"              # for compiling kernel on mac
 fi
-
-source "$HOME/.export_api_keys.sh"
