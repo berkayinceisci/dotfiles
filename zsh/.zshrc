@@ -25,7 +25,6 @@ export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
 alias v="nvim"
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
-alias lazygit="lazygit --use-config-dir ~/.config/lazygit/"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
 alias img="wezterm imgcat"
