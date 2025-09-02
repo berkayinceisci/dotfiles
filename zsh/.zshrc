@@ -53,7 +53,6 @@ fi
 
 if [[ -e ~/.cargo/bin/zoxide ]]; then
     eval "$(zoxide init zsh)"
-    alias cd="z"
 fi
 
 bcd() {
