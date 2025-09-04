@@ -51,12 +51,12 @@ exec --no-startup-id picom -b
 exec_always --no-startup-id feh --bg-fill --randomize ~/wallpapers/*
 
 # Saved Screenshots
-bindsym Print exec --no-startup-id maim --window $(xdotool getactivewindow) "/home/$USER/Pictures/$(date)"
-bindsym Shift+Print exec --no-startup-id maim --select "/home/$USER/Pictures/$(date)"
+bindsym Mod4+Shift+3 exec --no-startup-id maim --window $(xdotool getactivewindow) "/home/$USER/Pictures/$(date)"
+bindsym Mod4+Shift+4 exec --no-startup-id maim --select "/home/$USER/Pictures/$(date)"
 
 # Clipboard Screenshots
-bindsym Ctrl+Print exec --no-startup-id maim | xclip -selection clipboard -t image/png
-bindsym Ctrl+Shift+Print exec --no-startup-id maim --select | xclip -selection clipboard -t image/png
+bindsym Ctrl+Mod4+Shift+3 exec --no-startup-id maim | xclip -selection clipboard -t image/png
+bindsym Ctrl+Mod4+Shift+4 exec --no-startup-id maim --select | xclip -selection clipboard -t image/png
 
 # Keyboard language options
 exec --no-startup-id setxkbmap -layout "us,tr" -option "grp:win_space_toggle"
@@ -136,6 +136,7 @@ bindsym Mod1+Shift+Right move right
 bindsym Mod1+f fullscreen toggle
 
 # change container layout (stacked, tabbed, toggle split)
+workspace_layout default 
 bindsym Mod1+s layout stacking
 bindsym Mod1+w layout tabbed
 bindsym Mod1+e layout toggle split
