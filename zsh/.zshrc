@@ -84,3 +84,6 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 export PATH="$HOME/.local/bin:$PATH"
+
+. "$HOME/.atuin/bin/env"
+eval "$(atuin init zsh)"
