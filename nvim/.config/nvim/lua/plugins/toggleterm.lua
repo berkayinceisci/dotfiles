@@ -34,14 +34,6 @@ return {
 		-- custom terminal integration
 		local Terminal = require("toggleterm.terminal").Terminal
 
-		-- lazygit
-		local lazygit = Terminal:new({ cmd = "lazygit --use-config-dir ~/.config/lazygit", hidden = true })
-		function _LAZYGIT_TOGGLE()
-			lazygit:toggle()
-		end
-
-		vim.keymap.set("n", "<leader>.g", "<cmd>lua _LAZYGIT_TOGGLE()<CR>", { noremap = true, silent = true })
-
 		-- htop
 		local htop = Terminal:new({ cmd = "htop", hidden = true })
 		function _HTOP_TOGGLE()
