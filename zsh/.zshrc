@@ -41,7 +41,7 @@ alias img="wezterm imgcat"
 alias glow="glow -p"
 alias tldr='tldr -c'
 
-alias dotfiles="cd ~/repos/dotfiles/; nvim .; cd - > /dev/null"
+alias dotfiles="cd ~/dotfiles/; nvim .; cd - > /dev/null"
 alias vpn="/opt/pulsesecure/bin/pulseUI"
 
 if [[ -e ~/.cargo/bin/eza ]]; then
