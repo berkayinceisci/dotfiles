@@ -18,6 +18,16 @@ source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 autoload -Uz compinit && compinit
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/go/bin:$PATH"
+export GOROOT="$HOME/.local/go"
+export GOPATH="$HOME/go"
+export PATH="$HOME/go/bin:$PATH"
+
+. "$HOME/.cargo/env"
+. "$HOME/.atuin/bin/env"
+eval "$(atuin init zsh --disable-up-arrow)"
+
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 
 eval "$(starship init zsh)"
@@ -82,8 +92,3 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     export PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"   # for compiling kernel on mac
     export PATH="$(brew --prefix llvm)/bin/:$PATH"              # for compiling kernel on mac
 fi
-
-export PATH="$HOME/.local/bin:$PATH"
-
-. "$HOME/.atuin/bin/env"
-eval "$(atuin init zsh --disable-up-arrow)"
