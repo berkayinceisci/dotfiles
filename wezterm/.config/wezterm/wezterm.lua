@@ -39,12 +39,12 @@ if wezterm.target_triple == "aarch64-apple-darwin" then
 	config.font_size = 18.0
 	-- config.macos_window_background_blur = 30
 	-- config.window_background_opacity = 0.7
-	select_random_wallpaper()
+	-- select_random_wallpaper()
 else
 	super_key = "SUPER" -- windows key
 	alt_key = "ALT" -- alt key
 	config.font_size = 16.0
-	select_random_wallpaper()
+	-- select_random_wallpaper()
 end
 
 config.font = wezterm.font_with_fallback({
@@ -52,7 +52,7 @@ config.font = wezterm.font_with_fallback({
 	"Hack Nerd Font Mono",
 })
 
-config.color_scheme = "Catppuccin Mocha (Gogh)"
+-- config.color_scheme = "Gruvbox Dark"
 config.window_decorations = "RESIZE"
 
 config.window_padding = {
