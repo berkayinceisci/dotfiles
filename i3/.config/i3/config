@@ -23,7 +23,7 @@ set $right l
 # bindsym Mod1+v split v
 
 # start a terminal
-bindsym Mod1+Return exec wezterm
+bindsym Mod1+Return exec wezterm --config-file "/home/$USER/.config/wezterm/wezterm.lua"
 
 # kill focused window
 bindsym Mod1+Q kill
