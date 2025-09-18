@@ -51,7 +51,7 @@ keymap.set("n", "<leader>cd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true,
 keymap.set(
 	"n",
 	"gx",
-	[[:silent execute (has ("mac") ? '!open ' : '!xdg-open ') . shellescape(expand('<cfile>'), 1)<CR>]],
+	[[:silent execute '!open ' . shellescape(expand('<cfile>'), 1)<CR>]],
 	{ noremap = true, silent = true }
 )
 

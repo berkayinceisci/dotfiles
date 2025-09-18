@@ -86,6 +86,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
+    alias open="xdg-open"
     export PATH="/usr/local/texlive/2025/bin/x86_64-linux:$PATH"
     export WLR_DRM_NO_MODIFIERS=1
 elif [[ "$OSTYPE" == "darwin"* ]]; then
