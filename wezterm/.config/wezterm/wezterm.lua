@@ -48,7 +48,7 @@ else
 end
 
 config.font = wezterm.font_with_fallback({
-	"JetbrainsMono Nerd Font",
+	"JetBrainsMono Nerd Font",
 	"Hack Nerd Font Mono",
 })
 
