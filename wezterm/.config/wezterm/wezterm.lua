@@ -52,8 +52,8 @@ config.font = wezterm.font_with_fallback({
 	"Hack Nerd Font Mono",
 })
 
-config.color_scheme = "Glacier"
--- config.color_scheme = "Gruvbox (Dark)"
+-- config.color_scheme = "Glacier"
+config.color_scheme = "Gruvbox (Dark)"
 config.window_decorations = "RESIZE"
 
 config.window_padding = {

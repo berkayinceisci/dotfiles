@@ -16,14 +16,21 @@ set $down j
 set $left h
 set $right l
 
-# # split in horizontal orientation
-# bindsym Mod1+h split h
+# split in horizontal orientation
+bindsym Mod4+Shift+h split h
 
-# # split in vertical orientation
-# bindsym Mod1+v split v
+# split in vertical orientation
+bindsym Mod4+Shift+v split v
 
 # start a terminal
-bindsym Mod1+Return exec wezterm --config-file "/home/$USER/.config/wezterm/wezterm.lua"
+bindsym Mod1+Return exec wezterm --config-file "$HOME/.config/wezterm/wezterm.lua"
+
+# rofi application mode
+bindsym Mod1+space exec --no-startup-id rofi -show drun -theme ~/.config/rofi/config.rasi
+# rofi file mode
+bindsym Mod1+f exec --no-startup-id rofi -show file-browser-extended -file-browser-depth 0
+# rofi emoji mode
+bindsym Mod1+period exec --no-startup-id rofimoji
 
 # kill focused window
 bindsym Mod1+Q kill
@@ -133,7 +140,7 @@ bindsym Mod1+Shift+Up move up
 bindsym Mod1+Shift+Right move right
 
 # enter fullscreen mode for the focused container
-bindsym Mod1+f fullscreen toggle
+# bindsym Mod1+f fullscreen toggle
 
 # change container layout (stacked, tabbed, toggle split)
 workspace_layout default 
@@ -145,7 +152,7 @@ bindsym Mod1+e layout toggle split
 bindsym Mod1+Shift+space floating toggle
 
 # change focus between tiling / floating windows
-bindsym Mod1+space focus mode_toggle
+# bindsym Mod1+space focus mode_toggle
 
 # focus the parent container
 bindsym Mod1+a focus parent
