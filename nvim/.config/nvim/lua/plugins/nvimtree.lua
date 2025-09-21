@@ -9,8 +9,53 @@ return {
 		-- set termguicolors to enable highlight groups
 		vim.opt.termguicolors = true
 
+		local sorter = function(nodes)
+			table.sort(nodes, function(a, b)
+				local function natural_compare(str1, str2)
+					local i1, i2 = 1, 1
+
+					while i1 <= #str1 and i2 <= #str2 do
+						local c1, c2 = str1:sub(i1, i1), str2:sub(i2, i2)
+
+						-- If both characters are digits, compare the whole numbers
+						if c1:match("%d") and c2:match("%d") then
+							local num1, num2 = "", ""
+
+							-- Extract full number from str1
+							while i1 <= #str1 and str1:sub(i1, i1):match("%d") do
+								num1 = num1 .. str1:sub(i1, i1)
+								i1 = i1 + 1
+							end
+
+							-- Extract full number from str2
+							while i2 <= #str2 and str2:sub(i2, i2):match("%d") do
+								num2 = num2 .. str2:sub(i2, i2)
+								i2 = i2 + 1
+							end
+
+							local n1, n2 = tonumber(num1), tonumber(num2)
+							if n1 ~= n2 then
+								return n1 < n2
+							end
+						else
+							-- Regular character comparison
+							if c1 ~= c2 then
+								return c1 < c2
+							end
+							i1, i2 = i1 + 1, i2 + 1
+						end
+					end
+
+					-- If one string is shorter, it comes first
+					return #str1 < #str2
+				end
+
+				return natural_compare(a.name, b.name)
+			end)
+		end
+
 		require("nvim-tree").setup({
-			sort_by = "case_sensitive",
+			sort_by = sorter,
 			renderer = {
 				group_empty = true,
 			},
