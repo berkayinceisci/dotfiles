@@ -25,8 +25,8 @@ export GOPATH="$HOME/go"
 export PATH="$HOME/go/bin:$PATH"
 
 . "$HOME/.cargo/env"
-. "$HOME/.atuin/bin/env"
-eval "$(atuin init zsh --disable-up-arrow)"
+# . "$HOME/.atuin/bin/env"
+# eval "$(atuin init zsh --disable-up-arrow)"
 
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 
@@ -83,6 +83,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # node is installed through brew in mac, therefore nvm does not exist
     # nvm installation script does not add the following lines if they already exist
     export NVM_DIR="$HOME/.nvm"
+    export PATH="$HOME/.nvm/versions/node/*/bin:$PATH"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
