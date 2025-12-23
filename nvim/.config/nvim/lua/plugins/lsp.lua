@@ -33,20 +33,22 @@ M.config = function()
 	})
 
 	local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
-	local lspconfig = require("lspconfig")
 
 	-- using clangd via mason is not possible for some architectures (e.g. ubuntu vm on mac and raspberry pi)
-	lspconfig.clangd.setup({
+	vim.lsp.config("clangd", {
 		cmd = { "clangd", "--background-index", "--clang-tidy", "--log=verbose" },
+		capabilities = lsp_capabilities,
 		-- init_options = {
 		-- 	fallbackFlags = { "-std=c99" },
 		-- },
 	})
+	vim.lsp.enable("clangd")
 
 	local default_setup = function(server)
-		lspconfig[server].setup({
+		vim.lsp.config(server, {
 			capabilities = lsp_capabilities,
 		})
+		vim.lsp.enable(server)
 	end
 
 	require("mason").setup({
@@ -90,7 +92,7 @@ M.config = function()
 		handlers = {
 			default_setup,
 			lua_ls = function()
-				lspconfig.lua_ls.setup({
+				vim.lsp.config("lua_ls", {
 					capabilities = lsp_capabilities,
 					settings = {
 						Lua = {
@@ -101,16 +103,16 @@ M.config = function()
 								globals = { "vim" },
 							},
 							workspace = {
-								library = {
-									vim.env.VIMRUNTIME,
-								},
+								library = vim.api.nvim_get_runtime_file("", true),
+								checkThirdParty = false,
 							},
 						},
 					},
 				})
+				vim.lsp.enable("lua_ls")
 			end,
 			rust_analyzer = function()
-				lspconfig.rust_analyzer.setup({
+				vim.lsp.config("rust_analyzer", {
 					capabilities = lsp_capabilities,
 					settings = {
 						["rust-analyzer"] = {
@@ -133,12 +135,14 @@ M.config = function()
 						},
 					},
 				})
+				vim.lsp.enable("rust_analyzer")
 			end,
 			verible = function()
-				lspconfig.verible.setup({
+				vim.lsp.config("verible", {
 					capabilities = lsp_capabilities,
 					root_dir = vim.fn.getcwd(),
 				})
+				vim.lsp.enable("verible")
 			end,
 		},
 	})
