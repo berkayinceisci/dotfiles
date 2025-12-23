@@ -32,25 +32,6 @@ M.config = function()
 		end,
 	})
 
-	local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
-
-	-- using clangd via mason is not possible for some architectures (e.g. ubuntu vm on mac and raspberry pi)
-	vim.lsp.config("clangd", {
-		cmd = { "clangd", "--background-index", "--clang-tidy", "--log=verbose" },
-		capabilities = lsp_capabilities,
-		-- init_options = {
-		-- 	fallbackFlags = { "-std=c99" },
-		-- },
-	})
-	vim.lsp.enable("clangd")
-
-	local default_setup = function(server)
-		vim.lsp.config(server, {
-			capabilities = lsp_capabilities,
-		})
-		vim.lsp.enable(server)
-	end
-
 	require("mason").setup({
 		ui = {
 			border = "rounded",
@@ -88,64 +69,54 @@ M.config = function()
 		},
 	})
 
-	require("mason-lspconfig").setup({
-		handlers = {
-			default_setup,
-			lua_ls = function()
-				vim.lsp.config("lua_ls", {
-					capabilities = lsp_capabilities,
-					settings = {
-						Lua = {
-							runtime = {
-								version = "LuaJIT",
-							},
-							diagnostics = {
-								globals = { "vim" },
-							},
-							workspace = {
-								library = vim.api.nvim_get_runtime_file("", true),
-								checkThirdParty = false,
-							},
-						},
-					},
-				})
-				vim.lsp.enable("lua_ls")
-			end,
-			rust_analyzer = function()
-				vim.lsp.config("rust_analyzer", {
-					capabilities = lsp_capabilities,
-					settings = {
-						["rust-analyzer"] = {
-							inlayHints = {
-								reborrowHints = {
-									enable = true,
-								},
-								lifetimeElisionHints = {
-									enable = "always",
-								},
-								genericParameterHints = {
-									const = true,
-									lifetime = true,
-									type = true,
-								},
-								implicitDrops = {
-									enable = true,
-								},
-							},
-						},
-					},
-				})
-				vim.lsp.enable("rust_analyzer")
-			end,
-			verible = function()
-				vim.lsp.config("verible", {
-					capabilities = lsp_capabilities,
-					root_dir = vim.fn.getcwd(),
-				})
-				vim.lsp.enable("verible")
-			end,
+	require("mason-lspconfig").setup()
+
+	local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
+
+	vim.lsp.config("lua_ls", {
+		capabilities = lsp_capabilities,
+		settings = {
+			Lua = {
+				runtime = { version = "LuaJIT" },
+				diagnostics = { globals = { "vim" } },
+				workspace = {
+					library = vim.api.nvim_get_runtime_file("", true),
+					checkThirdParty = false,
+				},
+			},
 		},
 	})
+	vim.lsp.enable("lua_ls")
+
+	vim.lsp.config("rust_analyzer", {
+		capabilities = lsp_capabilities,
+		settings = {
+			["rust-analyzer"] = {
+				inlayHints = {
+					reborrowHints = { enable = true },
+					lifetimeElisionHints = { enable = "always" },
+					genericParameterHints = { const = true, lifetime = true, type = true },
+					implicitDrops = { enable = true },
+				},
+			},
+		},
+	})
+	vim.lsp.enable("rust_analyzer")
+
+	vim.lsp.config("verible", {
+		capabilities = lsp_capabilities,
+		root_dir = vim.fn.getcwd(),
+	})
+	vim.lsp.enable("verible")
+
+	vim.lsp.config("clangd", {
+		cmd = { "clangd", "--background-index", "--clang-tidy", "--log=verbose" },
+		capabilities = lsp_capabilities,
+		-- init_options = {
+		-- 	fallbackFlags = { "-std=c99" },
+		-- },
+	})
+	vim.lsp.enable("clangd")
 
 	-- setup borders
 	local _border = "single"
