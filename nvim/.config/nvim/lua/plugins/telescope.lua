@@ -1,6 +1,6 @@
 return {
 	"nvim-telescope/telescope.nvim",
-	-- version = "0.1.x",
+	tag = "v0.2.0",
 	dependencies = "nvim-lua/plenary.nvim",
 	config = function()
 		local status, telescope = pcall(require, "telescope")
