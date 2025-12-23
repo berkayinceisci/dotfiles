@@ -1,6 +1,6 @@
 local M = {
 	"mrjones2014/smart-splits.nvim",
-	version = ">=2.0.0",
+	version = "2.0.4",
 }
 
 M.config = function()
