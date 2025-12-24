@@ -66,6 +66,9 @@ M.config = function()
 
 			-- dap
 			"codelldb",
+
+			-- linter
+			"shellcheck",
 		},
 	})
 
