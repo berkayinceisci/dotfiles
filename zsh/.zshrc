@@ -52,8 +52,9 @@ export GOPATH="$HOME/go"
 export PATH="$HOME/go/bin:$PATH"
 
 . "$HOME/.cargo/env"
-# . "$HOME/.atuin/bin/env"
-# eval "$(atuin init zsh --disable-up-arrow)"
+
+. "$HOME/.atuin/bin/env"
+eval "$(atuin init zsh --disable-up-arrow)"
 
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 
