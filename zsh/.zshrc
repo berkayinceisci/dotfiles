@@ -1,13 +1,40 @@
 HISTFILE=$HOME/.zsh_history
-HISTSIZE=10000
-SAVEHIST=10000
+HISTSIZE=100000
+SAVEHIST=100000
 setopt SHARE_HISTORY
-alias history="history 1"
+setopt HIST_EXPIRE_DUPS_FIRST
+setopt HIST_FIND_NO_DUPS
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_SAVE_NO_DUPS
 bindkey '^P' history-search-backward
 bindkey '^N' history-search-forward
 
-bindkey '^[[1;5D' backward-word
-bindkey '^[[1;5C' forward-word
+# --- FZF & History Logic ---
+if command -v fzf >/dev/null 2>&1; then
+    FZF_ALT_C_COMMAND=
+    FZF_CTRL_T_COMMAND=
+    source <(fzf --zsh)
+
+    function history {
+        if [[ -t 1 && $# -eq 0 ]]; then
+            # Interactive terminal + no arguments: Use FZF
+            builtin history 1 | fzf --tac
+        elif [[ $# -eq 0 ]]; then
+            # Not a terminal (piping) + no arguments: List all
+            builtin history 1
+        else
+            # Arguments provided: Pass through to real history command
+            builtin history "$@"
+        fi
+    }
+else
+    alias history="history 1"
+fi
+
+bindkey '^[[1;5D' backward-word # ctrl-leftarrow
+bindkey '^[[1;5C' forward-word  # ctrl-rightarrow
 bindkey '^H' backward-kill-word # ctrl-backspace
 setopt interactive_comments
 
@@ -62,6 +89,7 @@ fi
 
 if [[ -e ~/.cargo/bin/zoxide ]]; then
     eval "$(zoxide init zsh)"
+    alias cd=z
 fi
 
 bcd() {
@@ -71,13 +99,6 @@ bcd() {
         cd "$(pbpaste)"
     fi
 }
-
-if command -v fzf 2>&1 >/dev/null; then
-    FZF_ALT_C_COMMAND=
-    FZF_CTRL_T_COMMAND=
-    source <(fzf --zsh)
-    alias history="history 1 | fzf --tac"
-fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # node is installed through brew in mac, therefore nvm does not exist
