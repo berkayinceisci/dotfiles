@@ -11,27 +11,47 @@ setopt HIST_SAVE_NO_DUPS
 bindkey '^P' history-search-backward
 bindkey '^N' history-search-forward
 
-# --- FZF & History Logic ---
+# --- FZF & Atuin & History Logic ---
 if command -v fzf >/dev/null 2>&1; then
     FZF_ALT_C_COMMAND=
     FZF_CTRL_T_COMMAND=
     source <(fzf --zsh)
-
-    function history {
-        if [[ -t 1 && $# -eq 0 ]]; then
-            # Interactive terminal + no arguments: Use FZF
-            builtin history 1 | fzf --tac
-        elif [[ $# -eq 0 ]]; then
-            # Not a terminal (piping) + no arguments: List all
-            builtin history 1
-        else
-            # Arguments provided: Pass through to real history command
-            builtin history "$@"
-        fi
-    }
-else
-    alias history="history 1"
 fi
+
+. "$HOME/.atuin/bin/env"
+eval "$(atuin init zsh --disable-up-arrow)"
+
+(( $+commands[fzf] )) && HAS_FZF=1 || HAS_FZF=0
+(( $+commands[atuin] )) && HAS_ATUIN=1 || HAS_ATUIN=0
+
+function history {
+    # If arguments are passed (e.g., history -d 10), always use builtin
+    if [[ $# -gt 0 ]]; then
+        builtin history "$@"
+        return
+    fi
+
+    # Case: Interactive Terminal
+    if [[ -t 1 ]]; then
+        if (( HAS_ATUIN && HAS_FZF )); then
+            atuin history list --cmd-only | awk '!seen[$0]++' | fzf --tac
+        elif (( HAS_ATUIN )); then
+            # If Atuin exists but no FZF, Atuin's own search is better than a raw list
+            atuin search -i 
+        elif (( HAS_FZF )); then
+            builtin history 1 | fzf --tac
+        else
+            builtin history 1
+        fi
+    # Case: Piping (e.g., history | grep "ls")
+    else
+        if (( HAS_ATUIN )); then
+            atuin history list --cmd-only | awk '!seen[$0]++'
+        else
+            builtin history 1
+        fi
+    fi
+}
 
 bindkey '^[[1;5D' backward-word # ctrl-leftarrow
 bindkey '^[[1;5C' forward-word  # ctrl-rightarrow
@@ -52,9 +72,6 @@ export GOPATH="$HOME/go"
 export PATH="$HOME/go/bin:$PATH"
 
 . "$HOME/.cargo/env"
-
-. "$HOME/.atuin/bin/env"
-eval "$(atuin init zsh --disable-up-arrow)"
 
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 
