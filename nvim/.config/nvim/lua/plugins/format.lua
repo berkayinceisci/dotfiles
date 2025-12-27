@@ -29,7 +29,7 @@ return {
 			lua = { "stylua" },
 			c = { lsp_format = "fallback" },
 			rust = { "rustfmt" },
-			python = { "ruff" },
+			python = { "ruff_organize_imports", "ruff_format" },
 			json = { "prettierd", "prettier", stop_after_first = true },
 			javascript = { "prettierd", "prettier", stop_after_first = true },
 			sh = { "shfmt" },
@@ -41,7 +41,7 @@ return {
 		-- },
 		-- Set up format-on-save
 		format_on_save = function(bufnr)
-			local disable_filetypes = { c = true, sh = true, bash = true, python = true }
+			local disable_filetypes = { c = true, sh = true, bash = true }
 			if disable_filetypes[vim.bo[bufnr].filetype] then
 				return nil
 			end
