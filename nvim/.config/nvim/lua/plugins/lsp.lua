@@ -120,15 +120,6 @@ M.config = function()
 	})
 	vim.lsp.enable("clangd")
 
-	vim.lsp.config("ruff", {
-		init_options = {
-			settings = {
-				-- Ruff language server settings go here
-			},
-		},
-	})
-	vim.lsp.enable("ruff")
-
 	vim.api.nvim_create_autocmd("LspAttach", {
 		group = vim.api.nvim_create_augroup("lsp_attach_disable_ruff_hover", { clear = true }),
 		callback = function(args)
