@@ -8,30 +8,26 @@ WRONG='#880000bb'
 VERIFYING='#9b8361ff'
 
 i3lock \
---insidever-color=$CLEAR     \
---ringver-color=$VERIFYING   \
-\
---insidewrong-color=$CLEAR   \
---ringwrong-color=$WRONG     \
-\
---inside-color=$BLANK        \
---ring-color=$DEFAULT        \
---line-color=$BLANK          \
---separator-color=$DEFAULT   \
-\
---verif-color=$TEXT          \
---wrong-color=$TEXT          \
---time-color=$TEXT           \
---date-color=$TEXT           \
---layout-color=$TEXT         \
---keyhl-color=$WRONG         \
---bshl-color=$WRONG          \
-\
---blur 5                     \
---clock                      \
---indicator                  \
---time-str="%H:%M:%S"        \
---date-str="%A, %Y-%m-%d"       \
---keylayout 1                \
---radius 120                    \
---ring-width 12
+    --insidever-color=$CLEAR \
+    --ringver-color=$VERIFYING \
+    --insidewrong-color=$CLEAR \
+    --ringwrong-color=$WRONG \
+    --inside-color=$BLANK \
+    --ring-color=$DEFAULT \
+    --line-color=$BLANK \
+    --separator-color=$DEFAULT \
+    --verif-color=$TEXT \
+    --wrong-color=$TEXT \
+    --time-color=$TEXT \
+    --date-color=$TEXT \
+    --layout-color=$TEXT \
+    --keyhl-color=$WRONG \
+    --bshl-color=$WRONG \
+    --blur 5 \
+    --clock \
+    --indicator \
+    --time-str="%H:%M:%S" \
+    --date-str="%A, %m-%d-%Y" \
+    --keylayout 1 \
+    --radius 120 \
+    --ring-width 12
