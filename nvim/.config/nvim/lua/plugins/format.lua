@@ -29,7 +29,7 @@ return {
 			lua = { "stylua" },
 			c = { lsp_format = "fallback" },
 			rust = { "rustfmt" },
-			python = { "isort", "black" },
+			python = { "ruff" },
 			json = { "prettierd", "prettier", stop_after_first = true },
 			javascript = { "prettierd", "prettier", stop_after_first = true },
 			sh = { "shfmt" },
