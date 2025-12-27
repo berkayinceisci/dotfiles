@@ -135,21 +135,73 @@ M.config = function()
 		desc = "LSP: Disable hover capability from Ruff",
 	})
 
+	-- Helper to find venv info for Python projects
+	local function get_venv_info(root_dir)
+		-- Use active virtualenv if present
+		if vim.env.VIRTUAL_ENV and vim.env.VIRTUAL_ENV ~= "" then
+			return {
+				python_path = vim.fs.joinpath(vim.env.VIRTUAL_ENV, "bin", "python"),
+				venv_path = vim.fs.dirname(vim.env.VIRTUAL_ENV),
+				venv_name = vim.fs.basename(vim.env.VIRTUAL_ENV),
+			}
+		end
+
+		-- Search for local venv directories in project root
+		local venv_names = { ".venv", "venv", ".env", "env" }
+		for _, name in ipairs(venv_names) do
+			local venv_dir = vim.fs.joinpath(root_dir, name)
+			local python_bin = vim.fs.joinpath(venv_dir, "bin", "python")
+			if vim.fn.isdirectory(venv_dir) == 1 and vim.fn.executable(python_bin) == 1 then
+				return {
+					python_path = python_bin,
+					venv_path = root_dir,
+					venv_name = name,
+				}
+			end
+		end
+
+		-- Fallback to system python
+		return {
+			python_path = vim.fn.exepath("python3") or "python3",
+			venv_path = nil,
+			venv_name = nil,
+		}
+	end
+
+	-- Pyright: use on_attach to set venv after server starts (works with nvim-lspconfig defaults)
 	vim.lsp.config("pyright", {
-		settings = {
-			pyright = {
-				-- Using Ruff's import organizer
-				disableOrganizeImports = true,
-			},
-			python = {
-				analysis = {
-					-- Ignore all files for analysis to exclusively use Ruff for linting
-					ignore = { "*" },
+		capabilities = lsp_capabilities,
+		on_attach = function(client, bufnr)
+			local root_dir = client.root_dir or vim.fn.getcwd()
+			local venv_info = get_venv_info(root_dir)
+
+			-- Set python path using pyright's workspace configuration
+			client.settings = vim.tbl_deep_extend("force", client.settings or {}, {
+				pyright = { disableOrganizeImports = true },
+				python = {
+					pythonPath = venv_info.python_path,
+					venvPath = venv_info.venv_path,
+					venv = venv_info.venv_name,
+					analysis = { typeCheckingMode = "basic" },
 				},
-			},
-		},
+			})
+			client:notify("workspace/didChangeConfiguration", { settings = client.settings })
+		end,
 	})
 	vim.lsp.enable("pyright")
+
+	-- Ruff LSP
+	vim.lsp.config("ruff", {
+		capabilities = lsp_capabilities,
+		on_attach = function(client, bufnr)
+			local root_dir = client.root_dir or vim.fn.getcwd()
+			local venv_info = get_venv_info(root_dir)
+			client:notify("workspace/didChangeConfiguration", {
+				settings = { interpreter = { venv_info.python_path } },
+			})
+		end,
+	})
+	vim.lsp.enable("ruff")
 
 	-- setup borders
 	local _border = "single"
