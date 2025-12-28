@@ -43,7 +43,7 @@ if wezterm.target_triple == "aarch64-apple-darwin" then
 else
 	super_key = "SUPER" -- windows key
 	alt_key = "ALT" -- alt key
-	config.font_size = 16.0
+	config.font_size = 12.0
 	-- select_random_wallpaper()
 end
 

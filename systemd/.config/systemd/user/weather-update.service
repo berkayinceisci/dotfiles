@@ -1,0 +1,9 @@
+[Unit]
+Description=Update weather information for i3status
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/inceisciberkay/.config/i3status/weather.sh
+StandardOutput=null
+StandardError=journal
