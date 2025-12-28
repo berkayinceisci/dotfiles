@@ -1,23 +1,13 @@
 return {
-	-- 1. Main Treesitter Engine
 	{
 		"nvim-treesitter/nvim-treesitter",
+		branch = "master", -- Use old stable API (new version is incompatible rewrite)
+		dependencies = { "nvim-treesitter/nvim-treesitter-textobjects" },
 		build = ":TSUpdate",
-		-- This is crucial: delay loading until a buffer is read or created.
-		-- This allows the custom build runtime paths to initialize fully.
 		event = { "BufReadPost", "BufNewFile" },
-		lazy = vim.fn.argc(-1) == 0, -- load early only if opening a file directly
+		lazy = vim.fn.argc(-1) == 0,
 		config = function()
-			-- Use pcall to avoid the "module not found" crash
-			local ok, configs = pcall(require, "nvim-treesitter.configs")
-			if not ok then
-				return
-			end
-
-			---@diagnostic disable-next-line: missing-fields
-			configs.setup({
-				modules = {},
-				ignore_install = {},
+			require("nvim-treesitter.configs").setup({
 				ensure_installed = {
 					"bash",
 					"c",
@@ -111,28 +101,20 @@ return {
 				},
 			})
 
-			-- Repeatable move setup with protected require
-			local move_ok, ts_repeat_move = pcall(require, "nvim-treesitter.textobjects.repeatable_move")
-			if move_ok then
-				vim.keymap.set({ "n", "x", "o" }, ";", ts_repeat_move.repeat_last_move)
-				vim.keymap.set({ "n", "x", "o" }, ",", ts_repeat_move.repeat_last_move_opposite)
-
-				-- Using the updated non-deprecated builtin functions
-				vim.keymap.set({ "n", "x", "o" }, "f", ts_repeat_move.builtin_f_expr, { expr = true })
-				vim.keymap.set({ "n", "x", "o" }, "F", ts_repeat_move.builtin_F_expr, { expr = true })
-				vim.keymap.set({ "n", "x", "o" }, "t", ts_repeat_move.builtin_t_expr, { expr = true })
-				vim.keymap.set({ "n", "x", "o" }, "T", ts_repeat_move.builtin_T_expr, { expr = true })
-			end
+			-- Repeatable move setup
+			local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+			vim.keymap.set({ "n", "x", "o" }, ";", ts_repeat_move.repeat_last_move)
+			vim.keymap.set({ "n", "x", "o" }, ",", ts_repeat_move.repeat_last_move_opposite)
+			vim.keymap.set({ "n", "x", "o" }, "f", ts_repeat_move.builtin_f_expr, { expr = true })
+			vim.keymap.set({ "n", "x", "o" }, "F", ts_repeat_move.builtin_F_expr, { expr = true })
+			vim.keymap.set({ "n", "x", "o" }, "t", ts_repeat_move.builtin_t_expr, { expr = true })
+			vim.keymap.set({ "n", "x", "o" }, "T", ts_repeat_move.builtin_T_expr, { expr = true })
 		end,
 	},
 
-	-- 2. Treesitter Textobjects
 	{
 		"nvim-treesitter/nvim-treesitter-textobjects",
 		lazy = true,
-		config = function()
-			-- This remains empty because configuration is handled in the main plugin setup
-		end,
 	},
 
 	-- 3. Treesitter Context
