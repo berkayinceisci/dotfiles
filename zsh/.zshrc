@@ -134,14 +134,8 @@ open() {
                 if command -v zathura >/dev/null 2>&1; then
                     zathura "$file" &>/dev/null
                 else
-                    xdg-open "$file" &>/dev/null
-                fi
-                ;;
-            *.png|*.jpg|*.jpeg|*.gif|*.webp|*.bmp|*.svg)
-                if command -v feh >/dev/null 2>&1; then
-                    feh "$file" &>/dev/null
-                else
-                    xdg-open "$file" &>/dev/null
+                    echo "Install zathura"
+                    return 1
                 fi
                 ;;
             *)
