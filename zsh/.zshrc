@@ -118,6 +118,39 @@ bcd() {
     fi
 }
 
+open() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        command open "$@"
+    else
+        local file="$1"
+
+        if [[ -z "$file" ]]; then
+            echo "Usage: open <file>"
+            return 1
+        fi
+
+        case "${file:l}" in
+            *.pdf)
+                if command -v zathura >/dev/null 2>&1; then
+                    zathura "$file" &>/dev/null &
+                else
+                    xdg-open "$file" &>/dev/null &
+                fi
+                ;;
+            *.png|*.jpg|*.jpeg|*.gif|*.webp|*.bmp|*.svg)
+                if command -v feh >/dev/null 2>&1; then
+                    feh "$file" &>/dev/null &
+                else
+                    xdg-open "$file" &>/dev/null &
+                fi
+                ;;
+            *)
+                xdg-open "$file" &>/dev/null &
+                ;;
+        esac
+    fi
+}
+
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # node is installed through brew in mac, therefore nvm does not exist
     # nvm installation script does not add the following lines if they already exist
@@ -126,7 +159,6 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-    alias open="xdg-open"
     export PATH="/usr/local/texlive/2025/bin/x86_64-linux:$PATH"
     export WLR_DRM_NO_MODIFIERS=1
 elif [[ "$OSTYPE" == "darwin"* ]]; then
