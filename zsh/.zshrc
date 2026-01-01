@@ -129,6 +129,17 @@ open() {
             return 1
         fi
 
+        if [[ -d "$file" ]]; then
+            if command -v thunar >/dev/null 2>&1; then
+                thunar "$file" &>/dev/null
+            elif command -v nautilus >/dev/null 2>&1; then
+                nautilus "$file" &>/dev/null
+            else
+                xdg-open "$file" &>/dev/null
+            fi
+            return
+        fi
+
         case "${file:l}" in
             *.pdf)
                 if command -v zathura >/dev/null 2>&1; then
