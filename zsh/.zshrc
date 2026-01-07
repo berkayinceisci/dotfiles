@@ -34,12 +34,14 @@ function history {
     # Case: Interactive Terminal
     if [[ -t 1 ]]; then
         if (( HAS_ATUIN && HAS_FZF )); then
-            atuin history list --cmd-only | awk '!seen[$0]++' | fzf --tac
+            local selected=$(atuin history list --cmd-only | awk '!seen[$0]++' | fzf --tac)
+            [[ -n "$selected" ]] && print -z "$selected"
         elif (( HAS_ATUIN )); then
             # If Atuin exists but no FZF, Atuin's own search is better than a raw list
-            atuin search -i 
+            atuin search -i
         elif (( HAS_FZF )); then
-            builtin history 1 | fzf --tac
+            local selected=$(builtin history 1 | fzf --tac)
+            [[ -n "$selected" ]] && print -z "$selected"
         else
             builtin history 1
         fi
