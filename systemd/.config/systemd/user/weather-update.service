@@ -4,6 +4,6 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/inceisciberkay/.config/i3status/weather.sh
+ExecStart=%h/.config/i3status/weather.sh
 StandardOutput=null
 StandardError=journal
