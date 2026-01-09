@@ -61,6 +61,17 @@ done
 
 echo "  ✓ Stowing complete"
 
+# Enable systemd user services (Linux only)
+if [[ "$OS" == "linux" ]]; then
+    echo ""
+    echo "Setting up systemd user services..."
+    systemctl --user daemon-reload
+    if systemctl --user list-unit-files | grep -q "weather-update.timer"; then
+        systemctl --user enable --now weather-update.timer
+        echo "  ✓ weather-update.timer enabled"
+    fi
+fi
+
 # System-level configurations
 echo ""
 echo "Installing system-level configurations..."
