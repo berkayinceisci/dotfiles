@@ -12,11 +12,11 @@ cd "$DOTFILES_DIR"
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo "Detected: Linux"
     OS="linux"
-    FIREFOX_POLICIES_DIR="/usr/lib/firefox/distribution"
+    ZEN_POLICIES_DIR="/opt/zen-browser/distribution"
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Detected: macOS"
     OS="macos"
-    FIREFOX_POLICIES_DIR="/Applications/Firefox.app/Contents/Resources/distribution"
+    ZEN_POLICIES_DIR="/Applications/Zen Browser.app/Contents/Resources/distribution"
 else
     echo "Unsupported OS: $OSTYPE"
     exit 1
@@ -37,8 +37,8 @@ for package in */; do
         continue
     fi
 
-    # Skip firefox (not a stow package)
-    if [[ "$package" == "firefox" ]]; then
+    # Skip zen (not a stow package)
+    if [[ "$package" == "zen" ]]; then
         continue
     fi
 
@@ -58,16 +58,16 @@ echo "  ✓ Stowing complete"
 echo ""
 echo "Installing system-level configurations..."
 
-# Install Firefox policies
-if [ -f "$DOTFILES_DIR/firefox/policies.json" ]; then
-    echo "Installing Firefox policies..."
-    sudo mkdir -p "$FIREFOX_POLICIES_DIR"
-    sudo ln -sf "$DOTFILES_DIR/firefox/policies.json" "$FIREFOX_POLICIES_DIR/policies.json"
-    echo "  ✓ Firefox policies installed to $FIREFOX_POLICIES_DIR/policies.json"
+# Install Zen Browser policies
+if [ -f "$DOTFILES_DIR/zen/policies.json" ]; then
+    echo "Installing Zen Browser policies..."
+    sudo mkdir -p "$ZEN_POLICIES_DIR"
+    sudo ln -sf "$DOTFILES_DIR/zen/policies.json" "$ZEN_POLICIES_DIR/policies.json"
+    echo "  ✓ Zen Browser policies installed to $ZEN_POLICIES_DIR/policies.json"
 else
-    echo "  ⚠ Firefox policies.json not found, skipping..."
+    echo "  ⚠ Zen Browser policies.json not found, skipping..."
 fi
 
 echo ""
 echo "Installation complete!"
-echo "Don't forget to restart Firefox for policies to take effect."
+echo "Don't forget to restart Zen Browser for policies to take effect."
