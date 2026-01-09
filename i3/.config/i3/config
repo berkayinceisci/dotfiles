@@ -25,6 +25,9 @@ bindsym Mod4+Shift+v split v
 # start a terminal
 bindsym Mod1+Return exec wezterm --config-file "$HOME/.config/wezterm/wezterm.lua"
 
+# start zen browser
+bindsym Mod1+BackSpace exec zen
+
 # rofi application mode
 bindsym Mod1+space exec --no-startup-id rofi -show drun -theme ~/.config/rofi/config.rasi
 # rofi file mode
