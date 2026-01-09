@@ -16,7 +16,14 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Detected: macOS"
     OS="macos"
-    ZEN_POLICIES_DIR="/Applications/Zen Browser.app/Contents/Resources/distribution"
+    # Check for both possible Zen Browser installation names on macOS
+    if [ -d "/Applications/Zen.app" ]; then
+        ZEN_POLICIES_DIR="/Applications/Zen.app/Contents/Resources/distribution"
+    elif [ -d "/Applications/Zen Browser.app" ]; then
+        ZEN_POLICIES_DIR="/Applications/Zen Browser.app/Contents/Resources/distribution"
+    else
+        ZEN_POLICIES_DIR="/Applications/Zen.app/Contents/Resources/distribution"  # Default fallback
+    fi
 else
     echo "Unsupported OS: $OSTYPE"
     exit 1
