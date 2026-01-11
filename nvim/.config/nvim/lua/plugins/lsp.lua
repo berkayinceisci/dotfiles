@@ -41,6 +41,7 @@ M.config = function()
 	require("mason-tool-installer").setup({
 		ensure_installed = {
 			-- lsp
+			"texlab",
 			"cmake",
 			"dockerls",
 			"docker_compose_language_service",
@@ -110,6 +111,33 @@ M.config = function()
 		root_dir = vim.fn.getcwd(),
 	})
 	vim.lsp.enable("verible")
+
+	-- Texlab for LaTeX (integrates with vimtex)
+	vim.lsp.config("texlab", {
+		capabilities = lsp_capabilities,
+		settings = {
+			texlab = {
+				build = {
+					executable = "latexmk",
+					args = { "-pdf", "-interaction=nonstopmode", "-synctex=1", "%f" },
+					onSave = false, -- Let vimtex handle compilation
+					forwardSearchAfter = false,
+				},
+				forwardSearch = {
+					executable = "zathura",
+					args = { "--synctex-forward", "%l:1:%f", "%p" },
+				},
+				chktex = {
+					onOpenAndSave = true,
+					onEdit = false,
+				},
+				latexindent = {
+					modifyLineBreaks = false,
+				},
+			},
+		},
+	})
+	vim.lsp.enable("texlab")
 
 	vim.lsp.config("clangd", {
 		cmd = { "clangd", "--background-index", "--clang-tidy", "--log=verbose" },
