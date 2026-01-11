@@ -72,6 +72,121 @@ if [[ "$OS" == "linux" ]]; then
     fi
 fi
 
+# Configure display manager for login screen (Linux only)
+if [[ "$OS" == "linux" ]]; then
+    echo ""
+    echo "Configuring display manager..."
+    
+    DISPLAY_SETUP_SRC="$DOTFILES_DIR/i3/.config/i3/display_setup.sh"
+    
+    if [ -f "$DISPLAY_SETUP_SRC" ]; then
+        # Detect display manager
+        DM=$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" .service 2>/dev/null || echo "unknown")
+        
+        case "$DM" in
+            "lightdm")
+                echo "  Detected: LightDM"
+                sudo cp "$DISPLAY_SETUP_SRC" /etc/lightdm/display_setup.sh
+                sudo chmod +x /etc/lightdm/display_setup.sh
+                
+                # Add display-setup-script to lightdm.conf if not present
+                if ! grep -q "display-setup-script=/etc/lightdm/display_setup.sh" /etc/lightdm/lightdm.conf 2>/dev/null; then
+                    if grep -q "^\[Seat:\*\]" /etc/lightdm/lightdm.conf 2>/dev/null; then
+                        sudo sed -i '/^\[Seat:\*\]/a display-setup-script=/etc/lightdm/display_setup.sh' /etc/lightdm/lightdm.conf
+                    else
+                        echo -e "\n[Seat:*]\ndisplay-setup-script=/etc/lightdm/display_setup.sh" | sudo tee -a /etc/lightdm/lightdm.conf > /dev/null
+                    fi
+                fi
+                echo "  ✓ LightDM configured"
+                ;;
+            "gdm"|"gdm3")
+                echo "  Detected: GDM"
+                # GDM uses monitors.xml for display configuration
+                # Generate monitors.xml based on hostname
+                HOST=$(hostname)
+                GDM_MONITORS_DIR="/var/lib/gdm3/.config"
+                [ -d "/var/lib/gdm/.config" ] && GDM_MONITORS_DIR="/var/lib/gdm/.config"
+                
+                sudo mkdir -p "$GDM_MONITORS_DIR"
+                
+                case "$HOST" in
+                    "manjaro"|"ubuntu")
+                        # External monitor only (HDMI-1-0 or HDMI-1-1), laptop off
+                        sudo tee "$GDM_MONITORS_DIR/monitors.xml" > /dev/null << 'EOF'
+<monitors version="2">
+  <configuration>
+    <logicalmonitor>
+      <x>0</x>
+      <y>0</y>
+      <scale>1</scale>
+      <primary>yes</primary>
+      <monitor>
+        <monitorspec>
+          <connector>HDMI-1-0</connector>
+          <vendor>unknown</vendor>
+          <product>unknown</product>
+          <serial>unknown</serial>
+        </monitorspec>
+        <mode>
+          <width>2560</width>
+          <height>1440</height>
+          <rate>120.00</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+    <disabled>
+      <monitorspec>
+        <connector>eDP-1</connector>
+        <vendor>unknown</vendor>
+        <product>unknown</product>
+        <serial>unknown</serial>
+      </monitorspec>
+    </disabled>
+  </configuration>
+</monitors>
+EOF
+                        ;;
+                    "popos")
+                        # Single external monitor
+                        sudo tee "$GDM_MONITORS_DIR/monitors.xml" > /dev/null << 'EOF'
+<monitors version="2">
+  <configuration>
+    <logicalmonitor>
+      <x>0</x>
+      <y>0</y>
+      <scale>1</scale>
+      <primary>yes</primary>
+      <monitor>
+        <monitorspec>
+          <connector>HDMI-1</connector>
+          <vendor>unknown</vendor>
+          <product>unknown</product>
+          <serial>unknown</serial>
+        </monitorspec>
+        <mode>
+          <width>3840</width>
+          <height>2160</height>
+          <rate>60.00</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+  </configuration>
+</monitors>
+EOF
+                        ;;
+                esac
+                sudo chown gdm:gdm "$GDM_MONITORS_DIR/monitors.xml" 2>/dev/null || sudo chown gdm3:gdm3 "$GDM_MONITORS_DIR/monitors.xml" 2>/dev/null
+                echo "  ✓ GDM configured"
+                ;;
+            *)
+                echo "  ⚠ Unknown display manager ($DM), skipping display manager config"
+                ;;
+        esac
+    else
+        echo "  ⚠ display_setup.sh not found, skipping display manager config"
+    fi
+fi
+
 # System-level configurations
 echo ""
 echo "Installing system-level configurations..."
@@ -89,3 +204,4 @@ fi
 echo ""
 echo "Installation complete!"
 echo "Don't forget to restart Zen Browser for policies to take effect."
+echo "You may need to reboot for display manager changes to take effect."
