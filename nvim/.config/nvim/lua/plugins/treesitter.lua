@@ -8,6 +8,7 @@ return {
 		lazy = vim.fn.argc(-1) == 0,
 		config = function()
 			require("nvim-treesitter.configs").setup({
+				ignore_install = { "latex", "bibtex" },
 				ensure_installed = {
 					"bash",
 					"c",
@@ -30,6 +31,7 @@ return {
 				auto_install = true,
 				highlight = {
 					enable = true,
+					disable = { "latex" },
 					additional_vim_regex_highlighting = false,
 				},
 				incremental_selection = {

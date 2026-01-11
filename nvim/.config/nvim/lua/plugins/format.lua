@@ -34,6 +34,8 @@ return {
 			javascript = { "prettierd", "prettier", stop_after_first = true },
 			sh = { "shfmt" },
 			markdown = { "injected" },
+			tex = { "latexindent" },
+			bib = { "bibtex-tidy" },
 		},
 		-- Set default options
 		-- default_format_opts = {
