@@ -43,9 +43,38 @@ if wezterm.target_triple == "aarch64-apple-darwin" then
 else
 	super_key = "SUPER" -- windows key
 	alt_key = "ALT" -- alt key
-	config.font_size = 14.0
+	config.font_size = 14.0 -- default, will be adjusted dynamically
 	-- select_random_wallpaper()
 end
+
+local function adjust_font_for_display(window)
+	local overrides = window:get_config_overrides() or {}
+	local screens = wezterm.gui.screens()
+	local screen = screens.active
+	local height = screen.height
+
+	local new_size
+	if height >= 2160 then
+		new_size = 18.0 -- 4K
+	elseif height >= 1440 then
+		new_size = 14.0 -- 1440p
+	else
+		new_size = 12.0 -- 1080p
+	end
+
+	if overrides.font_size ~= new_size then
+		overrides.font_size = new_size
+		window:set_config_overrides(overrides)
+	end
+end
+
+wezterm.on("window-resized", function(window, pane)
+	adjust_font_for_display(window)
+end)
+
+wezterm.on("window-config-reloaded", function(window, pane)
+	adjust_font_for_display(window)
+end)
 
 config.font = wezterm.font_with_fallback({
 	"JetBrainsMono Nerd Font",
