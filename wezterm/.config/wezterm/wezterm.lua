@@ -55,11 +55,11 @@ local function adjust_font_for_display(window)
 
 	local new_size
 	if height >= 2160 then
-		new_size = 18.0 -- 4K
+		new_size = 14.0 -- 4K
 	elseif height >= 1440 then
-		new_size = 14.0 -- 1440p
+		new_size = 12.0 -- 1440p
 	else
-		new_size = 12.0 -- 1080p
+		new_size = 10.0 -- 1080p
 	end
 
 	if overrides.font_size ~= new_size then
