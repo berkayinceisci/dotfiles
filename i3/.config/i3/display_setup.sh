@@ -4,6 +4,7 @@ HOST=$(hostname)
 
 case "$HOST" in
     "manjaro"|"ubuntu")
+        # Laptop + external monitor setup
         # When external connected: use ONLY external, disable laptop
         # When no external: use laptop screen
         if xrandr | grep "^HDMI-1-0 connected" > /dev/null; then
@@ -15,6 +16,7 @@ case "$HOST" in
         fi
         ;;
     "popos")
+        # Mini PC - external monitors only (no laptop screen)
         HDMI1_CONNECTED=$(xrandr | grep "^HDMI-1 connected")
         HDMI2_CONNECTED=$(xrandr | grep "^HDMI-2 connected")
         
