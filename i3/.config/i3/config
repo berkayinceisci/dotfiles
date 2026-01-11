@@ -41,6 +41,10 @@ bindsym Mod1+Q kill
 # fast keystrokes
 exec --no-startup-id xset r rate 300 60
 
+# screen timeout (3 hours)
+exec --no-startup-id xset dpms 10800 10800 10800
+exec --no-startup-id xset s 10800
+
 # display settings
 exec --no-startup-id ~/.config/i3/display_setup.sh
 # workspace is given to either HDMI-1-0 or HDMI-1-1 (whichever is connected)
