@@ -36,6 +36,9 @@ echo "Stowing dotfiles..."
 # Linux-specific packages to skip on macOS
 LINUX_ONLY_PACKAGES=("i3" "rofi" "systemd" "Xresources")
 
+# Packages to skip on headless cloudlab machines
+CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "systemd")
+
 for package in */; do
     package="${package%/}"  # Remove trailing slash
 
@@ -55,14 +58,20 @@ for package in */; do
         continue
     fi
 
+    # Skip GUI packages on headless Linux systems (no DISPLAY)
+    if [[ "$OS" == "linux" ]] && [[ -z "$DISPLAY" ]] && [[ " ${CLOUDLAB_EXCLUDE_PACKAGES[@]} " =~ " ${package} " ]]; then
+        echo "  ⊘ Skipping $package (headless)"
+        continue
+    fi
+
     echo "  → Stowing $package"
     stow "$package"
 done
 
 echo "  ✓ Stowing complete"
 
-# Enable systemd user services (Linux only)
-if [[ "$OS" == "linux" ]]; then
+# Enable systemd user services (Linux with GUI only)
+if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
     echo ""
     echo "Setting up systemd user services..."
     systemctl --user daemon-reload
@@ -72,8 +81,8 @@ if [[ "$OS" == "linux" ]]; then
     fi
 fi
 
-# Configure display manager for login screen (Linux only)
-if [[ "$OS" == "linux" ]]; then
+# Configure display manager for login screen (Linux with GUI only)
+if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
     echo ""
     echo "Configuring display manager..."
     
@@ -187,21 +196,21 @@ EOF
     fi
 fi
 
-# System-level configurations
-echo ""
-echo "Installing system-level configurations..."
+# System-level configurations (GUI only)
+if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
+    echo ""
+    echo "Installing system-level configurations..."
 
-# Install Zen Browser policies
-if [ -f "$DOTFILES_DIR/zen/policies.json" ]; then
-    echo "Installing Zen Browser policies..."
-    sudo mkdir -p "$ZEN_POLICIES_DIR"
-    sudo ln -sf "$DOTFILES_DIR/zen/policies.json" "$ZEN_POLICIES_DIR/policies.json"
-    echo "  ✓ Zen Browser policies installed to $ZEN_POLICIES_DIR/policies.json"
-else
-    echo "  ⚠ Zen Browser policies.json not found, skipping..."
+    # Install Zen Browser policies
+    if [ -f "$DOTFILES_DIR/zen/policies.json" ]; then
+        echo "Installing Zen Browser policies..."
+        sudo mkdir -p "$ZEN_POLICIES_DIR"
+        sudo ln -sf "$DOTFILES_DIR/zen/policies.json" "$ZEN_POLICIES_DIR/policies.json"
+        echo "  ✓ Zen Browser policies installed to $ZEN_POLICIES_DIR/policies.json"
+    else
+        echo "  ⚠ Zen Browser policies.json not found, skipping..."
+    fi
 fi
 
 echo ""
 echo "Installation complete!"
-echo "Don't forget to restart Zen Browser for policies to take effect."
-echo "You may need to reboot for display manager changes to take effect."
