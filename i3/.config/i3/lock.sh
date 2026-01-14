@@ -31,3 +31,5 @@ i3lock \
     --keylayout 1 \
     --radius 120 \
     --ring-width 12
+
+~/.config/i3/xsettings.sh
