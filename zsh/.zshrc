@@ -80,6 +80,7 @@ export MANPAGER="less -R --use-color -Dd+r -Du+b"
 eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
+alias e="exit"
 alias v="nvim"
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
