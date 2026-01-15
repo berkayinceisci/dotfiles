@@ -158,6 +158,17 @@ open() {
     fi
 }
 
+# --- Ask Claude from shell ---
+# Usage: ?? what is the capital of France
+_ask_claude() {
+    if [[ -z "$*" ]]; then
+        echo "Usage: ?? <your question>"
+        return 1
+    fi
+    claude -p --no-session-persistence "$*"
+}
+alias '??'='_ask_claude'
+
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # node is installed through brew in mac, therefore nvm does not exist
     # nvm installation script does not add the following lines if they already exist
