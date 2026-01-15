@@ -74,6 +74,26 @@ keymap.set("n", "gl", "<cmd>lua vim.diagnostic.open_float()<cr>")
 keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<cr>")
 keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<cr>")
 
+-- Ask Claude: send current line as prompt, insert response below
+keymap.set("n", "<leader>?", function()
+	local line = vim.api.nvim_get_current_line()
+	local prompt = vim.trim(line)
+	if prompt == "" then
+		vim.notify("Empty line - nothing to ask", vim.log.levels.WARN)
+		return
+	end
+	vim.notify("Asking Claude...", vim.log.levels.INFO)
+	local response = vim.fn.system({ "claude", "-p", "--no-session-persistence", prompt })
+	if vim.v.shell_error ~= 0 then
+		vim.notify("Claude error: " .. response, vim.log.levels.ERROR)
+		return
+	end
+	-- Insert response below current line
+	local lines = vim.split(response, "\n", { trimempty = true })
+	local row = vim.api.nvim_win_get_cursor(0)[1]
+	vim.api.nvim_buf_set_lines(0, row, row, false, lines)
+end, { desc = "Ask Claude (current line)" })
+
 -- If this is a script, make it executable, and execute it in a split pane on the right
 -- Had to include quotes around "%" because there are some apple dirs that contain spaces, like iCloud
 keymap.set("n", "<leader>./", function()
