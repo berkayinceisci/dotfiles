@@ -82,8 +82,11 @@ config.font = wezterm.font_with_fallback({
 })
 
 -- config.color_scheme = "Glacier"
-config.color_scheme = "Gruvbox (Dark)"
-config.window_decorations = "RESIZE"
+-- config.color_scheme = "Google (dark) (terminal.sexy)"
+-- config.color_scheme = "Gruvbox Dark (Gogh)"
+config.color_scheme = "JetBrains Darcula"
+-- config.color_scheme = "jubi"
+-- config.color_scheme = "Quiet (Gogh)"
 
 config.window_padding = {
 	left = 10,

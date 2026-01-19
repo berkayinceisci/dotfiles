@@ -10,8 +10,8 @@ general {
 order += "wireless _first_"
 order += "battery all"
 order += "disk /"
-order += "load"
 order += "memory"
+order += "load"
 order += "read_file weather"
 order += "tztime local"
 
@@ -38,17 +38,17 @@ battery all {
 }
 
 disk "/" {
-        format = "%avail"
+        format = "Disk: %used (%avail free)"
 }
 
 load {
-        format = "%1min"
+        format = "Load: %1min"
 }
 
 memory {
-        format = "%used | %available"
+        format = "RAM: %used (%available free)"
         threshold_degraded = "1G"
-        format_degraded = "MEMORY < %available"
+        format_degraded = "RAM: %available free"
 }
 
 tztime local {
