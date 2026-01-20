@@ -37,10 +37,4 @@ require("lazy").setup({
 
 require("config.keymaps")
 require("config.options")
-
-vim.api.nvim_create_autocmd({ "FileType" }, {
-	pattern = { "c", "cpp", "cs", "java" },
-	callback = function()
-		vim.bo.commentstring = "// %s"
-	end,
-})
+require("config.autocmds")
