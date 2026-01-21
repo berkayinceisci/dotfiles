@@ -100,3 +100,5 @@
 -- 		{ "<leader>ad", "<cmd>ClaudeCodeDiffDeny<cr>", desc = "Deny diff" },
 -- 	},
 -- }
+
+return {}
