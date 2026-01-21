@@ -36,31 +36,34 @@ end
 if wezterm.target_triple == "aarch64-apple-darwin" then
 	super_key = "ALT" -- option key
 	alt_key = "SUPER" -- cmd key
-	config.font_size = 18.0
 	-- config.macos_window_background_blur = 30
 	-- config.window_background_opacity = 0.7
 	-- select_random_wallpaper()
 else
 	super_key = "SUPER" -- windows key
 	alt_key = "ALT" -- alt key
-	config.font_size = 14.0 -- default, will be adjusted dynamically
 	-- select_random_wallpaper()
+end
+
+local function get_font_size(screen_height)
+	if wezterm.target_triple == "aarch64-apple-darwin" then
+		return 18.0
+	end
+
+	if screen_height >= 2160 then
+		return 16.0 -- 4K
+	elseif screen_height >= 1440 then
+		return 12.0 -- 1440p
+	else
+		return 10.0 -- 1080p
+	end
 end
 
 local function adjust_font_for_display(window)
 	local overrides = window:get_config_overrides() or {}
 	local screens = wezterm.gui.screens()
 	local screen = screens.active
-	local height = screen.height
-
-	local new_size
-	if height >= 2160 then
-		new_size = 16.0 -- 4K
-	elseif height >= 1440 then
-		new_size = 12.0 -- 1440p
-	else
-		new_size = 10.0 -- 1080p
-	end
+	local new_size = get_font_size(screen.height)
 
 	if overrides.font_size ~= new_size then
 		overrides.font_size = new_size
