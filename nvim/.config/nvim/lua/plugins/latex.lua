@@ -71,22 +71,22 @@ return {
 				local opts = { buffer = true, silent = true }
 
 				-- Compilation
-				vim.keymap.set("n", "<localleader>ll", "<cmd>VimtexCompile<cr>", opts)
-				vim.keymap.set("n", "<localleader>lk", "<cmd>VimtexStop<cr>", opts)
-				vim.keymap.set("n", "<localleader>lK", "<cmd>VimtexStopAll<cr>", opts)
-				vim.keymap.set("n", "<localleader>lc", "<cmd>VimtexClean<cr>", opts)
-				vim.keymap.set("n", "<localleader>lC", "<cmd>VimtexClean!<cr>", opts)
+				vim.keymap.set("n", "<leader>ll", "<cmd>VimtexCompile<cr>", opts)
+				vim.keymap.set("n", "<leader>lk", "<cmd>VimtexStop<cr>", opts)
+				vim.keymap.set("n", "<leader>lK", "<cmd>VimtexStopAll<cr>", opts)
+				vim.keymap.set("n", "<leader>lc", "<cmd>VimtexClean<cr>", opts)
+				vim.keymap.set("n", "<leader>lC", "<cmd>VimtexClean!<cr>", opts)
 
 				-- View
-				vim.keymap.set("n", "<localleader>lv", "<cmd>VimtexView<cr>", opts)
+				vim.keymap.set("n", "<leader>lv", "<cmd>VimtexView<cr>", opts)
 
 				-- TOC
-				vim.keymap.set("n", "<localleader>lt", "<cmd>VimtexTocToggle<cr>", opts)
+				vim.keymap.set("n", "<leader>lt", "<cmd>VimtexTocToggle<cr>", opts)
 
 				-- Info/status
-				vim.keymap.set("n", "<localleader>li", "<cmd>VimtexInfo<cr>", opts)
-				vim.keymap.set("n", "<localleader>ls", "<cmd>VimtexStatus<cr>", opts)
-				vim.keymap.set("n", "<localleader>le", "<cmd>VimtexErrors<cr>", opts)
+				vim.keymap.set("n", "<leader>li", "<cmd>VimtexInfo<cr>", opts)
+				vim.keymap.set("n", "<leader>ls", "<cmd>VimtexStatus<cr>", opts)
+				vim.keymap.set("n", "<leader>le", "<cmd>VimtexErrors<cr>", opts)
 			end,
 		})
 
