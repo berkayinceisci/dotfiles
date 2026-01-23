@@ -1,0 +1,31 @@
+#!/bin/bash
+# Inverse search wrapper for Skim - finds the Neovim instance with the file/project open
+
+line="$1"
+file="$2"
+dir=$(dirname "$file")
+
+exact_match=""
+dir_match=""
+
+for server in $(nvr --serverlist); do
+    buffers=$(nvr --servername "$server" --remote-expr "join(map(getbufinfo({'buflisted':1}), 'v:val.name'), '\n')" 2>/dev/null)
+
+    # Prefer exact file match
+    if echo "$buffers" | grep -qF "$file"; then
+        exact_match="$server"
+        break
+    fi
+
+    # Remember first server with any file from same directory
+    if [ -z "$dir_match" ] && echo "$buffers" | grep -qF "$dir/"; then
+        dir_match="$server"
+    fi
+done
+
+# Use exact match > directory match > first available
+target="${exact_match:-${dir_match:-$(nvr --serverlist | head -1)}}"
+
+if [ -n "$target" ]; then
+    nvr --servername "$target" --remote-silent +"$line" "$file"
+fi
