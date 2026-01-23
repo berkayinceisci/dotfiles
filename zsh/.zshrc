@@ -68,6 +68,8 @@ autoload -Uz compinit && compinit
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
 export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/scripts:$PATH"
+
 export PATH="$HOME/.local/go/bin:$PATH"
 export GOROOT="$HOME/.local/go"
 export GOPATH="$HOME/go"

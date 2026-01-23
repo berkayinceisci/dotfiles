@@ -34,7 +34,7 @@ echo ""
 echo "Stowing dotfiles..."
 
 # Linux-specific packages to skip on macOS
-LINUX_ONLY_PACKAGES=("i3" "rofi" "systemd" "Xresources")
+LINUX_ONLY_PACKAGES=("i3" "rofi" "systemd" "Xresources" "zathura")
 
 # Packages to skip on headless cloudlab machines
 CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "systemd")
@@ -209,6 +209,16 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
         echo "  ✓ Zen Browser policies installed to $ZEN_POLICIES_DIR/policies.json"
     else
         echo "  ⚠ Zen Browser policies.json not found, skipping..."
+    fi
+
+    # Configure Skim PDF viewer for vimtex (macOS only)
+    # Requires neovim-remote: pip install neovim-remote
+    if [[ "$OS" == "macos" ]]; then
+        echo "Configuring Skim for vimtex inverse search..."
+        defaults write -app Skim SKTeXEditorPreset -string ""
+        defaults write -app Skim SKTeXEditorCommand -string "$HOME/.local/scripts/nvr-skim-inverse"
+        defaults write -app Skim SKTeXEditorArguments -string '"%line" "%file"'
+        echo "  ✓ Skim configured"
     fi
 fi
 

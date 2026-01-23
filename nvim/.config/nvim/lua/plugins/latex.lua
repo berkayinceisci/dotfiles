@@ -2,10 +2,16 @@ return {
 	"lervag/vimtex",
 	ft = { "tex", "latex", "bib" },
 	init = function()
-		-- Viewer settings (Zathura with SyncTeX)
-		vim.g.vimtex_view_method = "general"
-		vim.g.vimtex_view_general_viewer = "zathura"
-		vim.g.vimtex_view_general_options = [[--synctex-forward @line:1:@tex @pdf -x "nvr --remote +%{line} %{input}"]]
+		-- Viewer settings (OS-specific: Skim on macOS, Zathura on Linux)
+		if vim.fn.has("mac") == 1 then
+			vim.g.vimtex_view_method = "skim"
+			vim.g.vimtex_view_skim_sync = 1
+			vim.g.vimtex_view_skim_activate = 1
+		else
+			vim.g.vimtex_view_method = "general"
+			vim.g.vimtex_view_general_viewer = "zathura"
+			vim.g.vimtex_view_general_options = [[--synctex-forward @line:1:@tex @pdf -x "nvr --remote +%{line} %{input}"]]
+		end
 
 		-- Compiler settings (latexmk)
 		vim.g.vimtex_compiler_method = "latexmk"
@@ -71,22 +77,22 @@ return {
 				local opts = { buffer = true, silent = true }
 
 				-- Compilation
-				vim.keymap.set("n", "<leader>ll", "<cmd>VimtexCompile<cr>", opts)
-				vim.keymap.set("n", "<leader>lk", "<cmd>VimtexStop<cr>", opts)
-				vim.keymap.set("n", "<leader>lK", "<cmd>VimtexStopAll<cr>", opts)
-				vim.keymap.set("n", "<leader>lc", "<cmd>VimtexClean<cr>", opts)
-				vim.keymap.set("n", "<leader>lC", "<cmd>VimtexClean!<cr>", opts)
+				vim.keymap.set("n", "<localleader>ll", "<cmd>VimtexCompile<cr>", opts)
+				vim.keymap.set("n", "<localleader>lk", "<cmd>VimtexStop<cr>", opts)
+				vim.keymap.set("n", "<localleader>lK", "<cmd>VimtexStopAll<cr>", opts)
+				vim.keymap.set("n", "<localleader>lc", "<cmd>VimtexClean<cr>", opts)
+				vim.keymap.set("n", "<localleader>lC", "<cmd>VimtexClean!<cr>", opts)
 
 				-- View
-				vim.keymap.set("n", "<leader>lv", "<cmd>VimtexView<cr>", opts)
+				vim.keymap.set("n", "<localleader>lv", "<cmd>VimtexView<cr>", opts)
 
 				-- TOC
-				vim.keymap.set("n", "<leader>lt", "<cmd>VimtexTocToggle<cr>", opts)
+				vim.keymap.set("n", "<localleader>lt", "<cmd>VimtexTocToggle<cr>", opts)
 
 				-- Info/status
-				vim.keymap.set("n", "<leader>li", "<cmd>VimtexInfo<cr>", opts)
-				vim.keymap.set("n", "<leader>ls", "<cmd>VimtexStatus<cr>", opts)
-				vim.keymap.set("n", "<leader>le", "<cmd>VimtexErrors<cr>", opts)
+				vim.keymap.set("n", "<localleader>li", "<cmd>VimtexInfo<cr>", opts)
+				vim.keymap.set("n", "<localleader>ls", "<cmd>VimtexStatus<cr>", opts)
+				vim.keymap.set("n", "<localleader>le", "<cmd>VimtexErrors<cr>", opts)
 			end,
 		})
 
