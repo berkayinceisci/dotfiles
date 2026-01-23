@@ -1,0 +1,3 @@
+#!/bin/bash
+# Show weather for a location (default: auto-detect by IP)
+curl -s "wttr.in/${1:-}"
