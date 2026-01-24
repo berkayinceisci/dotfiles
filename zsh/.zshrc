@@ -1,4 +1,5 @@
 HISTFILE=$HOME/.zsh_history
+
 HISTSIZE=100000
 SAVEHIST=100000
 setopt SHARE_HISTORY
@@ -130,17 +131,28 @@ open() {
         local file="$1"
 
         if [[ -z "$file" ]]; then
-            echo "Usage: open <file>"
+            echo "Usage: open <file|url>"
             return 1
+        fi
+
+        # Handle URLs
+        if [[ "$file" =~ ^https?:// ]]; then
+            if command -v zen >/dev/null 2>&1; then
+                zen "$file"
+            else
+                echo "Zen Browser not found"
+                return 1
+            fi
+            return
         fi
 
         if [[ -d "$file" ]]; then
             if command -v thunar >/dev/null 2>&1; then
-                thunar "$file" &>/dev/null
+                thunar "$file"
             elif command -v nautilus >/dev/null 2>&1; then
-                nautilus "$file" &>/dev/null
+                nautilus "$file"
             else
-                xdg-open "$file" &>/dev/null
+                xdg-open "$file"
             fi
             return
         fi
