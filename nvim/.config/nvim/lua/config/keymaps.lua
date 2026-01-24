@@ -17,8 +17,8 @@ keymap.set("n", "<leader>k", "O<Esc>j")
 
 -- close buffer without messing up with the window layout
 keymap.set("n", "<leader>q", "<cmd>bp|bd#<CR>", { noremap = true })
--- close tab
-keymap.set("n", "Q", "<CMD>tabclose<CR>")
+-- close all tabs and windows except current
+keymap.set("n", "Q", "<CMD>tabonly | only<CR>")
 
 keymap.set("v", "J", ":m '>+1<CR>gv=gv")
 keymap.set("v", "K", ":m '<-2<CR>gv=gv")
