@@ -93,7 +93,6 @@ alias glow="glow -p"
 alias tldr='tldr -c'
 
 alias dotfiles="cd ~/dotfiles/; nvim .; cd - > /dev/null"
-alias vpn="/opt/pulsesecure/bin/pulseUI"
 
 if [[ -e ~/.cargo/bin/eza ]]; then
     alias ls="eza"

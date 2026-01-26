@@ -83,9 +83,6 @@ if [[ -n "$cwd" && -n "$branch" ]]; then
     fi
 fi
 
-# TODO: Check if Claude Code allows disabling/styling the builtin git changes line.
-# If so, re-enable custom git changes display here to avoid duplication.
-
 # Function to get Pro usage with caching
 get_usage() {
     local now=$(date +%s)
