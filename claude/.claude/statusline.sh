@@ -60,7 +60,8 @@ total_tokens=$((input_tokens + output_tokens))
 
 # Format directory (shorten home path)
 if [[ -n "$cwd" ]]; then
-    display_dir="${cwd/#$HOME/~}"
+    home_dir="${HOME:-$(eval echo ~)}"
+    display_dir=$(echo "$cwd" | sed "s|^$home_dir|~|")
     # Shorten to last 2 components if too long
     if [[ ${#display_dir} -gt 30 ]]; then
         display_dir="…/$(basename "$(dirname "$cwd")")/$(basename "$cwd")"
