@@ -27,7 +27,6 @@ BG_GRAY="\033[48;5;240m"     # Cost - gray
 
 # Foreground colors (for text)
 FG_WHITE="\033[97m"
-FG_BLACK="\033[30m"
 
 # Foreground colors matching backgrounds (for capsule edges)
 FG_BLUE="\033[38;5;33m"
@@ -83,22 +82,13 @@ if [[ -n "$cwd" && -n "$branch" ]]; then
     fi
 fi
 
-# Get git changes from git diff
-if [[ -n "$cwd" && -n "$branch" ]]; then
-    git_files=$(git -C "$cwd" diff --numstat HEAD 2>/dev/null | wc -l | tr -d ' ')
-    git_stat=$(git -C "$cwd" diff --shortstat HEAD 2>/dev/null)
-    git_added=$(echo "$git_stat" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo "0")
-    git_removed=$(echo "$git_stat" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo "0")
-    git_files=${git_files:-0}
-    git_added=${git_added:-0}
-    git_removed=${git_removed:-0}
-fi
+# TODO: Check if Claude Code allows disabling/styling the builtin git changes line.
+# If so, re-enable custom git changes display here to avoid duplication.
 
 # Function to get Pro usage with caching
 get_usage() {
     local now=$(date +%s)
     local cache_time=0
-    local cached_data=""
 
     # Check if cache exists and is fresh
     if [[ -f "$CACHE_FILE" ]]; then
@@ -303,22 +293,5 @@ output+=$(capsule " ${seven_day_display} " "$seven_day_bg" "$seven_day_fg")
 output+=" "
 output+=$(capsule " \$${cost_fmt} " "$BG_GRAY" "$FG_GRAY")
 
-# Colors for git diff numbers
-FG_DIFF_GREEN="\033[38;5;78m"
-FG_DIFF_RED="\033[38;5;203m"
-
-# Bottom line: Git changes (dark background with colored +/-)
-bottom_line=""
-if [[ "$git_files" -gt 0 ]]; then
-    BG_DARK="\033[48;5;236m"
-    FG_DARK="\033[38;5;236m"
-    git_text=" ${git_files} files ${FG_DIFF_GREEN}+${git_added}${FG_WHITE} ${FG_DIFF_RED}-${git_removed}${FG_WHITE} "
-    bottom_line="${FG_DARK}${LEFT_CAP}${RESET}${BG_DARK}${FG_WHITE}${BOLD}${git_text}${RESET}${FG_DARK}${RIGHT_CAP}${RESET}"
-fi
-
-# Output: top line, margin, then bottom line if there are changes
+# Output
 echo -e "$output"
-if [[ -n "$bottom_line" ]]; then
-    echo ""
-    echo -e "$bottom_line"
-fi
