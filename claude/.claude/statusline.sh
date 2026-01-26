@@ -75,6 +75,14 @@ if [[ -n "$cwd" ]]; then
     branch=$(git -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
 fi
 
+# Check if repo is dirty (any changes: staged, unstaged, or untracked)
+git_dirty=""
+if [[ -n "$cwd" && -n "$branch" ]]; then
+    if [[ -n $(git -C "$cwd" status --porcelain 2>/dev/null) ]]; then
+        git_dirty="*"
+    fi
+fi
+
 # Get git changes from git diff
 if [[ -n "$cwd" && -n "$branch" ]]; then
     git_files=$(git -C "$cwd" diff --numstat HEAD 2>/dev/null | wc -l | tr -d ' ')
@@ -209,7 +217,7 @@ output+=$(capsule " ${display_dir} " "$BG_BLUE" "$FG_BLUE")
 # Git branch segment (magenta) - only if in a git repo
 if [[ -n "$branch" ]]; then
     output+=" "
-    output+=$(capsule "  ${branch} " "$BG_MAGENTA" "$FG_MAGENTA")
+    output+=$(capsule "  ${branch}${git_dirty} " "$BG_MAGENTA" "$FG_MAGENTA")
 fi
 
 # Model segment (teal)
