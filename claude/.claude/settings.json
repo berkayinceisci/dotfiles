@@ -4,8 +4,7 @@
   "editMode": "vim",
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/statusline.sh",
-    "showGitChanges": false
+    "command": "~/.claude/statusline.sh"
   },
   "env": {
     "DISABLE_COST_WARNINGS": "1"
