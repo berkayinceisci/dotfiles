@@ -1,5 +1,9 @@
 {
   "alwaysThinkingEnabled": true,
   "model": "opus",
-  "editMode": "vim"
+  "editMode": "vim",
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  }
 }
