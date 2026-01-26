@@ -124,6 +124,15 @@ bcd() {
     fi
 }
 
+clip2png() {
+    local filename="${1:-clipboard_$(date +%Y%m%d_%H%M%S).png}"
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        xclip -selection clipboard -t image/png -o > "$filename" 2>/dev/null && echo "Saved: $filename" || echo "No image in clipboard"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        pngpaste "$filename" 2>/dev/null && echo "Saved: $filename" || echo "No image in clipboard (requires: brew install pngpaste)"
+    fi
+}
+
 open() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         command open "$@"
