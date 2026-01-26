@@ -111,16 +111,26 @@ get_usage() {
     fi
 
     # Cache is stale or doesn't exist, fetch new data
-    # Get token from Keychain
-    local creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
+    # Get credentials based on platform
+    local creds=""
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS - use Keychain
+        creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
+    else
+        # Linux - read from credentials file
+        local creds_file="$HOME/.claude/.credentials.json"
+        if [[ -f "$creds_file" ]]; then
+            creds=$(cat "$creds_file")
+        fi
+    fi
     if [[ -z "$creds" ]]; then
-        echo "||"
+        echo "|||"
         return
     fi
 
     local token=$(echo "$creds" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
     if [[ -z "$token" ]]; then
-        echo "||"
+        echo "|||"
         return
     fi
 
@@ -131,26 +141,68 @@ get_usage() {
         "https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
 
     if [[ -z "$response" ]]; then
-        echo "||"
+        echo "|||"
         return
     fi
 
     local five_hour=$(echo "$response" | jq -r '.five_hour.utilization // 0' 2>/dev/null)
     local seven_day=$(echo "$response" | jq -r '.seven_day.utilization // 0' 2>/dev/null)
+    local five_hour_resets=$(echo "$response" | jq -r '.five_hour.resets_at // empty' 2>/dev/null)
+    local seven_day_resets=$(echo "$response" | jq -r '.seven_day.resets_at // empty' 2>/dev/null)
 
     # Write to cache
     {
         echo "$now"
-        echo "${five_hour}|${seven_day}"
+        echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
     } > "$CACHE_FILE" 2>/dev/null
 
-    echo "${five_hour}|${seven_day}"
+    echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
+}
+
+# Format reset time as relative (e.g., "2h30m" or "3d12h")
+format_reset_time() {
+    local reset_time=$1
+    if [[ -z "$reset_time" ]]; then
+        echo ""
+        return
+    fi
+
+    local now=$(date +%s)
+    local reset_epoch=$(date -d "$reset_time" +%s 2>/dev/null)
+    if [[ -z "$reset_epoch" ]]; then
+        echo ""
+        return
+    fi
+
+    local diff=$((reset_epoch - now))
+    if (( diff <= 0 )); then
+        echo "now"
+        return
+    fi
+
+    local days=$((diff / 86400))
+    local hours=$(( (diff % 86400) / 3600 ))
+    local mins=$(( (diff % 3600) / 60 ))
+
+    if (( days > 0 )); then
+        echo "${days}d${hours}h"
+    elif (( hours > 0 )); then
+        echo "${hours}h${mins}m"
+    else
+        echo "${mins}m"
+    fi
 }
 
 # Get usage data
 usage_data=$(get_usage)
 five_hour_raw=$(echo "$usage_data" | cut -d'|' -f1)
 seven_day_raw=$(echo "$usage_data" | cut -d'|' -f2)
+five_hour_resets_raw=$(echo "$usage_data" | cut -d'|' -f3)
+seven_day_resets_raw=$(echo "$usage_data" | cut -d'|' -f4)
+
+# Format reset times
+five_hour_reset=$(format_reset_time "$five_hour_resets_raw")
+seven_day_reset=$(format_reset_time "$seven_day_resets_raw")
 
 # Format percentages (API returns values already as percentages, e.g., 18.0 = 18%)
 five_hour_pct=$(awk "BEGIN {printf \"%.0f\", ${five_hour_raw:-0}}")
@@ -237,11 +289,15 @@ output+=$(capsule " ${tokens_fmt} " "$BG_GREEN" "$FG_GREEN")
 
 # 5-hour usage segment (pink, or warning color)
 output+=" "
-output+=$(capsule " 5h:${five_hour_pct}% " "$five_hour_bg" "$five_hour_fg")
+five_hour_display="5h:${five_hour_pct}%"
+[[ -n "$five_hour_reset" ]] && five_hour_display+=" ${five_hour_reset}"
+output+=$(capsule " ${five_hour_display} " "$five_hour_bg" "$five_hour_fg")
 
 # 7-day usage segment (purple, or warning color)
 output+=" "
-output+=$(capsule " 7d:${seven_day_pct}% " "$seven_day_bg" "$seven_day_fg")
+seven_day_display="7d:${seven_day_pct}%"
+[[ -n "$seven_day_reset" ]] && seven_day_display+=" ${seven_day_reset}"
+output+=$(capsule " ${seven_day_display} " "$seven_day_bg" "$seven_day_fg")
 
 # Cost segment (gray)
 output+=" "
