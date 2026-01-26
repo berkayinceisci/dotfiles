@@ -6,5 +6,8 @@
     "type": "command",
     "command": "~/.claude/statusline.sh",
     "showGitChanges": false
+  },
+  "env": {
+    "DISABLE_COST_WARNINGS": "1"
   }
 }
