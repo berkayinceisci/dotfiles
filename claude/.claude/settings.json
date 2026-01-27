@@ -13,7 +13,6 @@
     "code-review@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
     "clangd-lsp@claude-plugins-official": true,
-    "rust-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true
   },
   "editMode": "vim"
