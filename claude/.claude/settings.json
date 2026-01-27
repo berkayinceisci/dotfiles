@@ -12,7 +12,6 @@
   "enabledPlugins": {
     "feature-dev@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true,
-    "document-skills@anthropic-agent-skills": true
+    "playwright@claude-plugins-official": true
   }
 }
