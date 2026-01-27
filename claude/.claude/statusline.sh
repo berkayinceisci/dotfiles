@@ -51,12 +51,7 @@ input=$(cat)
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // empty')
 model=$(echo "$input" | jq -r '.model.display_name // empty')
 context_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
-input_tokens=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
-output_tokens=$(echo "$input" | jq -r '.context_window.total_output_tokens // 0')
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
-
-# Calculate total tokens
-total_tokens=$((input_tokens + output_tokens))
 
 # Format directory (shorten home path)
 if [[ -n "$cwd" ]]; then
@@ -197,13 +192,6 @@ five_hour_pct=$(awk "BEGIN {printf \"%.0f\", ${five_hour_raw:-0}}")
 seven_day_pct=$(awk "BEGIN {printf \"%.0f\", ${seven_day_raw:-0}}")
 context_pct_fmt=$(awk "BEGIN {printf \"%.0f\", ${context_pct:-0}}")
 
-# Format tokens (K format)
-if (( total_tokens >= 1000 )); then
-    tokens_fmt=$(awk "BEGIN {printf \"%.1fK\", ${total_tokens}/1000}")
-else
-    tokens_fmt="${total_tokens}"
-fi
-
 # Format cost
 cost_fmt=$(awk "BEGIN {printf \"%.2f\", ${cost:-0}}")
 
@@ -270,10 +258,6 @@ fi
 # Context segment (orange, or warning color)
 output+=" "
 output+=$(capsule " ${context_display} " "$ctx_bg" "$ctx_fg")
-
-# Tokens segment (green)
-output+=" "
-output+=$(capsule " ${tokens_fmt} " "$BG_GREEN" "$FG_GREEN")
 
 # 5-hour usage segment (pink, or warning color)
 output+=" "
