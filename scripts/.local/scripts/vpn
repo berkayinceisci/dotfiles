@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+# VT VPN via Tailscale exit node (popos lab machine)
+
+EXIT_NODE="popos"
+
+# Check if currently using an exit node
+current=$(tailscale status --json | jq -r '.ExitNodeStatus.ID // empty')
+
+if [[ -n "$current" ]]; then
+    sudo tailscale set --exit-node=
+    echo "VPN: off"
+else
+    sudo tailscale set --exit-node="$EXIT_NODE"
+    echo "VPN: on"
+fi
