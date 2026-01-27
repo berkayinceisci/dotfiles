@@ -1,0 +1,33 @@
+# i3blocks config
+
+[vpn]
+command=~/.config/i3blocks/vpn
+interval=5
+
+[wifi]
+command=~/.config/i3blocks/wifi
+interval=5
+
+[battery]
+command=~/.config/i3blocks/battery
+interval=5
+
+[disk]
+command=~/.config/i3blocks/disk
+interval=5
+
+[memory]
+command=~/.config/i3blocks/memory
+interval=5
+
+[load]
+command=~/.config/i3blocks/load
+interval=5
+
+[weather]
+command=~/.config/i3blocks/weather
+interval=60
+
+[time]
+command=date '+%m/%d/%y %H:%M:%S'
+interval=1

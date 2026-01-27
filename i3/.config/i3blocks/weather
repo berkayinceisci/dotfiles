@@ -1,0 +1,32 @@
+#!/bin/bash
+CITY="Blacksburg"
+CACHE_FILE="/tmp/i3blocks_weather_cache"
+
+get_emoji() {
+    case "${1,,}" in
+        *snow*|*blizzard*) echo "❄️" ;;
+        *thunder*|*storm*) echo "⛈️" ;;
+        *rain*|*drizzle*|*shower*) echo "🌧️" ;;
+        *partly*|*partially*) echo "⛅" ;;
+        *cloud*|*overcast*) echo "☁️" ;;
+        *sun*|*clear*) echo "☀️" ;;
+        *fog*|*mist*|*haze*) echo "🌫️" ;;
+        *wind*) echo "💨" ;;
+        *) echo "🌡️" ;;
+    esac
+}
+
+# Output cached value immediately (non-blocking)
+if [[ -f "$CACHE_FILE" ]]; then
+    cached=$(cat "$CACHE_FILE")
+    emoji=$(get_emoji "$cached")
+    echo "$emoji $CITY: $cached"
+else
+    echo "🌡️ $CITY: ..."
+fi
+
+# Update cache in background for next run
+(
+    weather=$(curl -s "wttr.in/$CITY?format=j1" --max-time 10 | jq -r '.current_condition[0] | "\(.weatherDesc[0].value) \(.temp_F)°F"' 2>/dev/null)
+    [[ -n "$weather" ]] && echo "$weather" > "$CACHE_FILE"
+) &

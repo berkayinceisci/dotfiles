@@ -1,0 +1,3 @@
+#!/bin/bash
+read -r avail total <<< $(free -h | awk '/^Mem:/ {print $7, $2}')
+echo "RAM free: $avail/$total"

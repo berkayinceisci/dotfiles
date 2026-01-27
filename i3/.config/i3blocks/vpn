@@ -1,0 +1,10 @@
+#!/bin/bash
+if tailscale status --json 2>/dev/null | jq -e '.ExitNodeStatus.ID' &>/dev/null; then
+    echo "VPN: on"
+    echo ""
+    echo "#a3be8c"
+else
+    echo "VPN: off"
+    echo ""
+    echo "#bf616a"
+fi
