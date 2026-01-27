@@ -4,9 +4,8 @@ CITY="Blacksburg"
 CACHE_FILE="/tmp/i3status_weather_cache"
 OUTPUT_FILE="/tmp/i3status_weather"
 
-# Fetch weather from wttr.in with minimal format
-# %C = condition, %t = temperature
-weather=$(curl -s "wttr.in/$CITY?format=%C+%t" --max-time 5 | tr -d '\n')
+# Fetch weather from wttr.in using JSON endpoint (more reliable than format endpoint)
+weather=$(curl -s "wttr.in/$CITY?format=j1" --max-time 10 | jq -r '.current_condition[0] | "\(.weatherDesc[0].value) \(.temp_F)°F"' 2>/dev/null)
 exit_code=$?
 
 # If curl succeeds and returns data, use it and cache it
