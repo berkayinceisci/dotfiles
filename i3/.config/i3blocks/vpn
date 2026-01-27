@@ -1,6 +1,25 @@
 #!/bin/bash
 
-if tailscale status --json 2>/dev/null | jq -e '.ExitNodeStatus.ID' &>/dev/null; then
+# 1. Environment Fix (Mac SwiftBar Specific)
+# SwiftBar doesn't inherit your terminal's $PATH, so it can't find 'jq' by default.
+# We explicitly add Homebrew paths here. Your Linux machine will just ignore the paths that don't exist.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+# 2. Smart Binary Detection
+# First, check for the Mac Cask App binary (since you installed via --cask)
+if [ -f "/Applications/Tailscale.app/Contents/MacOS/Tailscale" ]; then
+    TS_CMD="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+# Fallback: Check for standard 'tailscale' in the path (for your Pop!_OS machine)
+elif command -v tailscale >/dev/null 2>&1; then
+    TS_CMD="tailscale"
+else
+    echo "⚠️ No TS"
+    exit 0
+fi
+
+# 3. Status Logic
+# We use "$TS_CMD" to call the correct binary for the current machine.
+if "$TS_CMD" status --json 2>/dev/null | jq -e '.ExitNodeStatus.ID != null' >/dev/null; then
     echo "🟢 VPN"
 else
     echo "🔴 VPN"
