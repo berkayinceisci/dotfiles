@@ -34,10 +34,13 @@ echo ""
 echo "Stowing dotfiles..."
 
 # Linux-specific packages to skip on macOS
-LINUX_ONLY_PACKAGES=("i3" "rofi" "systemd" "Xresources" "zathura")
+LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura")
+
+# macOS-specific packages to skip on Linux
+MACOS_ONLY_PACKAGES=("swiftbar")
 
 # Packages to skip on headless cloudlab machines
-CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "systemd")
+CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura")
 
 for package in */; do
     package="${package%/}"  # Remove trailing slash
@@ -58,6 +61,12 @@ for package in */; do
         continue
     fi
 
+    # Skip macOS-only packages on Linux
+    if [[ "$OS" == "linux" ]] && [[ " ${MACOS_ONLY_PACKAGES[@]} " =~ " ${package} " ]]; then
+        echo "  ⊘ Skipping $package (macOS only)"
+        continue
+    fi
+
     # Skip GUI packages on headless Linux systems (no DISPLAY)
     if [[ "$OS" == "linux" ]] && [[ -z "$DISPLAY" ]] && [[ " ${CLOUDLAB_EXCLUDE_PACKAGES[@]} " =~ " ${package} " ]]; then
         echo "  ⊘ Skipping $package (headless)"
@@ -69,17 +78,6 @@ for package in */; do
 done
 
 echo "  ✓ Stowing complete"
-
-# Enable systemd user services (Linux with GUI only)
-if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
-    echo ""
-    echo "Setting up systemd user services..."
-    systemctl --user daemon-reload
-    if systemctl --user list-unit-files | grep -q "weather-update.timer"; then
-        systemctl --user enable --now weather-update.timer
-        echo "  ✓ weather-update.timer enabled"
-    fi
-fi
 
 # Configure display manager for login screen (Linux with GUI only)
 if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
@@ -219,6 +217,16 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
         defaults write -app Skim SKTeXEditorCommand -string "$HOME/.local/scripts/nvr-skim-inverse"
         defaults write -app Skim SKTeXEditorArguments -string '"%line" "%file"'
         echo "  ✓ Skim configured"
+
+        # Check if SwiftBar is installed and set plugin directory
+        if [ -d "/Applications/SwiftBar.app" ]; then
+            echo "Configuring SwiftBar..."
+            defaults write com.ameba.SwiftBar PluginDirectory -string "$HOME/.config/swiftbar"
+            echo "  ✓ SwiftBar configured"
+            echo "  Note: Open SwiftBar and grant necessary permissions"
+        else
+            echo "  ⚠ SwiftBar not installed. Install with: brew install --cask swiftbar"
+        fi
     fi
 fi
 
