@@ -9,5 +9,11 @@
   "env": {
     "DISABLE_COST_WARNINGS": "1",
     "DISABLE_SESSION_LIMIT_WARNINGS": "1"
+  },
+  "enabledPlugins": {
+    "feature-dev@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "document-skills@anthropic-agent-skills": true
   }
 }

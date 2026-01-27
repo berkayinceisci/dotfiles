@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+"""
+Export Claude Code session JSONL files to readable markdown with thinking.
+
+Usage:
+  cc-export-session <session.jsonl>              # Print to stdout
+  cc-export-session <session.jsonl> -o out.md   # Write to file
+  cc-export-session --list                       # List all sessions
+  cc-export-session --all                        # Export all sessions to ~/claude-exports/
+"""
+
+import json
+import sys
+import os
+from pathlib import Path
+from datetime import datetime
+
+CLAUDE_PROJECTS = Path.home() / ".claude" / "projects"
+
+def list_sessions():
+    """List all session files across all projects."""
+    if not CLAUDE_PROJECTS.exists():
+        print("No Claude projects found.")
+        return
+
+    sessions = []
+    for project_dir in CLAUDE_PROJECTS.iterdir():
+        if project_dir.is_dir():
+            for jsonl in project_dir.glob("*.jsonl"):
+                if not jsonl.name.startswith("agent-"):
+                    stat = jsonl.stat()
+                    sessions.append({
+                        'path': jsonl,
+                        'project': project_dir.name,
+                        'mtime': stat.st_mtime,
+                        'size': stat.st_size
+                    })
+
+    # Sort by modification time, newest first
+    sessions.sort(key=lambda x: x['mtime'], reverse=True)
+
+    print(f"{'Modified':<20} {'Size':>10} {'Project':<50} {'File'}")
+    print("-" * 120)
+    for s in sessions[:50]:  # Show last 50
+        mtime = datetime.fromtimestamp(s['mtime']).strftime('%Y-%m-%d %H:%M')
+        size = f"{s['size'] / 1024:.1f}KB"
+        project = s['project'][:48]
+        print(f"{mtime:<20} {size:>10} {project:<50} {s['path'].name}")
+
+def export_session(jsonl_path, include_thinking=True):
+    """Convert a session JSONL to markdown."""
+    lines = []
+    lines.append(f"# Claude Code Session Export\n")
+    lines.append(f"**Source:** `{jsonl_path}`\n")
+    lines.append(f"**Exported:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    lines.append("---\n")
+
+    with open(jsonl_path, 'r') as f:
+        for line in f:
+            try:
+                entry = json.loads(line.strip())
+
+                if entry.get('type') == 'file-history-snapshot':
+                    continue
+
+                msg = entry.get('message', {})
+                role = msg.get('role', '')
+                content = msg.get('content', '')
+
+                if role == 'user':
+                    if isinstance(content, str):
+                        lines.append(f"## User\n\n{content}\n")
+                    elif isinstance(content, list):
+                        for c in content:
+                            if isinstance(c, dict) and c.get('type') == 'text':
+                                lines.append(f"## User\n\n{c.get('text', '')}\n")
+                            elif isinstance(c, str):
+                                lines.append(f"## User\n\n{c}\n")
+
+                elif role == 'assistant':
+                    if isinstance(content, list):
+                        for c in content:
+                            if isinstance(c, dict):
+                                ctype = c.get('type', '')
+                                if ctype == 'text':
+                                    text = c.get('text', '')
+                                    if text:
+                                        lines.append(f"## Assistant\n\n{text}\n")
+                                elif ctype == 'thinking' and include_thinking:
+                                    thinking = c.get('thinking', '')
+                                    if thinking:
+                                        lines.append(f"## Assistant (Thinking)\n\n{thinking}\n")
+                                elif ctype == 'tool_use':
+                                    tool = c.get('name', 'unknown')
+                                    inp = c.get('input', {})
+                                    lines.append(f"## Assistant (Tool: {tool})\n")
+                                    if tool in ['Read', 'Glob', 'Grep']:
+                                        path = inp.get('file_path', inp.get('path', inp.get('pattern', '')))
+                                        lines.append(f"Target: `{path}`\n")
+                                    elif tool == 'Edit':
+                                        lines.append(f"Editing: `{inp.get('file_path', '')}`\n")
+                                    elif tool == 'Write':
+                                        lines.append(f"Writing: `{inp.get('file_path', '')}`\n")
+                                    elif tool == 'Bash':
+                                        cmd = inp.get('command', '')[:500]
+                                        lines.append(f"```bash\n{cmd}\n```\n")
+                                    else:
+                                        lines.append(f"Input: `{str(inp)[:300]}...`\n")
+                    elif isinstance(content, str) and content:
+                        lines.append(f"## Assistant\n\n{content}\n")
+
+            except json.JSONDecodeError:
+                continue
+            except Exception as e:
+                lines.append(f"<!-- Error: {e} -->\n")
+
+    return '\n'.join(lines)
+
+def export_all():
+    """Export all sessions to ~/claude-exports/."""
+    export_dir = Path.home() / "claude-exports"
+    export_dir.mkdir(exist_ok=True)
+
+    count = 0
+    for project_dir in CLAUDE_PROJECTS.iterdir():
+        if project_dir.is_dir():
+            for jsonl in project_dir.glob("*.jsonl"):
+                if not jsonl.name.startswith("agent-"):
+                    out_name = f"{project_dir.name}_{jsonl.stem}.md"
+                    out_path = export_dir / out_name
+                    content = export_session(jsonl)
+                    out_path.write_text(content)
+                    count += 1
+                    print(f"Exported: {out_path}")
+
+    print(f"\nExported {count} sessions to {export_dir}")
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
+
+    if sys.argv[1] == '--list':
+        list_sessions()
+    elif sys.argv[1] == '--all':
+        export_all()
+    else:
+        jsonl_path = sys.argv[1]
+        if not os.path.exists(jsonl_path):
+            print(f"Error: File not found: {jsonl_path}")
+            sys.exit(1)
+
+        content = export_session(jsonl_path)
+
+        if len(sys.argv) >= 4 and sys.argv[2] == '-o':
+            out_path = sys.argv[3]
+            with open(out_path, 'w') as f:
+                f.write(content)
+            print(f"Exported to: {out_path}")
+        else:
+            print(content)
+
+if __name__ == '__main__':
+    main()
