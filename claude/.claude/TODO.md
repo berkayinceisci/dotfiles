@@ -7,3 +7,6 @@
 
 ## Status Line
 - Check if Claude Code allows disabling/styling the builtin git changes line
+
+## Missing Plugins
+- shellcheck
