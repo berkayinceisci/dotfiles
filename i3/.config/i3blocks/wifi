@@ -1,0 +1,42 @@
+#!/bin/bash
+IFACE=$(ip route | awk '/default/ {print $5; exit}')
+STATS_FILE="/tmp/i3blocks_net_stats"
+
+wifi_line=$(nmcli -t -f active,ssid,signal dev wifi 2>/dev/null | grep "^yes:")
+if [[ -n "$wifi_line" ]]; then
+    signal="${wifi_line##*:}"
+    ssid="${wifi_line#yes:}"
+    ssid="${ssid%:*}"
+    ip=$(ip -4 addr show "$IFACE" 2>/dev/null | grep -oP '(?<=inet\s)[0-9.]+' | head -1)
+
+    # Calculate speed
+    rx=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
+    tx=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
+    now=$(date +%s)
+
+    speed="↓0K ↑0K"
+    if [[ -f "$STATS_FILE" ]]; then
+        read -r old_rx old_tx old_time < "$STATS_FILE"
+        interval=$((now - old_time))
+        if [[ $interval -gt 0 ]]; then
+            rx_rate=$(( (rx - old_rx) / interval / 1024 ))
+            tx_rate=$(( (tx - old_tx) / interval / 1024 ))
+            speed="↓${rx_rate}K ↑${tx_rate}K"
+        fi
+    fi
+    echo "$rx $tx $now" > "$STATS_FILE"
+
+    # Ping latency
+    ping_ms=$(ping -c1 -W1 1.1.1.1 2>/dev/null | grep -oP 'time=\K[0-9.]+' || echo "")
+    if [[ -n "$ping_ms" ]]; then
+        ping_str="${ping_ms}ms"
+    else
+        ping_str="--"
+    fi
+
+    echo "W: (${signal}% ${ping_str}) ${ip} ${speed}"
+else
+    echo "W: down"
+    echo ""
+    echo "#bf616a"
+fi
