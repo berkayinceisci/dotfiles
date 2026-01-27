@@ -1,0 +1,176 @@
+#!/bin/bash
+# Claude Code wrapper with session logging
+# Usage: claude-with-session-logging [claude args...]
+# Maintains a single persistent log file per project folder
+#
+# Recommended aliases:
+#   alias ccn='claude-with-session-logging'
+#   alias ccd='claude-with-session-logging --dangerously-skip-permissions'
+
+set -euo pipefail
+
+# Configuration
+LOG_DIR="${HOME}/.claude/my-session-logs"
+CLAUDE_PROJECTS="${HOME}/.claude/projects"
+mkdir -p "${LOG_DIR}"
+
+# Resolve symlinks - Claude Code uses the real path for project directories
+REAL_PWD="$(pwd -P)"
+
+# Generate a consistent log filename based on project path
+# Replace / with - and remove leading dash
+PROJECT_SLUG="${REAL_PWD//\//-}"
+PROJECT_SLUG="${PROJECT_SLUG#-}"
+LOG_NAME="cc-project-${PROJECT_SLUG}.md"
+CLEAN_LOG="${LOG_DIR}/${LOG_NAME}"
+LOCAL_LINK="./cc-session.md"
+SESSION_TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+
+# Get project directory path (how Claude Code names project folders)
+PROJECT_PATH="${REAL_PWD//\//-}"
+PROJECT_DIR="${CLAUDE_PROJECTS}/${PROJECT_PATH}"
+
+# Record session files before running claude
+BEFORE_SESSIONS=""
+if [[ -d "${PROJECT_DIR}" ]]; then
+    BEFORE_SESSIONS=$(ls -t "${PROJECT_DIR}"/*.jsonl 2>/dev/null | head -20 || true)
+fi
+
+# Run claude with all provided arguments
+claude "$@"
+EXIT_CODE=$?
+
+# Find the new session file(s) created during this run
+NEW_SESSION=""
+if [[ -d "${PROJECT_DIR}" ]]; then
+    for f in $(ls -t "${PROJECT_DIR}"/*.jsonl 2>/dev/null | head -5); do
+        if [[ ! "${BEFORE_SESSIONS}" =~ "${f}" ]]; then
+            # This is a new session file
+            if [[ -z "${NEW_SESSION}" ]]; then
+                NEW_SESSION="${f}"
+            fi
+        fi
+    done
+
+    # Fallback: use most recent session file if no new one detected
+    if [[ -z "${NEW_SESSION}" ]]; then
+        NEW_SESSION=$(ls -t "${PROJECT_DIR}"/*.jsonl 2>/dev/null | grep -v "^agent-" | head -1 || true)
+    fi
+fi
+
+# Convert session JSONL to readable markdown (appends to existing log)
+convert_session() {
+    local jsonl_file="$1"
+    local output_file="$2"
+
+    # Create file header if this is a new log file
+    if [[ ! -f "${output_file}" ]]; then
+        {
+            echo "# Claude Code Session Log"
+            echo ""
+            echo "**Project:** \`${REAL_PWD}\`"
+            echo ""
+            echo "---"
+            echo ""
+        } > "${output_file}"
+    fi
+
+    # Append this session with a separator
+    {
+        echo ""
+        echo "## Session: ${SESSION_TIMESTAMP}"
+        echo ""
+        echo "| Field | Value |"
+        echo "|-------|-------|"
+        echo "| **Time** | ${SESSION_TIMESTAMP} |"
+        echo "| **Args** | \`$*\` |"
+        echo "| **Session File** | \`${jsonl_file}\` |"
+        echo ""
+
+        # Parse JSONL and extract conversation
+        python3 -c "
+import json
+import sys
+
+for line in open('${jsonl_file}', 'r'):
+    try:
+        entry = json.loads(line.strip())
+
+        # Skip non-message entries
+        if entry.get('type') == 'file-history-snapshot':
+            continue
+
+        msg = entry.get('message', {})
+        role = msg.get('role', '')
+        content = msg.get('content', '')
+
+        if role == 'user':
+            if isinstance(content, str):
+                print(f'## User\\n\\n{content}\\n')
+            elif isinstance(content, list):
+                for c in content:
+                    if isinstance(c, dict) and c.get('type') == 'text':
+                        print(f'## User\\n\\n{c.get(\"text\", \"\")}\\n')
+                    elif isinstance(c, str):
+                        print(f'## User\\n\\n{c}\\n')
+
+        elif role == 'assistant':
+            if isinstance(content, list):
+                for c in content:
+                    if isinstance(c, dict):
+                        ctype = c.get('type', '')
+                        if ctype == 'text':
+                            text = c.get('text', '')
+                            if text:
+                                print(f'## Assistant\\n\\n{text}\\n')
+                        elif ctype == 'tool_use':
+                            tool = c.get('name', 'unknown')
+                            inp = c.get('input', {})
+                            # Summarize tool use
+                            print(f'## Assistant (Tool: {tool})\\n')
+                            if tool in ['Read', 'Glob', 'Grep']:
+                                path = inp.get('file_path', inp.get('path', inp.get('pattern', '')))
+                                print(f'Reading/searching: \`{path}\`\\n')
+                            elif tool == 'Edit':
+                                print(f'Editing: \`{inp.get(\"file_path\", \"\")}\`\\n')
+                            elif tool == 'Write':
+                                print(f'Writing: \`{inp.get(\"file_path\", \"\")}\`\\n')
+                            elif tool == 'Bash':
+                                cmd = inp.get('command', '')[:200]
+                                print(f'\`\`\`bash\\n{cmd}\\n\`\`\`\\n')
+                            else:
+                                print(f'Input: {str(inp)[:200]}...\\n')
+                        elif ctype == 'thinking':
+                            thinking = c.get('thinking', '')
+                            if thinking:
+                                print(f'## Assistant (Thinking)\\n\\n{thinking}\\n')
+            elif isinstance(content, str) and content:
+                print(f'## Assistant\\n\\n{content}\\n')
+
+    except json.JSONDecodeError:
+        continue
+    except Exception as e:
+        print(f'<!-- Error parsing: {e} -->', file=sys.stderr)
+"
+        echo ""
+        echo "---"
+        echo ""
+    } >> "${output_file}"
+}
+
+if [[ -n "${NEW_SESSION}" && -f "${NEW_SESSION}" ]]; then
+    convert_session "${NEW_SESSION}" "${CLEAN_LOG}"
+
+    # Create/update symlink in current project folder
+    ln -sf "${CLEAN_LOG}" "${LOCAL_LINK}"
+
+    echo ""
+    echo "Session appended to: ${CLEAN_LOG}"
+    echo "Local symlink: ${LOCAL_LINK}"
+else
+    echo ""
+    echo "Warning: Could not find session file to export"
+    echo "Project dir: ${PROJECT_DIR}"
+fi
+
+exit ${EXIT_CODE}

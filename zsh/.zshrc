@@ -91,6 +91,8 @@ alias ldoc="lazydocker"
 alias img="wezterm imgcat"
 alias glow="glow -p"
 alias tldr='tldr -c'
+alias ccn='cc-with-session-logging'
+alias ccd='cc-with-session-logging --dangerously-skip-permissions'
 
 alias dotfiles="cd ~/dotfiles/; nvim .; cd - > /dev/null"
 
