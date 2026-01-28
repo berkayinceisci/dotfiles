@@ -190,7 +190,7 @@ _ask_claude() {
         echo "Usage: ?? <your question>"
         return 1
     fi
-    claude -p --no-session-persistence "$*"
+    claude -p --no-session-persistence --model sonnet "Answer concisely. You cannot run commands or access the system. If the question requires system information, provide only the command to run - never fabricate output. $*"
 }
 alias '??'='_ask_claude'
 
