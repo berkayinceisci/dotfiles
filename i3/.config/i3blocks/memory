@@ -1,3 +1,13 @@
 #!/bin/bash
-read -r avail total <<< $(free -h | awk '/^Mem:/ {print $7, $2}')
-echo "RAM free: $avail/$total"
+read -r avail_mb total <<< $(free -m | awk '/^Mem:/ {print $7, $2}')
+read -r avail_h total_h <<< $(free -h | awk '/^Mem:/ {print $7, $2}')
+
+echo "RAM free: $avail_h/$total_h"
+echo ""
+
+# Color based on available RAM
+if [[ $avail_mb -lt 300 ]]; then
+    echo "#bf616a"
+elif [[ $avail_mb -lt 1024 ]]; then
+    echo "#ebcb8b"
+fi
