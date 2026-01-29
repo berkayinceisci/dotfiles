@@ -112,7 +112,7 @@ if [[ -e ~/.cargo/bin/bat ]]; then
     alias cat="bat -pp"
 fi
 
-if [[ -e ~/.cargo/bin/zoxide ]]; then
+if [[ -e ~/.cargo/bin/zoxide ]] && [[ $- == *i* ]]; then
     eval "$(zoxide init zsh)"
     alias cd=z
 fi
