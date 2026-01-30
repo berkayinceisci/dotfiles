@@ -58,6 +58,13 @@ cleanup() {
 trap cleanup EXIT INT TERM
 ```
 
+**CRITICAL: Before declaring a process dead, verify with `ps` or `kill -0`, not just log output.** Logs may be buffered/stale. Never delete results or restart experiments based on log staleness alone. Specifically:
+
+1. Check the actual process: `ps -p <PID> -o pid,stat,etime` or `kill -0 <PID>`
+2. Check the full process tree: `pgrep -af "pattern"` (the process may have forked)
+3. Only after confirming the process is truly gone, take corrective action
+4. **Never `rm -rf` experiment results without first confirming no running process is writing to them**
+
 ## Long-Running Experiments
 
 **Problem**: Experiments can stall silently. Track progress, not just status.
