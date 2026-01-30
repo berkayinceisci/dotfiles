@@ -73,6 +73,15 @@ for package in */; do
         continue
     fi
 
+    # Remove conflicting real files so stow can create symlinks
+    # (installers like claude/atuin may have created defaults at these paths)
+    while IFS= read -r rel_path; do
+        target="$HOME/$rel_path"
+        if [[ -f "$target" ]] && [[ ! -L "$target" ]]; then
+            rm -f "$target"
+        fi
+    done < <(find "$package" -type f -printf '%P\n')
+
     echo "  → Stowing $package"
     stow "$package"
 done
