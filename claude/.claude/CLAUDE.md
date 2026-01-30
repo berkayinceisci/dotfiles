@@ -129,6 +129,12 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 
 - `cargo fmt` + `cargo clippy`, `?` for error propagation
 
+## Plotting
+
+- Plot titles must be as descriptive as possible, including all key parameters and context.
+- Any information encoded in the output file name (e.g., dataset, method, parameters, date) must also appear in the plot title.
+- Axis labels must include units where applicable.
+
 ## Whitespace (CRITICAL)
 
 - No trailing spaces/tabs on any line
