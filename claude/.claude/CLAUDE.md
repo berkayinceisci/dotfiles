@@ -81,6 +81,24 @@ done
 
 **Pre-launch checklist**: Progress tracking exists, monitor running, expected rate known.
 
+### Active Monitoring (CRITICAL)
+
+After launching any experiment or long-running process, you MUST actively monitor
+it in the current conversation. NEVER do any of the following:
+- End the conversation by saying "the experiment will take X hours, check back later"
+- Create a separate monitoring script and leave
+- Suggest the user check results manually
+- Say "I'll let you know when it's done" and then stop
+
+Instead, you MUST:
+1. Stay in the conversation and poll the experiment's progress at reasonable intervals
+   (e.g., check logs, output files, process status every 30-60 seconds).
+2. Report progress updates to the user as you observe them.
+3. If an error or anomaly is detected, IMMEDIATELY stop running further experiments
+   and diagnose/fix the issue before continuing.
+4. Only consider the task complete when the experiment has finished successfully and
+   results have been collected/verified.
+
 ## Git Commits
 
 - One brief sentence summarizing the change
