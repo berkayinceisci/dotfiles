@@ -4,6 +4,7 @@
 
 - Never delete any comments while doing updates.
 - Only make changes that are directly requested - do not add "improvements" or modifications based on assumptions about what would be better.
+- **Never delete files, data, or results unless explicitly asked to delete.** A question about something ("did I ask you to...?") is not a request to act. When in doubt, ask before taking any destructive/irreversible action.
 - Never fabricate information (papers, authors, venues, results). Use `[[TODO: need source]]` when unsure.
 - Distinguish observations from hypotheses. Don't state inferences as facts or invent specific numbers (e.g., rate limits, thresholds) without verification. Search for sources before making claims, not after being challenged.
 - Follow existing code conventions in each project.
