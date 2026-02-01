@@ -1,0 +1,119 @@
+# Tailscale
+
+Host manjaro
+    HostName ${MANJARO_HOST}
+    User inceisciberkay
+
+Host ubuntu
+    HostName ${UBUNTU_HOST}
+    User berkay
+
+Host macos
+    HostName ${MACOS_HOST}
+    User inceisciberkay
+
+Host popos
+    HostName ${POPOS_HOST}
+    User berkayinceisci
+
+# VT
+
+Host rlogin-random
+    HostName rlogin.cs.vt.edu
+    User berkayinceisci
+
+Host pine
+    HostName pine.rlogin
+    ProxyJump rlogin-random
+    User berkayinceisci
+
+Host ece5504
+    HostName lnx-prd-04.ece.vt.edu
+    ProxyJump ark
+    User berkayinceisci
+
+# MoatLab
+
+Host hds01
+    HostName ${HDS01_HOST}
+    ProxyJump ark
+    User berkay
+    Port 9999
+
+Host hds02
+    HostName ${HDS02_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host hds03
+    HostName ${HDS03_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host hds04
+    HostName ${HDS04_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host hds05
+    HostName ${HDS05_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host hds06
+    HostName ${HDS06_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host hds07
+    HostName ${HDS07_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host kopernik
+    HostName ${KOPERNIK_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host genesis
+    HostName ${GENESIS_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host r2d2
+    HostName ${R2D2_HOST}
+    ProxyJump ark
+    User berkay
+    Port 22
+
+Host maven
+    HostName ${MAVEN_HOST}
+    ProxyJump r2d2
+    User berkay
+    Port 22
+
+Host ark
+    HostName ${ARK_HOST}
+    User berkay
+    Port 55555
+    Port 22
+
+# GNR hosted by Daniel
+Host gnrproxy
+    HostName ${GNR_PROXY_HOST}
+    User vt
+    Port 22
+
+Host gnr
+    HostName ${GNR_HOST}
+    ProxyJump gnrproxy
+    User vt
+    Port 22
