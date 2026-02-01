@@ -29,6 +29,44 @@ else
     exit 1
 fi
 
+# Generate SSH config from encrypted template before stowing
+echo ""
+echo "Setting up SSH config..."
+
+SSH_SECRETS="$DOTFILES_DIR/ssh_config.secrets"
+SSH_SECRETS_ENC="$DOTFILES_DIR/ssh_config.secrets.age"
+SSH_TEMPLATE="$DOTFILES_DIR/ssh_config.template"
+SSH_TARGET="$DOTFILES_DIR/ssh/.ssh/config"
+
+if [[ -f "$SSH_TEMPLATE" ]]; then
+    # Decrypt secrets if plaintext doesn't exist
+    if [[ ! -f "$SSH_SECRETS" ]]; then
+        if [[ -f "$SSH_SECRETS_ENC" ]]; then
+            if command -v age >/dev/null 2>&1; then
+                echo "  Decrypting ssh_config.secrets.age (enter passphrase)..."
+                age -d -o "$SSH_SECRETS" "$SSH_SECRETS_ENC"
+            else
+                echo "  ⚠ age not installed. Install with: sudo apt install age (or brew install age)"
+                echo "  Skipping SSH config."
+                SSH_SECRETS=""
+            fi
+        else
+            echo "  ⚠ ssh_config.secrets.age not found, skipping SSH config."
+            SSH_SECRETS=""
+        fi
+    fi
+
+    if [[ -n "$SSH_SECRETS" ]] && [[ -f "$SSH_SECRETS" ]]; then
+        mkdir -p "$DOTFILES_DIR/ssh/.ssh"
+        set -a; source "$SSH_SECRETS"; set +a
+        envsubst < "$SSH_TEMPLATE" > "$SSH_TARGET"
+        chmod 600 "$SSH_TARGET"
+        echo "  ✓ SSH config rendered to ssh/.ssh/config"
+    fi
+else
+    echo "  ⚠ ssh_config.template not found, skipping SSH config."
+fi
+
 # Stow packages
 echo ""
 echo "Stowing dotfiles..."
@@ -75,10 +113,16 @@ for package in */; do
 
     # Remove conflicting real files so stow can create symlinks
     # (installers like claude/atuin may have created defaults at these paths)
+    # NOTE: stow uses directory folding (parent dir may be a symlink into the
+    # repo), so we must check the *resolved* path to avoid deleting repo files.
     while IFS= read -r rel_path; do
         target="$HOME/$rel_path"
         if [[ -f "$target" ]] && [[ ! -L "$target" ]]; then
-            rm -f "$target"
+            resolved="$(readlink -f "$target")"
+            # Only remove if it's NOT inside the dotfiles repo
+            if [[ "$resolved" != "$DOTFILES_DIR"/* ]]; then
+                rm -f "$target"
+            fi
         fi
     done < <(find "$package" -type f -printf '%P\n')
 
