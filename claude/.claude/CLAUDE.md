@@ -3,6 +3,7 @@
 ## Core Principles
 
 - Never delete any comments while doing updates.
+- When inserting new code blocks, ensure surrounding comments still belong to their original code sections. Never separate a comment from the code it describes.
 - Only make changes that are directly requested - do not add "improvements" or modifications based on assumptions about what would be better.
 - **Never delete files, data, or results unless explicitly asked to delete.** A question about something ("did I ask you to...?") is not a request to act. When in doubt, ask before taking any destructive/irreversible action.
 - Never fabricate information (papers, authors, venues, results). Use `[[TODO: need source]]` when unsure.
