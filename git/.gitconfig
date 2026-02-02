@@ -8,6 +8,7 @@
     # fsmonitor = true
     fsmonitor = false
     untrackedCache = true
+    excludesFile = ~/.gitignore_global
 
 [interactive]
     diffFilter = delta --color-only
