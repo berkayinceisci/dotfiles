@@ -106,7 +106,8 @@ Host ark
     Port 55555
     Port 22
 
-# GNR hosted by Daniel
+# GNR
+
 Host gnrproxy
     HostName ${GNR_PROXY_HOST}
     User vt
