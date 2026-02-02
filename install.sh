@@ -283,5 +283,23 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
     fi
 fi
 
+# Set up ccusage-push cron job (skip on popos, it's the aggregation target)
+echo ""
+echo "Setting up ccusage sync..."
+
+if [[ "$(hostname)" == "popos" ]]; then
+    echo "  ⊘ Skipping ccusage-push cron (this is the aggregation target)"
+else
+    CCUSAGE_PUSH="$HOME/.local/scripts/ccusage-push"
+    CRON_ENTRY="*/30 * * * * $CCUSAGE_PUSH"
+
+    if crontab -l 2>/dev/null | grep -qF "$CCUSAGE_PUSH"; then
+        echo "  ✓ ccusage-push cron already installed"
+    else
+        (crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
+        echo "  ✓ ccusage-push cron installed (every 30 minutes)"
+    fi
+fi
+
 echo ""
 echo "Installation complete!"

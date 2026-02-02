@@ -1,0 +1,45 @@
+#!/bin/bash
+set -euo pipefail
+
+# Show Claude Code usage aggregated across all machines.
+# Runs on popos. Reads local data + remote data pushed by ccusage-push.
+
+REMOTE_DIR="$HOME/.claude/remote"
+LOCAL_HOSTNAME="$(hostname)"
+
+CCUSAGE_ARGS=("${@}")
+if [[ ${#CCUSAGE_ARGS[@]} -eq 0 ]]; then
+    CCUSAGE_ARGS=("daily")
+fi
+
+run_ccusage_for() {
+    local label="$1"
+    local projects_dir="$2"
+
+    if [[ ! -d "$projects_dir" ]] || [[ -z "$(ls -A "$projects_dir" 2>/dev/null)" ]]; then
+        return
+    fi
+
+    # Create a temp HOME with .claude/projects pointing to the target
+    local fake_home
+    fake_home="$(mktemp -d)"
+    mkdir -p "$fake_home/.claude"
+    ln -s "$projects_dir" "$fake_home/.claude/projects"
+
+    echo "=== $label ==="
+    HOME="$fake_home" ccusage "${CCUSAGE_ARGS[@]}" 2>/dev/null || true
+    echo ""
+
+    rm -rf "$fake_home"
+}
+
+# Local usage
+run_ccusage_for "$LOCAL_HOSTNAME (local)" "$HOME/.claude/projects"
+
+# Remote machines
+if [[ -d "$REMOTE_DIR" ]]; then
+    for machine_dir in "$REMOTE_DIR"/*/; do
+        machine="$(basename "$machine_dir")"
+        run_ccusage_for "$machine" "$machine_dir/projects"
+    done
+fi
