@@ -11,6 +11,6 @@ if [[ ! -d "$PROJECTS_DIR" ]]; then
     exit 0
 fi
 
-rsync -az --delete \
+rsync -az --delete --mkpath \
     "$PROJECTS_DIR/" \
     "popos:~/.claude/remote/$HOSTNAME/projects/"

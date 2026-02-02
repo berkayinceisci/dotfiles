@@ -1,18 +1,18 @@
 #!/bin/bash
 set -euo pipefail
 
-# Show Claude Code usage aggregated across all machines.
-# Runs on popos. Reads local data + remote data pushed by ccusage-push.
+# Show Claude Code total cost across all machines.
+# Reads local data + remote data pushed by ccusage-push.
+
+command -v ccusage >/dev/null || { echo "ccusage not found"; exit 1; }
+command -v jq >/dev/null || { echo "jq not found"; exit 1; }
 
 REMOTE_DIR="$HOME/.claude/remote"
-LOCAL_HOSTNAME="$(hostname)"
+FAKE_HOME="/tmp/ccusage-fake-home"
+GRAND_TOTAL=0
 
-CCUSAGE_ARGS=("${@}")
-if [[ ${#CCUSAGE_ARGS[@]} -eq 0 ]]; then
-    CCUSAGE_ARGS=("daily")
-fi
-
-run_ccusage_for() {
+# Get total cost from a projects dir. Prints "label: $cost".
+get_cost() {
     local label="$1"
     local projects_dir="$2"
 
@@ -20,26 +20,29 @@ run_ccusage_for() {
         return
     fi
 
-    # Create a temp HOME with .claude/projects pointing to the target
-    local fake_home
-    fake_home="$(mktemp -d)"
-    mkdir -p "$fake_home/.claude"
-    ln -s "$projects_dir" "$fake_home/.claude/projects"
+    rm -rf "$FAKE_HOME"
+    mkdir -p "$FAKE_HOME/.claude"
+    ln -s "$projects_dir" "$FAKE_HOME/.claude/projects"
 
-    echo "=== $label ==="
-    HOME="$fake_home" ccusage "${CCUSAGE_ARGS[@]}" 2>/dev/null || true
-    echo ""
-
-    rm -rf "$fake_home"
+    local cost
+    cost=$(HOME="$FAKE_HOME" ccusage monthly --json 2>/dev/null \
+        | jq '[.monthly[].totalCost] | add // 0') || return
+    printf "%-30s \$%.2f\n" "$label" "$cost"
+    GRAND_TOTAL=$(echo "$GRAND_TOTAL + $cost" | bc)
 }
 
 # Local usage
-run_ccusage_for "$LOCAL_HOSTNAME (local)" "$HOME/.claude/projects"
+get_cost "$(hostname)" "$HOME/.claude/projects"
 
 # Remote machines
 if [[ -d "$REMOTE_DIR" ]]; then
     for machine_dir in "$REMOTE_DIR"/*/; do
-        machine="$(basename "$machine_dir")"
-        run_ccusage_for "$machine" "$machine_dir/projects"
+        [[ -d "$machine_dir" ]] || continue
+        get_cost "$(basename "$machine_dir")" "$machine_dir/projects"
     done
 fi
+
+rm -rf "$FAKE_HOME"
+
+echo "---"
+printf "%-30s \$%.2f\n" "Total" "$GRAND_TOTAL"
