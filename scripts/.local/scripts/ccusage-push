@@ -4,16 +4,23 @@ set -euo pipefail
 # Push local Claude Code usage data to popos for aggregation.
 # Intended to run as a cron job on each machine.
 
-HOSTNAME="$(hostname)"
 PROJECTS_DIR="$HOME/.claude/projects"
 
 if [[ ! -d "$PROJECTS_DIR" ]]; then
     exit 0
 fi
 
-REMOTE_DIR="~/.claude/remote/$HOSTNAME/projects"
+# CloudLab machines share a single "cloudlab" entry.
+# All other machines use their hostname.
+if [[ "$(hostname -f 2>/dev/null || hostname)" == *.cloudlab.us ]]; then
+    LABEL="cloudlab"
+else
+    LABEL="$(hostname)"
+fi
+
+REMOTE_DIR="~/.claude/remote/$LABEL/projects"
 ssh popos "mkdir -p $REMOTE_DIR"
 
-rsync -az --delete \
+rsync -az \
     "$PROJECTS_DIR/" \
     "popos:$REMOTE_DIR/"
