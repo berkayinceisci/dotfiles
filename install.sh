@@ -291,6 +291,12 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
     fi
 fi
 
+# Configure global gitignore
+echo ""
+echo "Configuring global gitignore..."
+git config --global core.excludesFile ~/.gitignore_global
+echo "  ✓ Global gitignore configured"
+
 # Set up ccusage-push cron job (skip on popos, it's the aggregation target)
 echo ""
 echo "Setting up ccusage sync..."
