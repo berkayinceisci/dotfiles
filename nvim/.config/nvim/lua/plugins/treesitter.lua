@@ -104,7 +104,7 @@ return {
 			})
 
 			-- Repeatable move setup
-			local ts_repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+			local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
 			vim.keymap.set({ "n", "x", "o" }, ";", ts_repeat_move.repeat_last_move)
 			vim.keymap.set({ "n", "x", "o" }, ",", ts_repeat_move.repeat_last_move_opposite)
 			vim.keymap.set({ "n", "x", "o" }, "f", ts_repeat_move.builtin_f_expr, { expr = true })
@@ -116,7 +116,6 @@ return {
 
 	{
 		"nvim-treesitter/nvim-treesitter-textobjects",
-		lazy = true,
 	},
 
 	-- 3. Treesitter Context
