@@ -36,8 +36,14 @@ if [[ -d "${PROJECT_DIR}" ]]; then
     BEFORE_SESSIONS=$(ls -t "${PROJECT_DIR}"/*.jsonl 2>/dev/null | head -20 || true)
 fi
 
+# On non-cloudlab machines, restrict dangerous commands
+DISALLOWED_TOOLS_ARGS=()
+if [[ "$(hostname -f 2>/dev/null || hostname)" != *.cloudlab.us ]]; then
+    DISALLOWED_TOOLS_ARGS=(--disallowedTools 'Bash(sudo:*),Bash(rm -rf:*),Bash(mkfs:*),Bash(dd:*),Bash(chmod -R:*),Bash(chown -R:*)')
+fi
+
 # Run claude with all provided arguments
-claude "$@"
+claude "${DISALLOWED_TOOLS_ARGS[@]}" "$@"
 EXIT_CODE=$?
 
 # Find the new session file(s) created during this run
