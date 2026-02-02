@@ -111,20 +111,28 @@ for package in */; do
         continue
     fi
 
-    # Remove conflicting real files so stow can create symlinks
+    # Remove conflicting files/symlinks so stow can create its own symlinks
     # (installers like claude/atuin may have created defaults at these paths)
     # NOTE: stow uses directory folding (parent dir may be a symlink into the
     # repo), so we must check the *resolved* path to avoid deleting repo files.
     while IFS= read -r rel_path; do
         target="$HOME/$rel_path"
-        if [[ -f "$target" ]] && [[ ! -L "$target" ]]; then
-            resolved="$(readlink -f "$target")"
-            # Only remove if it's NOT inside the dotfiles repo
-            if [[ "$resolved" != "$DOTFILES_DIR"/* ]]; then
-                rm -f "$target"
+        if [[ -e "$target" || -L "$target" ]]; then
+            if [[ -L "$target" ]]; then
+                # Remove symlinks not managed by stow (i.e., not pointing into repo)
+                resolved="$(readlink -f "$target" 2>/dev/null || true)"
+                if [[ "$resolved" != "$DOTFILES_DIR"/* ]]; then
+                    rm -f "$target"
+                fi
+            elif [[ -f "$target" ]]; then
+                resolved="$(readlink -f "$target" 2>/dev/null || true)"
+                # Only remove if it's NOT inside the dotfiles repo
+                if [[ "$resolved" != "$DOTFILES_DIR"/* ]]; then
+                    rm -f "$target"
+                fi
             fi
         fi
-    done < <(find "$package" -type f -printf '%P\n')
+    done < <(cd "$package" && find . -type f | sed 's|^\./||')
 
     echo "  → Stowing $package"
     stow "$package"
