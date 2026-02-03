@@ -3,6 +3,19 @@
     "DISABLE_COST_WARNINGS": "1",
     "DISABLE_SESSION_LIMIT_WARNINGS": "1"
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/block-nfs-writes.sh"
+          }
+        ]
+      }
+    ]
+  },
   "model": "opus",
   "statusLine": {
     "type": "command",
