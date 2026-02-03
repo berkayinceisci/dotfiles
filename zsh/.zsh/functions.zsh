@@ -90,3 +90,10 @@ open() {
     fi
 }
 
+# cp with progress bar (requires: brew install progress)
+cpv() {
+    cp "$@" &
+    local pid=$!
+    progress -wp $pid
+    wait $pid
+}
