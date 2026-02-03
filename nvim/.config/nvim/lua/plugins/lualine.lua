@@ -16,6 +16,11 @@ return {
 				component_separators = "|",
 				section_separators = "",
 			},
+			sections = {
+				lualine_c = {
+					{ "filename", path = 1 }, -- 0 = filename, 1 = relative path, 2 = absolute
+				},
+			},
 		})
 
 		vim.opt.fillchars = {
