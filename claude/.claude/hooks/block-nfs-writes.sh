@@ -20,7 +20,8 @@ is_under_nfs() {
 }
 
 input=$(cat)
-tool_name="${CLAUDE_TOOL_NAME:-}"
+# Tool name is passed in JSON, not as env var
+tool_name=$(echo "$input" | jq -r '.tool_name // empty' 2>/dev/null || true)
 
 case "$tool_name" in
     Write|Edit)
@@ -40,7 +41,7 @@ case "$tool_name" in
             fi
         done
         # Check destination of write commands (last path argument)
-        if [[ "$command" =~ (^|[;&|])[[:space:]]*(cp|mv|rsync|scp)[[:space:]] ]]; then
+        if [[ "$command" =~ (^|[;&|])[[:space:]]*(sudo[[:space:]]+)?(cp|mv|rsync|scp)[[:space:]] ]]; then
             # Get last absolute path (the destination)
             dest=$(echo "$command" | grep -oE '/[^ ">|;&]+' | tail -1 || true)
             if [[ -n "$dest" ]] && is_under_nfs "$dest"; then
@@ -49,7 +50,7 @@ case "$tool_name" in
             fi
         fi
         # Commands where all path args are destinations
-        if [[ "$command" =~ (^|[;&|])[[:space:]]*(tee|dd|touch|mkdir|rm|rmdir)[[:space:]] ]]; then
+        if [[ "$command" =~ (^|[;&|])[[:space:]]*(sudo[[:space:]]+)?(tee|dd|touch|mkdir|rm|rmdir)[[:space:]] ]]; then
             for path in $(echo "$command" | grep -oE '/[^ ">|;&]+' || true); do
                 if is_under_nfs "$path"; then
                     echo "BLOCKED: Write command targets NFS: $path"
