@@ -39,8 +39,8 @@ SSH_TEMPLATE="$DOTFILES_DIR/ssh_config.template"
 SSH_TARGET="$DOTFILES_DIR/ssh/.ssh/config"
 
 if [[ -f "$SSH_TEMPLATE" ]]; then
-    # Decrypt secrets if plaintext doesn't exist
-    if [[ ! -f "$SSH_SECRETS" ]]; then
+    # Decrypt secrets if plaintext doesn't exist or is older than encrypted file
+    if [[ ! -f "$SSH_SECRETS" ]] || [[ "$SSH_SECRETS_ENC" -nt "$SSH_SECRETS" ]]; then
         if [[ -f "$SSH_SECRETS_ENC" ]]; then
             if command -v age >/dev/null 2>&1; then
                 echo "  Decrypting ssh_config.secrets.age (enter passphrase)..."
