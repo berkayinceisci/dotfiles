@@ -113,8 +113,14 @@ Host gnrproxy
     User vt
     Port 22
 
-Host gnr
-    HostName ${GNR_HOST}
+Host gnr-micron
+    HostName ${GNR_MICRON_HOST}
     ProxyJump gnrproxy
     User vt
+    Port 22
+
+Host gnr-astera
+    HostName ${GNR_ASTERA_HOST}
+    ProxyJump gnrproxy
+    User berkay
     Port 22
