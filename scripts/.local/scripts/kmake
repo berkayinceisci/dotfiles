@@ -1,0 +1,5 @@
+#!/bin/bash
+# Linux kernel make wrapper with Clang and compile_commands.json generation
+# Usage: kmake [make arguments]
+
+make LLVM=-15 "$@" && ./scripts/clang-tools/gen_compile_commands.py

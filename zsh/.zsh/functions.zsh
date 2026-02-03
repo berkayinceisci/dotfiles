@@ -41,15 +41,6 @@ bcd() {
     fi
 }
 
-clip2png() {
-    local filename="${1:-clipboard_$(date +%Y%m%d_%H%M%S).png}"
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        xclip -selection clipboard -t image/png -o > "$filename" 2>/dev/null && echo "Saved: $filename" || echo "No image in clipboard"
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        pngpaste "$filename" 2>/dev/null && echo "Saved: $filename" || echo "No image in clipboard (requires: brew install pngpaste)"
-    fi
-}
-
 open() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         command open "$@"
@@ -99,16 +90,3 @@ open() {
     fi
 }
 
-# --- Ask Claude from shell ---
-_ask_claude() {
-    if [[ -z "$*" ]]; then
-        echo "Usage: ?? <your question>"
-        return 1
-    fi
-    claude -p --no-session-persistence --model sonnet "Answer concisely. You cannot run commands or access the system. If the question requires system information, provide only the command to run - never fabricate output. $*"
-}
-
-# --- Linux kernel development ---
-kmake() {
-    make "$@" && ./scripts/clang-tools/gen_compile_commands.py
-}
