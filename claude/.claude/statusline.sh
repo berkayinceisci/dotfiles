@@ -151,7 +151,15 @@ format_reset_time() {
     fi
 
     local now=$(date +%s)
-    local reset_epoch=$(date -d "$reset_time" +%s 2>/dev/null)
+    local reset_epoch
+    # Try GNU date first, then BSD date (macOS)
+    reset_epoch=$(date -d "$reset_time" +%s 2>/dev/null)
+    if [[ -z "$reset_epoch" ]]; then
+        # BSD date (macOS): parse ISO 8601 format
+        # Strip fractional seconds and convert +00:00 to +0000
+        local clean_time=$(echo "$reset_time" | sed -E 's/\.[0-9]+//; s/:([0-9]{2})$/\1/')
+        reset_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$clean_time" +%s 2>/dev/null)
+    fi
     if [[ -z "$reset_epoch" ]]; then
         echo ""
         return
