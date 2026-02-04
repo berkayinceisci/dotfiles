@@ -291,13 +291,16 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
     fi
 fi
 
-# Set up ccusage-push cron job (skip on popos, it's the aggregation target)
+# Set up ccusage-push cron job (only on specific machines)
 echo ""
 echo "Setting up ccusage sync..."
 
-if [[ "$(hostname)" == "popos" ]]; then
-    echo "  ⊘ Skipping ccusage-push cron (this is the aggregation target)"
-else
+HOST=$(hostname)
+
+if [[ "$OS" == "macos" ]] \
+    || [[ "$HOST" == "manjaro" ]] \
+    || [[ "$HOST" == "ubuntu" ]] \
+    || [[ "$(hostname -f 2>/dev/null || hostname)" == *.cloudlab.us ]]; then
     CCUSAGE_PUSH="$HOME/.local/scripts/ccusage-push"
     CRON_ENTRY="*/30 * * * * $CCUSAGE_PUSH"
 
@@ -307,6 +310,8 @@ else
         (crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
         echo "  ✓ ccusage-push cron installed (every 30 minutes)"
     fi
+else
+    echo "  ⊘ Skipping ccusage-push cron (not a target machine)"
 fi
 
 echo ""
