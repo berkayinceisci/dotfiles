@@ -43,7 +43,8 @@ if [[ "$(hostname -f 2>/dev/null || hostname)" != *.cloudlab.us ]]; then
 fi
 
 # Run claude with all provided arguments
-claude "${DISALLOWED_TOOLS_ARGS[@]}" "$@"
+# DISALLOWED_TOOLS_ARGS comes AFTER user args so it takes precedence
+claude "$@" "${DISALLOWED_TOOLS_ARGS[@]}"
 EXIT_CODE=$?
 
 # Find the new session file(s) created during this run
