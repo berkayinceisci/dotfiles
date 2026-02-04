@@ -10,11 +10,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/block-dangerous-cmds.sh"
+            "command": "~/.claude/hooks/confirm-dangerous-noncloudlab.sh"
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/confirm-git-commands.sh"
+            "command": "~/.claude/hooks/confirm-git.sh"
           }
         ]
       },
