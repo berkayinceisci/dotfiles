@@ -134,7 +134,6 @@ Instead, you MUST:
 
 ## Git Commits
 
-- **NEVER commit unless the user explicitly asks you to commit.** Creating files or documentation does not imply permission to commit. Wait for explicit instructions like "commit this" or "commit the changes".
 - One brief sentence summarizing the change
 - Never commit secrets (API keys, passwords, tokens)
 - Check `git diff` before committing

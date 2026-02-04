@@ -11,6 +11,10 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/block-dangerous-cmds.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/confirm-git-commands.sh"
           }
         ]
       },
