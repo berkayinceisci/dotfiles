@@ -3,18 +3,51 @@ set -euo pipefail
 
 # Show Claude Code total cost across all machines.
 # Reads local data + remote data pushed by ccusage-push.
+# Pulls data from server machines (MoatLab/GNR) on demand with caching.
 
 command -v ccusage >/dev/null || { echo "ccusage not found"; exit 1; }
 command -v jq >/dev/null || { echo "jq not found"; exit 1; }
 
 REMOTE_DIR="$HOME/.claude/remote"
+PULL_CACHE_DIR="$HOME/.claude/remote-pull"
 FAKE_HOME="/tmp/ccusage-fake-home"
 GRAND_TOTAL=0
+
+SSH_TIMEOUT=10
+SSH_CONFIG="$HOME/.ssh/config"
+
+# Parse server machines from SSH config (MoatLab + GNR sections).
+get_pull_machines() {
+    [[ -f "$SSH_CONFIG" ]] || return
+
+    local in_section=false
+
+    while IFS= read -r line; do
+        # Section headers start with "# "
+        if [[ "$line" =~ ^#\  ]]; then
+            if [[ "$line" == "# MoatLab" ]] || [[ "$line" == "# GNR" ]]; then
+                in_section=true
+            else
+                in_section=false
+            fi
+            continue
+        fi
+
+        [[ "$in_section" == true ]] || continue
+
+        if [[ "$line" =~ ^Host[[:space:]]+([^*]+)$ ]]; then
+            echo "${BASH_REMATCH[1]// /}"
+        fi
+    done < "$SSH_CONFIG"
+}
+
+mapfile -t PULL_MACHINES < <(get_pull_machines)
 
 # Get total cost from a projects dir. Prints "label: $cost".
 get_cost() {
     local label="$1"
     local projects_dir="$2"
+    local suffix="${3:-}"
 
     if [[ ! -d "$projects_dir" ]] || [[ -z "$(ls -A "$projects_dir" 2>/dev/null)" ]]; then
         return
@@ -27,20 +60,50 @@ get_cost() {
     local cost
     cost=$(HOME="$FAKE_HOME" ccusage monthly --json 2>/dev/null \
         | jq '[.monthly[].totalCost] | add // 0') || return
-    printf "%-30s \$%.2f\n" "$label" "$cost"
+    printf "%-30s \$%.2f%s\n" "$label" "$cost" "$suffix"
     GRAND_TOTAL=$(echo "$GRAND_TOTAL + $cost" | bc)
+}
+
+# Pull usage data from a server machine into the cache.
+# Returns 0 on success, 1 on failure.
+pull_machine() {
+    local host="$1"
+    local cache_dir="$PULL_CACHE_DIR/$host/projects"
+
+    # Try to rsync the remote projects dir
+    if ssh -o ConnectTimeout="$SSH_TIMEOUT" -o BatchMode=yes "$host" \
+        'test -d ~/.claude/projects' 2>/dev/null &&
+       mkdir -p "$cache_dir" &&
+       rsync -az -e "ssh -o ConnectTimeout=$SSH_TIMEOUT -o BatchMode=yes" \
+        "$host:~/.claude/projects/" "$cache_dir/" 2>/dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 # Local usage
 get_cost "$(hostname)" "$HOME/.claude/projects"
 
-# Remote machines
+# Remote machines (pushed via ccusage-push)
 if [[ -d "$REMOTE_DIR" ]]; then
     for machine_dir in "$REMOTE_DIR"/*/; do
         [[ -d "$machine_dir" ]] || continue
         get_cost "$(basename "$machine_dir")" "$machine_dir/projects"
     done
 fi
+
+# Server machines (pulled on demand)
+for host in "${PULL_MACHINES[@]}"; do
+    if pull_machine "$host"; then
+        # Fresh data pulled successfully
+        get_cost "$host" "$PULL_CACHE_DIR/$host/projects"
+    elif [[ -d "$PULL_CACHE_DIR/$host/projects" ]] && \
+         [[ -n "$(ls -A "$PULL_CACHE_DIR/$host/projects" 2>/dev/null)" ]]; then
+        # Machine unreachable but we have cached data
+        get_cost "$host" "$PULL_CACHE_DIR/$host/projects" " ⚠"
+    fi
+    # No cache and unreachable: skip silently
+done
 
 rm -rf "$FAKE_HOME"
 
