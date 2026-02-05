@@ -165,7 +165,8 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 ## Plotting
 
 - Plot titles must be as descriptive as possible, including all key parameters and context.
-- Any information encoded in the output file name (e.g., dataset, method, parameters, date) must also appear in the plot title.
+- Output file names must be equally descriptive, encoding key parameters (e.g., platform, event, dataset, method, bin size, date). Any information in the title should also be recoverable from the filename.
+- Any information encoded in the output file name must also appear in the plot title, and vice versa.
 - Axis labels must include units where applicable.
 
 ## Whitespace (CRITICAL)
