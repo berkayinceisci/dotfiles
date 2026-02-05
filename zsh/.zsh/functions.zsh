@@ -41,6 +41,14 @@ bcd() {
     fi
 }
 
+rcd() {
+    sudo -i bash -c "cd \"$1\" && exec bash"
+}
+
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
 open() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         command open "$@"
