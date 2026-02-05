@@ -5,15 +5,25 @@ set -euo pipefail
 # Reads local data + remote data pushed by ccusage-push.
 # Pulls data from server machines (MoatLab/GNR) on demand with caching.
 
+# If not on popos, delegate to popos via SSH
+if [[ "$(hostname)" != "popos" ]]; then
+    exec ssh -o ConnectTimeout=5 popos '~/.local/scripts/ccusage-all'
+fi
+
+# Ensure PATH includes nvm and local scripts (needed for non-interactive SSH)
+export PATH="$HOME/.local/scripts:$HOME/.local/bin:$PATH"
+for dir in "$HOME"/.nvm/versions/node/*/bin; do
+    [[ -d "$dir" ]] && export PATH="$dir:$PATH" && break
+done
+
 command -v ccusage >/dev/null || { echo "ccusage not found"; exit 1; }
 command -v jq >/dev/null || { echo "jq not found"; exit 1; }
 
 REMOTE_DIR="$HOME/.claude/remote"
 PULL_CACHE_DIR="$HOME/.claude/remote-pull"
-FAKE_HOME="/tmp/ccusage-fake-home"
-GRAND_TOTAL=0
+WORK_DIR=$(mktemp -d)
 
-SSH_TIMEOUT=10
+SSH_TIMEOUT=5
 SSH_CONFIG="$HOME/.ssh/config"
 
 # Parse server machines from SSH config (MoatLab + GNR sections).
@@ -43,69 +53,83 @@ get_pull_machines() {
 
 mapfile -t PULL_MACHINES < <(get_pull_machines)
 
-# Get total cost from a projects dir. Prints "label: $cost".
-get_cost() {
+# Compute cost from a projects dir and write result to a file.
+# Each call gets its own fake home to allow parallel execution.
+compute_cost() {
     local label="$1"
     local projects_dir="$2"
     local suffix="${3:-}"
+    local out_file="$WORK_DIR/cost-$label"
 
     if [[ ! -d "$projects_dir" ]] || [[ -z "$(ls -A "$projects_dir" 2>/dev/null)" ]]; then
         return
     fi
 
-    rm -rf "$FAKE_HOME"
-    mkdir -p "$FAKE_HOME/.claude"
-    ln -s "$projects_dir" "$FAKE_HOME/.claude/projects"
+    local fake_home="$WORK_DIR/home-$label"
+    mkdir -p "$fake_home/.claude"
+    ln -s "$projects_dir" "$fake_home/.claude/projects"
 
     local cost
-    cost=$(HOME="$FAKE_HOME" ccusage monthly --json 2>/dev/null \
+    cost=$(HOME="$fake_home" ccusage monthly --json 2>/dev/null \
         | jq '[.monthly[].totalCost] | add // 0') || return
+    echo "$cost" > "$out_file"
     printf "%-30s \$%.2f%s\n" "$label" "$cost" "$suffix"
-    GRAND_TOTAL=$(echo "$GRAND_TOTAL + $cost" | bc)
 }
 
 # Pull usage data from a server machine into the cache.
-# Returns 0 on success, 1 on failure.
+# Writes "ok" or "fail" to the status file.
 pull_machine() {
     local host="$1"
     local cache_dir="$PULL_CACHE_DIR/$host/projects"
+    local status_file="$WORK_DIR/pull-$host"
 
-    # Try to rsync the remote projects dir
-    if ssh -o ConnectTimeout="$SSH_TIMEOUT" -o BatchMode=yes "$host" \
+    if timeout "$SSH_TIMEOUT" ssh -o ConnectTimeout="$SSH_TIMEOUT" -o BatchMode=yes "$host" \
         'test -d ~/.claude/projects' 2>/dev/null &&
        mkdir -p "$cache_dir" &&
-       rsync -az -e "ssh -o ConnectTimeout=$SSH_TIMEOUT -o BatchMode=yes" \
+       timeout "$SSH_TIMEOUT" rsync -az -e "ssh -o ConnectTimeout=$SSH_TIMEOUT -o BatchMode=yes" \
         "$host:~/.claude/projects/" "$cache_dir/" 2>/dev/null; then
-        return 0
+        echo "ok" > "$status_file"
+    else
+        echo "fail" > "$status_file"
     fi
-    return 1
 }
 
-# Local usage
-get_cost "$(hostname)" "$HOME/.claude/projects"
+# Pull all server machines in parallel (start early, overlap with ccusage calls)
+for host in "${PULL_MACHINES[@]}"; do
+    pull_machine "$host" &
+done
 
-# Remote machines (pushed via ccusage-push)
+# Compute costs for local + pushed machines in parallel
+compute_cost "$(hostname)" "$HOME/.claude/projects" &
 if [[ -d "$REMOTE_DIR" ]]; then
     for machine_dir in "$REMOTE_DIR"/*/; do
         [[ -d "$machine_dir" ]] || continue
-        get_cost "$(basename "$machine_dir")" "$machine_dir/projects"
+        compute_cost "$(basename "$machine_dir")" "$machine_dir/projects" &
     done
 fi
 
-# Server machines (pulled on demand)
+# Wait for everything (pulls + local/pushed cost computations)
+wait
+
+# Compute costs for pulled machines in parallel
 for host in "${PULL_MACHINES[@]}"; do
-    if pull_machine "$host"; then
-        # Fresh data pulled successfully
-        get_cost "$host" "$PULL_CACHE_DIR/$host/projects"
+    if [[ -f "$WORK_DIR/pull-$host" ]] && [[ "$(< "$WORK_DIR/pull-$host")" == "ok" ]]; then
+        compute_cost "$host" "$PULL_CACHE_DIR/$host/projects" &
     elif [[ -d "$PULL_CACHE_DIR/$host/projects" ]] && \
          [[ -n "$(ls -A "$PULL_CACHE_DIR/$host/projects" 2>/dev/null)" ]]; then
-        # Machine unreachable but we have cached data
-        get_cost "$host" "$PULL_CACHE_DIR/$host/projects" " ⚠"
+        compute_cost "$host" "$PULL_CACHE_DIR/$host/projects" " ⚠" &
     fi
-    # No cache and unreachable: skip silently
+done
+wait
+
+# Sum all costs
+GRAND_TOTAL=0
+for f in "$WORK_DIR"/cost-*; do
+    [[ -f "$f" ]] || continue
+    GRAND_TOTAL=$(echo "$GRAND_TOTAL + $(< "$f")" | bc)
 done
 
-rm -rf "$FAKE_HOME"
+rm -rf "$WORK_DIR"
 
 echo "---"
 printf "%-30s \$%.2f\n" "Total" "$GRAND_TOTAL"
