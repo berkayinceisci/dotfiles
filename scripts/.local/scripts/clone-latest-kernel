@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+REPO_URL="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+TARGET_DIR="${1:-linux}"
+
+if [[ -d "$TARGET_DIR" ]]; then
+    echo "Directory '$TARGET_DIR' already exists"
+    exit 1
+fi
+
+LATEST_TAG=$(git ls-remote --tags --sort='v:refname' "$REPO_URL" | \
+             grep -v -- '-rc' | \
+             grep -v '{}' | \
+             tail -n1 | \
+             cut -d'/' -f3)
+
+if [[ -z "$LATEST_TAG" ]]; then
+    echo "Failed to determine latest stable tag"
+    exit 1
+fi
+
+echo "Cloning latest stable kernel: $LATEST_TAG into $TARGET_DIR"
+git clone --depth 1 --branch "$LATEST_TAG" "$REPO_URL" "$TARGET_DIR"
