@@ -20,6 +20,7 @@ Example: If `sudo ./install.sh` is blocked, do NOT try `./install.sh` without su
 - Follow existing code conventions in each project.
 - Test changes before marking tasks complete.
 - Be concise and direct.
+- When answering questions about code, always include the relevant code snippet(s) with file path and line numbers.
 
 ## Conversation Guidelines
 
