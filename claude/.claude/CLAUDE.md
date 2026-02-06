@@ -7,7 +7,16 @@ When a command is blocked by a hook (e.g., "BLOCKED: sudo is not allowed"):
 - Try running the command, the user will be asked to approve if needed by the hook
 - The hook exists for security/safety/correctness reasons - respect it completely
 
-Example: If `sudo ./install.sh` is blocked, do NOT try `./install.sh` without sudo. Instead say: "This command requires sudo. Please run it yourself: `sudo ./install.sh`"
+## Sudo Commands
+
+- Run sudo commands directly when needed. Do NOT ask the user to run them manually.
+- If a hook blocks the command, the user will be prompted to approve — just attempt it.
+
+## Temporary Scripts / Files
+
+- **NEVER create wrapper scripts in /tmp or scratchpad.** Always modify existing project scripts or create new ones in the project directory.
+- Temporary wrapper scripts lead to orphaned processes and are not version-controlled or battle-tested.
+- If a multi-config loop is needed, add it to the project's existing experiment runner script.
 
 ## Core Principles
 
