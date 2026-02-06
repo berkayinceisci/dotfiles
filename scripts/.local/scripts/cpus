@@ -1,0 +1,47 @@
+#!/bin/bash
+# Bring CPUs online/offline for build vs experiment mode
+# Usage: cpus [all|exp]  (no args shows current status)
+#   all  - enable HT, bring all CPUs online
+#   exp  - disable HT, offline non-node0 CPUs
+
+set -euo pipefail
+
+SMT_CTL=/sys/devices/system/cpu/smt/control
+
+disable_non_node0_cpus() {
+    local nr_nodes
+    nr_nodes=$(ls -d /sys/devices/system/node/node* | wc -l)
+    local max_node_id=$((nr_nodes - 1))
+    for i in $(seq 1 "$max_node_id"); do
+        # Skip CPUless NUMA nodes
+        local node_cpus=(/sys/devices/system/node/node"$i"/cpu[0-9]*/online)
+        [[ -e "${node_cpus[0]}" ]] || continue
+        echo 0 | sudo tee "${node_cpus[@]}" >/dev/null
+    done
+}
+
+case "${1:-status}" in
+    all)
+        echo on | sudo tee "$SMT_CTL" >/dev/null
+        # Some writes fail on already-online CPUs, that's expected
+        echo 1 | sudo tee /sys/devices/system/cpu/cpu*/online >/dev/null 2>&1 || true
+        echo "All CPUs online, HT on"
+        echo "Online list: $(cat /sys/devices/system/cpu/online)"
+        ;;
+    exp)
+        echo off | sudo tee "$SMT_CTL" >/dev/null
+        disable_non_node0_cpus
+        echo "Experiment config: node0 only, HT off"
+        echo "Online list: $(cat /sys/devices/system/cpu/online)"
+        ;;
+    status)
+        echo "HT: $(cat "$SMT_CTL")"
+        echo "Online CPUs: $(grep -c "^processor" /proc/cpuinfo)"
+        echo "Online list: $(cat /sys/devices/system/cpu/online)"
+        echo "Offline list: $(cat /sys/devices/system/cpu/offline)"
+        ;;
+    *)
+        echo "Usage: cpus [all|exp]" >&2
+        exit 1
+        ;;
+esac
