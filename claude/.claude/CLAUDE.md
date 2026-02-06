@@ -82,26 +82,50 @@ rm file.txt    # Bad: may prompt
 
 **Problem**: Child processes become orphaned (PPID=1) when parent is killed.
 
+### Killing Process Trees
+
+SIGKILL (`kill -9`) does NOT propagate to children. You must explicitly kill children first:
+
 ```bash
-# Before starting: check for orphans
-pgrep -af "pattern" && pkill -9 -f "pattern"
+# WRONG: leaves child processes orphaned
+kill -9 $parent_pid
 
-# Kill entire process tree, not just parent
-pkill -9 -f "script_name"
-pkill -9 -f "workload_binary"
-
-# Verify processes are dead
-sleep 2 && pgrep -af "pattern" || echo "Clean"
-
-# In scripts: use cleanup traps
-cleanup() {
-    pkill -P $$
-    exit
-}
-trap cleanup EXIT INT TERM
+# RIGHT: kill children first, then parent
+pkill -9 -P "$parent_pid" 2>/dev/null || true
+kill -9 "$parent_pid" 2>/dev/null || true
+wait "$parent_pid" 2>/dev/null || true
 ```
 
-**CRITICAL: Before declaring a process dead, verify with `ps` or `kill -0`, not just log output.** Logs may be buffered/stale. Never delete results or restart experiments based on log staleness alone. Specifically:
+Common example: `wrapper_proc ... -- child_proc &` — killing wrapper leaves child orphaned.
+
+### Cleanup Traps in Scripts
+
+```bash
+# Track all background PIDs
+BG_PIDS=()
+
+cleanup() {
+    for pid in "${BG_PIDS[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            pkill -9 -P "$pid" 2>/dev/null || true  # children first
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+    wait 2>/dev/null || true
+}
+
+# IMPORTANT: Only trap INT TERM, NOT EXIT.
+# Trapping EXIT causes the trap to fire on normal exit, which can produce
+# non-zero exit codes that break `set -euo pipefail` in calling scripts.
+trap cleanup INT TERM
+
+some_command &
+BG_PIDS+=("$!")
+```
+
+### Verifying Process Death
+
+**CRITICAL: Before declaring a process dead, verify with `ps` or `kill -0`, not just log output.** Logs may be buffered/stale. Never delete results or restart experiments based on log staleness alone.
 
 1. Check the actual process: `ps -p <PID> -o pid,stat,etime` or `kill -0 <PID>`
 2. Check the full process tree: `pgrep -af "pattern"` (the process may have forked)
@@ -141,6 +165,23 @@ Instead, you MUST:
    and diagnose/fix the issue before continuing.
 4. Only consider the task complete when the experiment has finished successfully and
    results have been collected/verified.
+
+### Clean Slate Between Experiments (CRITICAL)
+
+When running multiple experiments in sequence, each experiment MUST start with a
+completely clean process state. **After each experiment finishes**, you MUST:
+
+1. Check the process list for any orphaned processes from the completed experiment.
+   Use `pgrep -af` with patterns matching the experiment's binaries and background
+   processes. Do NOT rely on the script's own cleanup — independently verify.
+2. If orphans are found, kill them (children first, then parents) and verify they
+   are gone before proceeding to the next experiment.
+3. Only start the next experiment after confirming a clean slate.
+
+Common orphan sources:
+- Child processes surviving after parent is killed (SIGKILL doesn't propagate)
+- Background processes not receiving signals properly
+- Long-running sleep/daemon processes spawned by experiment infrastructure
 
 ## Git Commits
 
