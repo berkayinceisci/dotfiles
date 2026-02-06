@@ -4,8 +4,8 @@
 
 When a command is blocked by a hook (e.g., "BLOCKED: sudo is not allowed"):
 - **NEVER attempt workarounds** such as removing sudo, using alternative commands, or modifying the command to bypass the block
-- **ALWAYS tell the user** to run the exact blocked command themselves
-- The hook exists for security/safety reasons - respect it completely
+- Try running the command, the user will be asked to approve if needed by the hook
+- The hook exists for security/safety/correctness reasons - respect it completely
 
 Example: If `sudo ./install.sh` is blocked, do NOT try `./install.sh` without sudo. Instead say: "This command requires sudo. Please run it yourself: `sudo ./install.sh`"
 
