@@ -1,3 +1,4 @@
 .DS_Store
 settings.local.json
 cc-session.md
+__pycache__
