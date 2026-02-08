@@ -260,6 +260,27 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
     echo ""
     echo "Installing system-level configurations..."
 
+    # Enable Playwright plugin for Claude Code (GUI only)
+    CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+    CLAUDE_SETTINGS_SRC="$DOTFILES_DIR/claude/.claude/settings.json"
+    if [[ -f "$CLAUDE_SETTINGS_SRC" ]]; then
+        echo "Enabling Claude Code Playwright plugin..."
+        # Replace stow symlink with a copy so we can modify it
+        rm -f "$CLAUDE_SETTINGS"
+        cp "$CLAUDE_SETTINGS_SRC" "$CLAUDE_SETTINGS"
+        python3 -c "
+import json, sys
+p = sys.argv[1]
+with open(p) as f:
+    s = json.load(f)
+s.setdefault('enabledPlugins', {})['playwright@claude-plugins-official'] = True
+with open(p, 'w') as f:
+    json.dump(s, f, indent=2)
+    f.write('\n')
+" "$CLAUDE_SETTINGS"
+        echo "  ✓ Playwright plugin enabled in $CLAUDE_SETTINGS"
+    fi
+
     # Install Zen Browser policies
     if [ -f "$DOTFILES_DIR/zen/policies.json" ]; then
         echo "Installing Zen Browser policies..."
