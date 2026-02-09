@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+# Open all Claude Code /insights reports in the browser.
+
+for f in ~/.claude/usage-data/report.html \
+         ~/.claude/remote/*/usage-data/report.html \
+         ~/.claude/remote-pull/*/usage-data/report.html; do
+    [[ -f "$f" ]] || continue
+    xdg-open "$f" 2>/dev/null || open "$f" 2>/dev/null || true
+done
