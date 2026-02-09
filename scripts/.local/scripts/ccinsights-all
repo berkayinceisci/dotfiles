@@ -1,0 +1,184 @@
+#!/bin/bash
+set -euo pipefail
+
+# Generate per-machine Claude Code /insights reports across all machines.
+# Pulls session data from server machines, then runs /insights separately
+# for each machine to produce individual reports. Facets are cached per
+# machine so re-runs are fast.
+#
+# Reports are stored alongside per-machine project data:
+#   ~/.claude/remote/<machine>/usage-data/report.html     (pushed machines)
+#   ~/.claude/remote-pull/<machine>/usage-data/report.html (pulled machines)
+#   ~/.claude/usage-data/report.html                       (popos / local)
+
+# If not on popos, delegate to popos via SSH
+if [[ "$(hostname)" != "popos" ]]; then
+    exec ssh -o ConnectTimeout=5 -t popos '~/.local/scripts/ccinsights-all'
+fi
+
+# Ensure PATH includes nvm and local scripts (needed for non-interactive SSH)
+export PATH="$HOME/.local/scripts:$HOME/.local/bin:$PATH"
+for dir in "$HOME"/.nvm/versions/node/*/bin; do
+    [[ -d "$dir" ]] && export PATH="$dir:$PATH" && break
+done
+
+command -v claude >/dev/null || { echo "claude not found"; exit 1; }
+
+REMOTE_DIR="$HOME/.claude/remote"
+PULL_CACHE_DIR="$HOME/.claude/remote-pull"
+
+SSH_TIMEOUT=5
+SSH_CONFIG="$HOME/.ssh/config"
+
+# Parse server machines from SSH config (MoatLab + GNR sections).
+get_pull_machines() {
+    [[ -f "$SSH_CONFIG" ]] || return
+
+    local in_section=false
+
+    while IFS= read -r line; do
+        # Section headers start with "# "
+        if [[ "$line" =~ ^#\  ]]; then
+            if [[ "$line" == "# MoatLab" ]] || [[ "$line" == "# GNR" ]]; then
+                in_section=true
+            else
+                in_section=false
+            fi
+            continue
+        fi
+
+        [[ "$in_section" == true ]] || continue
+
+        if [[ "$line" =~ ^Host[[:space:]]+([^*]+)$ ]]; then
+            echo "${BASH_REMATCH[1]// /}"
+        fi
+    done < "$SSH_CONFIG"
+}
+
+mapfile -t PULL_MACHINES < <(get_pull_machines)
+
+WORK_DIR=$(mktemp -d)
+
+# Pull usage data from a server machine into the cache.
+pull_machine() {
+    local host="$1"
+    local cache_dir="$PULL_CACHE_DIR/$host/projects"
+    local status_file="$WORK_DIR/pull-$host"
+
+    if timeout "$SSH_TIMEOUT" ssh -o ConnectTimeout="$SSH_TIMEOUT" -o BatchMode=yes "$host" \
+        'test -d ~/.claude/projects' 2>/dev/null &&
+       mkdir -p "$cache_dir" &&
+       timeout "$SSH_TIMEOUT" rsync -az -e "ssh -o ConnectTimeout=$SSH_TIMEOUT -o BatchMode=yes" \
+        "$host:~/.claude/projects/" "$cache_dir/" 2>/dev/null; then
+        echo "ok" > "$status_file"
+    else
+        echo "fail" > "$status_file"
+    fi
+}
+
+# Pull all server machines in parallel
+for host in "${PULL_MACHINES[@]}"; do
+    pull_machine "$host" &
+done
+wait
+
+# Run /insights for a remote machine using a fake HOME.
+# Args: $1=label $2=machine_dir (parent of projects/ and usage-data/)
+run_insights_remote() {
+    local label="$1"
+    local machine_dir="$2"
+    local projects_dir="$machine_dir/projects"
+
+    if [[ ! -d "$projects_dir" ]] || [[ -z "$(ls -A "$projects_dir" 2>/dev/null)" ]]; then
+        return
+    fi
+
+    mkdir -p "$machine_dir/usage-data/facets"
+
+    # Set up fake HOME in tmpdir (just symlinks, no persistent data)
+    local fake_home="$WORK_DIR/home-$label"
+    mkdir -p "$fake_home/.claude"
+    ln -sfn "$projects_dir" "$fake_home/.claude/projects"
+    ln -sfn "$machine_dir/usage-data" "$fake_home/.claude/usage-data"
+    cp -f "$HOME/.claude/.credentials.json" "$fake_home/.claude/.credentials.json" 2>/dev/null || true
+    ln -sfn "$HOME/.claude/statsig" "$fake_home/.claude/statsig"
+
+    local sessions
+    sessions=$(find "$projects_dir" -name '*.jsonl' | wc -l)
+    echo "=== $label ($sessions session files) ==="
+
+    # Run /insights in a loop until no new facets
+    while true; do
+        local prev curr
+        prev=$(find "$machine_dir/usage-data/facets" -type f 2>/dev/null | wc -l)
+        HOME="$fake_home" claude -p "/insights" --max-turns 10 2>/dev/null || true
+        curr=$(find "$machine_dir/usage-data/facets" -type f 2>/dev/null | wc -l)
+        if [[ "$curr" -eq "$prev" ]]; then
+            break
+        fi
+        echo "  $label: $curr facets ($((curr - prev)) new)..."
+    done
+
+    local report
+    report=$(find "$machine_dir/usage-data" -maxdepth 1 -name "*.html" -printf '%T@ %p\n' 2>/dev/null \
+        | sort -rn | head -1 | cut -d' ' -f2-)
+    if [[ -n "$report" ]]; then
+        echo "  Report: $report"
+    else
+        echo "  No report generated."
+    fi
+}
+
+# Run /insights for popos (local) — just run directly, default behavior.
+run_insights_local() {
+    local sessions
+    sessions=$(find "$HOME/.claude/projects" -name '*.jsonl' | wc -l)
+    echo "=== $(hostname) ($sessions session files) ==="
+
+    while true; do
+        local prev curr
+        prev=$(find "$HOME/.claude/usage-data/facets" -type f 2>/dev/null | wc -l)
+        claude -p "/insights" --max-turns 10 2>/dev/null || true
+        curr=$(find "$HOME/.claude/usage-data/facets" -type f 2>/dev/null | wc -l)
+        if [[ "$curr" -eq "$prev" ]]; then
+            break
+        fi
+        echo "  $(hostname): $curr facets ($((curr - prev)) new)..."
+    done
+
+    echo "  Report: $HOME/.claude/usage-data/report.html"
+}
+
+# Launch all machines in parallel
+run_insights_local &
+
+if [[ -d "$REMOTE_DIR" ]]; then
+    for machine_dir in "$REMOTE_DIR"/*/; do
+        [[ -d "$machine_dir/projects" ]] || continue
+        run_insights_remote "$(basename "$machine_dir")" "$machine_dir" &
+    done
+fi
+
+for host in "${PULL_MACHINES[@]}"; do
+    local_cache="$PULL_CACHE_DIR/$host"
+    if [[ -d "$local_cache/projects" ]] && [[ -n "$(ls -A "$local_cache/projects" 2>/dev/null)" ]]; then
+        run_insights_remote "$host" "$local_cache" &
+    fi
+done
+
+wait
+
+rm -rf "$WORK_DIR"
+
+# Summary
+echo ""
+echo "=== Reports ==="
+echo "  $(hostname): $HOME/.claude/usage-data/report.html"
+for dir in "$REMOTE_DIR" "$PULL_CACHE_DIR"; do
+    [[ -d "$dir" ]] || continue
+    for report in "$dir"/*/usage-data/report.html; do
+        [[ -f "$report" ]] || continue
+        label=$(basename "$(dirname "$(dirname "$report")")")
+        echo "  $label: $report"
+    done
+done
