@@ -3,6 +3,7 @@
     "DISABLE_COST_WARNINGS": "1",
     "DISABLE_SESSION_LIMIT_WARNINGS": "1"
   },
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -29,7 +30,6 @@
       }
     ]
   },
-  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
