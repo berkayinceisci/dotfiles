@@ -101,16 +101,6 @@ config.window_padding = {
 config.hide_tab_bar_if_only_one_tab = true
 config.use_fancy_tab_bar = false
 
-wezterm.on("toggle-tabbar", function(window, _)
-	local overrides = window:get_config_overrides() or {}
-	if overrides.enable_tab_bar == false then
-		overrides.enable_tab_bar = true
-	else
-		overrides.enable_tab_bar = false
-	end
-	window:set_config_overrides(overrides)
-end)
-
 config.enable_kitty_keyboard = false
 
 config.keys = {
@@ -120,7 +110,6 @@ config.keys = {
 	{ key = "t", mods = super_key, action = act.SpawnTab("CurrentPaneDomain") },
 	{ key = "n", mods = alt_key, action = wezterm.action.DisableDefaultAssignment },
 	{ key = "n", mods = super_key, action = act.SpawnWindow },
-	{ key = "T", mods = super_key, action = act.EmitEvent("toggle-tabbar") },
 	{ key = "q", mods = super_key, action = act.CloseCurrentTab({ confirm = false }) },
 	{ key = "[", mods = super_key, action = act.MoveTabRelative(-1) },
 	{ key = "]", mods = super_key, action = act.MoveTabRelative(1) },
