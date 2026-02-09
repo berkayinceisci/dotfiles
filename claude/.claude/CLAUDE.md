@@ -18,18 +18,26 @@ When a command is blocked by a hook (e.g., "BLOCKED: sudo is not allowed"):
 - Temporary wrapper scripts lead to orphaned processes and are not version-controlled or battle-tested.
 - If a multi-config loop is needed, add it to the project's existing experiment runner script.
 
+## Dotfiles management
+
+- dotfiles can be found under ~/dotfiles
+- If the user requests a change in some configuration, they change should always be reproducible through the dotfiles
+- Before proposing a fix, fully read and understand the existing configuration and the user's dotfiles management approach (stow-based). Do not propose changes that conflict with stow symlink structure. Never edit profile files directly when they should be recreated through stow.
+
 ## Core Principles
 
 - Never delete any comments while doing updates.
 - When inserting new code blocks, ensure surrounding comments still belong to their original code sections. Never separate a comment from the code it describes.
 - Only make changes that are directly requested - do not add "improvements" or modifications based on assumptions about what would be better.
 - **Never delete files, data, or results unless explicitly asked to delete.** A question about something ("did I ask you to...?") is not a request to act. When in doubt, ask before taking any destructive/irreversible action.
+- When I ask a question or ask you to explain something, ONLY explain. Do not attempt to fix, modify, or run commands unless I explicitly ask you to make changes.
 - Never fabricate information (papers, authors, venues, results). Use `[[TODO: need source]]` when unsure.
 - Distinguish observations from hypotheses. Don't state inferences as facts or invent specific numbers (e.g., rate limits, thresholds) without verification. Search for sources before making claims, not after being challenged.
 - Follow existing code conventions in each project.
 - Test changes before marking tasks complete.
 - Be concise and direct.
-- When answering questions about code, always include the relevant code snippet(s) with file path and line numbers.
+- When answering questions about code, ALWAYS include the relevant code snippet(s) in your response. Never provide an explanation without showing the actual code being discussed.
+- When the user asks about something in their repo or config files, ALWAYS search the actual repo/config first before giving generic advice. Never assume — look at the code.
 
 ## Conversation Guidelines
 
@@ -52,6 +60,10 @@ Primary Objective: Engage in honest, insight-driven dialogue that advances under
 ### Success Metric
 
 - The only currency that matters: Does this advance or halt productive thinking? If we're heading down an unproductive path, point it out directly.
+
+## Hardware Performance Monitoring (CRITICAL)
+
+- When working with perf events and PEBS experiments, always validate event codes against the actual CPU architecture (EMR, SKX, GNR) before running. Never assume event codes are portable across microarchitectures. Double-check MSR values and event selectors against Intel SDM or `perf list`.
 
 ## Shell Scripts (CRITICAL)
 
@@ -77,6 +89,8 @@ wrmsr -a 0x1A4 0xF
 rm -f file.txt # Good
 rm file.txt    # Bad: may prompt
 ```
+
+- When fixing shell scripts, account for the actual shell interpreter (bash vs zsh). Zsh expands globs before command substitution — test fixes against the correct shell. Always verify the fix works, don't just explain it.
 
 ## Process Management
 
@@ -107,7 +121,7 @@ BG_PIDS=()
 cleanup() {
     for pid in "${BG_PIDS[@]}"; do
         if kill -0 "$pid" 2>/dev/null; then
-            pkill -9 -P "$pid" 2>/dev/null || true  # children first
+            pkill -9 -P "$pid" 2>/dev/null || true # children first
             kill -9 "$pid" 2>/dev/null || true
         fi
     done
@@ -147,6 +161,8 @@ done
 ```
 
 **Pre-launch checklist**: Progress tracking exists, monitor running, expected rate known.
+
+- When running long experiment batches, validate the first 1-2 results before launching the full set. Check for zero counters, empty output files, and SIGPIPE issues from piping to head/tail
 
 ### Active Monitoring (CRITICAL)
 
@@ -188,6 +204,10 @@ Common orphan sources:
 - One brief sentence summarizing the change
 - Never commit secrets (API keys, passwords, tokens)
 - Check `git diff` before committing
+
+## Git Patches
+
+- When applying patches or fixes, always verify the change actually took effect. `git apply` can silently fail - check the file contents after applying.
 
 ## Code Style
 
