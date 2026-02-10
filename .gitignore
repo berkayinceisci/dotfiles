@@ -7,3 +7,4 @@ tmux/.config/tmux/resurrect/
 cc-session.md
 ssh_config.secrets
 ssh/.ssh/config
+yt-sync-music.secrets
