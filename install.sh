@@ -135,7 +135,11 @@ for package in */; do
     done < <(cd "$package" && find . -type f | sed 's|^\./||')
 
     echo "  → Stowing $package"
-    stow --ignore='cc-session\.md' "$package"
+    if [[ "$package" == "claude" ]]; then
+        stow --ignore='cc-session\.md' "$package"
+    else
+        stow --ignore='cc-session\.md' --ignore='\.claude' "$package"
+    fi
 done
 
 echo "  ✓ Stowing complete"
