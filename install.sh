@@ -339,5 +339,44 @@ else
     echo "  ⊘ Skipping ccusage-push cron (not a target machine)"
 fi
 
+# Set up yt-sync-music (daily YouTube playlist sync, only on manjaro)
+echo ""
+echo "Setting up YouTube music sync..."
+
+if [[ "$HOST" == "manjaro" ]]; then
+    # Decrypt secrets (read at runtime by the stowed script)
+    YT_SECRETS="$DOTFILES_DIR/yt-sync-music.secrets"
+    YT_SECRETS_ENC="$DOTFILES_DIR/yt-sync-music.secrets.age"
+
+    if [[ ! -f "$YT_SECRETS" ]] || [[ "$YT_SECRETS_ENC" -nt "$YT_SECRETS" ]]; then
+        if [[ -f "$YT_SECRETS_ENC" ]]; then
+            if command -v age >/dev/null 2>&1; then
+                echo "  Decrypting yt-sync-music.secrets.age (enter passphrase)..."
+                age -d -o "$YT_SECRETS" "$YT_SECRETS_ENC"
+                echo "  ✓ yt-sync-music secrets decrypted"
+            else
+                echo "  ⚠ age not installed. Install with: sudo apt install age (or brew install age)"
+            fi
+        else
+            echo "  ⚠ yt-sync-music.secrets.age not found, skipping."
+        fi
+    else
+        echo "  ✓ yt-sync-music secrets already up to date"
+    fi
+
+    # Install cron job
+    YT_SYNC="$HOME/.local/scripts-private/yt-sync-music"
+    YT_CRON_ENTRY="0 4 * * * $YT_SYNC"
+
+    if crontab -l 2>/dev/null | grep -qF "$YT_SYNC"; then
+        echo "  ✓ yt-sync-music cron already installed"
+    else
+        (crontab -l 2>/dev/null; echo "$YT_CRON_ENTRY") | crontab -
+        echo "  ✓ yt-sync-music cron installed (daily at 04:00)"
+    fi
+else
+    echo "  ⊘ Skipping yt-sync-music (not manjaro)"
+fi
+
 echo ""
 echo "Installation complete!"
