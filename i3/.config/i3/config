@@ -178,7 +178,7 @@ exec --no-startup-id i3-msg 'workspace 1; exec wezterm --config-file "$HOME/.con
 exec --no-startup-id sleep 1 && i3-msg 'workspace 2; exec zen'
 exec --no-startup-id sleep 2 && i3-msg 'workspace 3; exec zotero'
 exec --no-startup-id sleep 3 && i3-msg 'workspace 4; exec obsidian'
-exec --no-startup-id sleep 4 && i3-msg 'workspace 5; exec spotify'
+exec --no-startup-id sleep 5 && i3-msg 'workspace 5; exec spotify'
 
 # Define names for default workspaces for which we configure key bindings later on.
 # We use variables to avoid repeating the names in multiple places.
