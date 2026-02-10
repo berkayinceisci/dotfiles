@@ -1,0 +1,94 @@
+#!/bin/bash
+set -euo pipefail
+
+# Sync an unlisted YouTube playlist to a local directory using yt-dlp.
+# Intended to run as a daily cron job.
+# Playlist URL is read from ~/dotfiles/yt-sync-music.secrets (age-encrypted).
+
+if [[ "$(hostname)" != "manjaro" ]]; then
+    echo "ERROR: yt-sync-music is only supported on manjaro."
+    exit 1
+fi
+
+SECRETS_FILE="$HOME/dotfiles/yt-sync-music.secrets"
+if [[ ! -f "$SECRETS_FILE" ]]; then
+    echo "ERROR: $SECRETS_FILE not found. Run ~/dotfiles/install.sh to decrypt."
+    exit 1
+fi
+source "$SECRETS_FILE"
+
+DEST_DIR="$HOME/Multimedia/Music/Spotifyda-Olmayanlar"
+ARCHIVE_FILE="$DEST_DIR/.yt-dlp-archive"
+LOG_FILE="$DEST_DIR/.yt-sync.log"
+UNAVAILABLE_FILE="$DEST_DIR/unavailable.txt"
+NODE_BIN="$HOME/.nvm/versions/node/v21.6.1/bin/node"
+
+mkdir -p "$DEST_DIR"
+
+{
+    echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
+
+    # yt-dlp returns non-zero when some videos are unavailable, which is expected
+    yt-dlp \
+        --js-runtimes "node:$NODE_BIN" \
+        --download-archive "$ARCHIVE_FILE" \
+        -f "bestaudio/best" \
+        --extract-audio \
+        --output "$DEST_DIR/%(title)s [%(id)s].%(ext)s" \
+        --no-overwrites \
+        --ignore-errors \
+        --no-post-overwrites \
+        --embed-thumbnail \
+        --add-metadata \
+        --sleep-interval 5 \
+        --max-sleep-interval 15 \
+        "$YT_PLAYLIST_URL" || true
+
+    echo "=== Sync completed ==="
+} >> "$LOG_FILE" 2>&1
+
+# Look up a video title from the Wayback Machine
+wayback_title() {
+    local vid_id="$1"
+    local yt_url="https://www.youtube.com/watch?v=$vid_id"
+
+    # Find the most recent snapshot timestamp via CDX API
+    local ts
+    ts=$(curl -sf "https://web.archive.org/cdx/search/cdx?url=${yt_url}&output=json&limit=-1&fl=timestamp" \
+        | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[-1][0]) if len(d)>1 else sys.exit(1)" 2>/dev/null) || return 1
+
+    # Fetch the archived page and pipe directly to python for title extraction
+    curl -sf "https://web.archive.org/web/${ts}/${yt_url}" \
+        | python3 -c '
+import sys, re, html
+page = sys.stdin.read()
+for pattern in [
+    r"og:title.*?content=\"([^\"]+)\"",
+    r"<title>(.+?)</title>",
+    r"\"title\"\s*:\s*\"([^\"]+)\"",
+]:
+    m = re.search(pattern, page)
+    if m:
+        t = html.unescape(m.group(1)).replace(" - YouTube", "")
+        if t and t not in ("YouTube", ""):
+            print(t)
+            sys.exit(0)
+sys.exit(1)
+'
+}
+
+# Append newly unavailable videos to unavailable.txt
+# (skip rate-limit and format errors — those are transient)
+grep "ERROR: \[youtube\]" "$LOG_FILE" \
+    | grep -v "rate-limited" \
+    | grep -v "Requested format" \
+    | grep -v "Supported filetypes" \
+    | sed 's/.*ERROR: \[youtube\] \([^:]*\):.*/\1/' \
+    | sort -u \
+    | while read -r vid_id; do
+        url="https://www.youtube.com/watch?v=$vid_id"
+        if ! grep -qF "$url" "$UNAVAILABLE_FILE" 2>/dev/null; then
+            title=$(wayback_title "$vid_id" 2>/dev/null) || title="[unknown title]"
+            printf '%-60s %s\n' "$title" "$url" >> "$UNAVAILABLE_FILE"
+        fi
+    done || true
