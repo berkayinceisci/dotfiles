@@ -162,6 +162,12 @@ done
 
 **Pre-launch checklist**: Progress tracking exists, monitor running, expected rate known.
 
+### Trial / Validation Runs
+
+When running a benchmark or experiment for quick validation (not production data collection),
+use as many cores as the system has (`nproc`) to minimize runtime. Do not use 1 core or a
+small core count for trial runs — it wastes time.
+
 - When running long experiment batches, validate the first 1-2 results before launching the full set. Check for zero counters, empty output files, and SIGPIPE issues from piping to head/tail
 
 ### Active Monitoring (CRITICAL)
