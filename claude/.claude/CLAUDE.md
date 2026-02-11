@@ -146,6 +146,57 @@ BG_PIDS+=("$!")
 3. Only after confirming the process is truly gone, take corrective action
 4. **Never `rm -rf` experiment results without first confirming no running process is writing to them**
 
+## Batch Parallel Execution
+
+### Prefer `xargs -P` over bash background jobs
+
+Bash scripts with `set -euo pipefail` and background jobs (`&`) are fragile for parallel
+batch processing:
+- `pipefail` causes silent failures when background processes exit non-zero
+- Output interleaving through pipes (`2>&1 | while read`) buffers unpredictably
+- `wait -n` (bash 4.3+) combined with `|| true` silently swallows errors
+- zsh doesn't support `VAR=$!` after `&` the same way bash does
+
+**Instead, use `xargs -P N`** which handles parallelism, error propagation, and process
+lifecycle cleanly:
+
+```bash
+# GOOD: reliable parallel batch processing
+find results/ -maxdepth 1 -type d -name '*.v1' | sort \
+  | xargs -P $(nproc) -I {} python3 scripts/process.py {} > /tmp/batch.log 2>&1
+
+# BAD: fragile background-job parallelism in bash
+for dir in results/*/; do
+    process "$dir" &
+    ((running++))
+    if [[ $running -ge $N ]]; then wait -n || true; ((running--)); fi
+done
+```
+
+### Split cores across concurrent batches
+
+When running multiple independent batch types simultaneously (e.g., two different plot
+scripts), split available cores evenly rather than oversubscribing:
+
+```bash
+# 14 cores → 7 per batch (run as two separate background commands)
+find ... | xargs -P 7 -I {} python3 script_A.py {} > /tmp/A.log 2>&1 &
+find ... | xargs -P 7 -I {} python3 script_B.py {} > /tmp/B.log 2>&1 &
+```
+
+### Monitor by output directories, not log lines
+
+Parallel process output is interleaved and buffered. Monitor progress by counting
+completed output files/directories, not by tailing logs:
+
+```bash
+# GOOD: reliable progress monitoring
+watch "ls plots/output_dir/ | wc -l"
+
+# BAD: misleading due to output buffering
+tail -f /tmp/batch.log | grep "Done:"
+```
+
 ## Long-Running Experiments
 
 **Problem**: Experiments can stall silently. Track progress, not just status.
