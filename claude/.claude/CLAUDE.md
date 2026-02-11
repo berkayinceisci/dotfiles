@@ -303,7 +303,7 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 - **Always derive values from data instead of hardcoding.** When a parameter can be computed from the available data (e.g., perf stat interval from timestamp deltas, frequency from cycle counters, duration from output files), derive it rather than assuming a fixed value. Use hardcoded values only as fallbacks when data is unavailable. This applies to labels, titles, computations, and any context where the actual value matters.
 - Use CDF (not CCDF) with linear scale (no log scale on axes) for distribution plots.
 - Side-by-side panels that show the same metric must share axis limits so they are visually comparable.
-- Always save plots in both PNG (dpi=150) and PDF formats.
+- Always save plots in both PNG (dpi=150) and PDF formats. Use separate directories with the format suffix appended to the category name: `{category}-png/` and `{category}-pdf/` (e.g., `plots/latency_analysis-png/{experiment}/file.png` and `plots/latency_analysis-pdf/{experiment}/file.pdf`). The rest of the hierarchy is preserved identically in both.
 
 ## Whitespace (CRITICAL)
 
