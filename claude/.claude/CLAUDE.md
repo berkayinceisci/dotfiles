@@ -162,14 +162,17 @@ lifecycle cleanly:
 
 ```bash
 # GOOD: reliable parallel batch processing
-find results/ -maxdepth 1 -type d -name '*.v1' | sort \
-  | xargs -P $(nproc) -I {} python3 scripts/process.py {} > /tmp/batch.log 2>&1
+find results/ -maxdepth 1 -type d -name '*.v1' | sort |
+    xargs -P $(nproc) -I {} python3 scripts/process.py {} >/tmp/batch.log 2>&1
 
 # BAD: fragile background-job parallelism in bash
 for dir in results/*/; do
     process "$dir" &
     ((running++))
-    if [[ $running -ge $N ]]; then wait -n || true; ((running--)); fi
+    if [[ $running -ge $N ]]; then
+        wait -n || true
+        ((running--))
+    fi
 done
 ```
 
@@ -180,8 +183,8 @@ scripts), split available cores evenly rather than oversubscribing:
 
 ```bash
 # 14 cores → 7 per batch (run as two separate background commands)
-find ... | xargs -P 7 -I {} python3 script_A.py {} > /tmp/A.log 2>&1 &
-find ... | xargs -P 7 -I {} python3 script_B.py {} > /tmp/B.log 2>&1 &
+find ... | xargs -P 7 -I {} python3 script_A.py {} >/tmp/A.log 2>&1 &
+find ... | xargs -P 7 -I {} python3 script_B.py {} >/tmp/B.log 2>&1 &
 ```
 
 ### Monitor by output directories, not log lines
@@ -296,6 +299,7 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 - Output file names must be equally descriptive, encoding key parameters (e.g., platform, event, dataset, method, bin size, date). Any information in the title should also be recoverable from the filename.
 - Any information encoded in the output file name must also appear in the plot title, and vice versa.
 - Axis labels must include units where applicable.
+- **Always derive values from data instead of hardcoding.** When a parameter can be computed from the available data (e.g., perf stat interval from timestamp deltas, frequency from cycle counters, duration from output files), derive it rather than assuming a fixed value. Use hardcoded values only as fallbacks when data is unavailable. This applies to labels, titles, computations, and any context where the actual value matters.
 
 ## Whitespace (CRITICAL)
 
