@@ -158,12 +158,13 @@ batch processing:
 - zsh doesn't support `VAR=$!` after `&` the same way bash does
 
 **Instead, use `xargs -P N`** which handles parallelism, error propagation, and process
-lifecycle cleanly:
+lifecycle cleanly.  **Always reserve 2 cores for the user** — use `$(($(nproc) - 2))`
+instead of `$(nproc)` for the parallelism level:
 
 ```bash
-# GOOD: reliable parallel batch processing
+# GOOD: reliable parallel batch processing, reserving 2 cores
 find results/ -maxdepth 1 -type d -name '*.v1' | sort |
-    xargs -P $(nproc) -I {} python3 scripts/process.py {} >/tmp/batch.log 2>&1
+    xargs -P $(($(nproc) - 2)) -I {} python3 scripts/process.py {} >/tmp/batch.log 2>&1
 
 # BAD: fragile background-job parallelism in bash
 for dir in results/*/; do
@@ -179,10 +180,10 @@ done
 ### Split cores across concurrent batches
 
 When running multiple independent batch types simultaneously (e.g., two different plot
-scripts), split available cores evenly rather than oversubscribing:
+scripts), split available cores (minus 2 reserved) evenly rather than oversubscribing:
 
 ```bash
-# 14 cores → 7 per batch (run as two separate background commands)
+# 16 cores → 14 usable → 7 per batch (run as two separate background commands)
 find ... | xargs -P 7 -I {} python3 script_A.py {} >/tmp/A.log 2>&1 &
 find ... | xargs -P 7 -I {} python3 script_B.py {} >/tmp/B.log 2>&1 &
 ```
@@ -300,6 +301,9 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 - Any information encoded in the output file name must also appear in the plot title, and vice versa.
 - Axis labels must include units where applicable.
 - **Always derive values from data instead of hardcoding.** When a parameter can be computed from the available data (e.g., perf stat interval from timestamp deltas, frequency from cycle counters, duration from output files), derive it rather than assuming a fixed value. Use hardcoded values only as fallbacks when data is unavailable. This applies to labels, titles, computations, and any context where the actual value matters.
+- Use CDF (not CCDF) with linear scale (no log scale on axes) for distribution plots.
+- Side-by-side panels that show the same metric must share axis limits so they are visually comparable.
+- Always save plots in both PNG (dpi=150) and PDF formats.
 
 ## Whitespace (CRITICAL)
 
