@@ -25,6 +25,14 @@ fi
 . "$HOME/.atuin/bin/env"
 eval "$(atuin init zsh --disable-up-arrow)"
 
+precmd() {
+  print -Pn "\e]0;%1~\a"
+}
+
+preexec() {
+  print -Pn "\e]0;$1\a"
+}
+
 eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
