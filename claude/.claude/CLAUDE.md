@@ -92,6 +92,15 @@ rm file.txt    # Bad: may prompt
 
 - When fixing shell scripts, account for the actual shell interpreter (bash vs zsh). Zsh expands globs before command substitution — test fixes against the correct shell. Always verify the fix works, don't just explain it.
 
+- **Never use `[[ condition ]] && action` in loops.** If the last iteration's condition is false, the `&&` short-circuit sets the loop's exit code to 1, producing a misleading error even though all matching iterations succeeded. Use `if/then/fi` instead:
+```bash
+# BAD: exit code 1 if last item doesn't match condition
+for d in */; do [[ "${d%/}" != *_v1 ]] && rm -rf "$d"; done
+
+# GOOD: explicit if avoids misleading exit codes
+for d in */; do if [[ "${d%/}" != *_v1 ]]; then rm -rf "$d"; fi; done
+```
+
 ## Process Management
 
 **Problem**: Child processes become orphaned (PPID=1) when parent is killed.
