@@ -226,7 +226,7 @@ done
 
 **Pre-launch checklist**: Progress tracking exists, monitor running, expected rate known.
 
-### Trial / Validation Runs
+### Trial / Validation Runs (CRITICAL)
 
 When running a benchmark or experiment for quick validation (not production data collection),
 use as many cores as the system has (`nproc`) to minimize runtime. Do not use 1 core or a
