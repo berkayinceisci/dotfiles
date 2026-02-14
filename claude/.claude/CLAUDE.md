@@ -270,19 +270,43 @@ a health check.
 
 ```bash
 # Template for a single health check (chain with ; not &&)
-sleep 900
-echo "=== $(date '+%H:%M:%S') Health Check ==="
-echo "--- Progress ---"
-grep -c '\[Run' "$EXP_OUTPUT"
-grep '\[Run' "$EXP_OUTPUT" | tail -3 | sed 's/\x1b\[[0-9;]*m//g'
-echo "--- Process tree ---"
-pstree -p "$EXP_PID" 2>/dev/null || echo "EXPERIMENT PID DEAD"
-echo "--- Orphan check ---"
-TREE_PIDS=$(pstree -p "$EXP_PID" 2>/dev/null | grep -oP '\d+' | tr '\n' '|' | sed 's/|$//')
-pgrep -af "benchmark_pattern" 2>/dev/null | grep -vE "pgrep|${TREE_PIDS:-NOMATCH}" || echo "No orphans"
-echo "--- Recent result files ---"
+sleep 900 ;
+echo "=== $(date '+%H:%M:%S') Health Check ===" ;
+echo "--- Progress ---" ;
+RUNS=$(grep -c '\[Run' "$EXP_OUTPUT") ; echo "$RUNS/$TOTAL" ;
+grep '\[Run' "$EXP_OUTPUT" | tail -3 | sed 's/\x1b\[[0-9;]*m//g' ;
+echo "--- Process tree ---" ;
+pstree -p "$EXP_PID" 2>/dev/null || echo "EXPERIMENT PID DEAD" ;
+echo "--- Orphan check ---" ;
+TREE=$(pstree -p "$EXP_PID" 2>/dev/null | grep -oP '\d+' | sort -un) ;
+# Use specific binary paths to avoid matching pgrep itself
+CANDIDATES=$(pgrep -f "gapbs/bc|silo.*dbtest|perf/perf stat" 2>/dev/null | sort -un) ;
+if [[ -z "$CANDIDATES" ]]; then
+    echo "No benchmark processes found"
+else
+    ORPHANS=$(comm -23 <(echo "$CANDIDATES") <(echo "$TREE"))
+    if [[ -z "$ORPHANS" ]]; then
+        echo "No orphans"
+    else
+        found=0
+        for p in $ORPHANS; do
+            info=$(ps -p "$p" -o pid=,ppid=,etime=,args= 2>/dev/null)
+            if [[ -n "$info" ]]; then echo "ORPHAN: $info" ; found=1 ; fi
+        done
+        if [[ $found -eq 0 ]]; then echo "No orphans (transient PIDs already exited)" ; fi
+    fi
+fi ;
+echo "--- Recent result files ---" ;
 find /path/to/results -name "*.txt" -mmin -20 -type f 2>/dev/null | sort | tail -5
 ```
+
+Key points for orphan detection:
+- Use **specific binary paths** in pgrep patterns (e.g., `gapbs/bc`, `perf/perf stat`)
+  to avoid matching pgrep's own command line.
+- Use `comm -23` to find PIDs present in candidates but NOT in the experiment's
+  process tree. This correctly excludes the current run's processes.
+- Handle **race conditions**: a PID found by pgrep may exit before `ps` runs.
+  Verify each orphan candidate with `ps` before reporting.
 
 **Step 3: When experiment finishes** (process tree check shows PID dead), verify
 all expected result files exist and are non-empty. Check for orphaned processes.
