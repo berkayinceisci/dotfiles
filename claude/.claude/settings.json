@@ -51,5 +51,6 @@
     "clangd-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true
   },
+  "skipDangerousModePermissionPrompt": true,
   "editMode": "vim"
 }
