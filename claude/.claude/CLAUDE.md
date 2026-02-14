@@ -91,6 +91,10 @@ rm file.txt    # Bad: may prompt
 ```
 
 - When fixing shell scripts, account for the actual shell interpreter (bash vs zsh). Zsh expands globs before command substitution — test fixes against the correct shell. Always verify the fix works, don't just explain it.
+- When chaining multiple independent commands (e.g., health checks, diagnostic steps),
+  use `;` not `&&`. With `&&`, if any command returns non-zero (e.g., `grep` finding
+  no matches, `pgrep` finding no processes), all subsequent commands are skipped. Use
+  `&&` only when commands genuinely depend on each other's success.
 
 - **Never use `[[ condition ]] && action` in loops.** If the last iteration's condition is false, the `&&` short-circuit sets the loop's exit code to 1, producing a misleading error even though all matching iterations succeeded. Use `if/then/fi` instead:
 ```bash
@@ -243,14 +247,52 @@ it in the current conversation. NEVER do any of the following:
 - Suggest the user check results manually
 - Say "I'll let you know when it's done" and then stop
 
-Instead, you MUST:
-1. Stay in the conversation and poll the experiment's progress at reasonable intervals
-   (e.g., check logs, output files, process status every 30-60 seconds).
-2. Report progress updates to the user as you observe them.
-3. If an error or anomaly is detected, IMMEDIATELY stop running further experiments
-   and diagnose/fix the issue before continuing.
-4. Only consider the task complete when the experiment has finished successfully and
-   results have been collected/verified.
+#### Monitoring workflow
+
+**Step 1: Launch experiment in background.**
+Note the background task ID (for the output file path) and the experiment PID.
+
+**Step 2: Run a periodic foreground health-check loop.**
+Use `sleep N ; health_check` in a foreground Bash call, where N matches the expected
+per-run duration (e.g., 900s for a ~15 min benchmark). Use `;` not `&&` to chain
+independent checks so one failure doesn't skip the rest.
+
+Each health check MUST verify:
+1. **Progress**: run count advancing (`grep -c '\[Run' <output_file>`)
+2. **Process tree**: correct shape (`pstree -p <PID>`)
+3. **Orphans**: no leftover processes from previous runs (`pgrep -af` for benchmark
+   binaries, filtered against the current process tree)
+4. **Data**: result files are non-empty and recently written (`find ... -mmin -N`)
+5. **Stalls**: if run count hasn't advanced across two consecutive checks, investigate
+
+Report anomalies immediately. Do NOT just report the run count — that alone is not
+a health check.
+
+```bash
+# Template for a single health check (chain with ; not &&)
+sleep 900
+echo "=== $(date '+%H:%M:%S') Health Check ==="
+echo "--- Progress ---"
+grep -c '\[Run' "$EXP_OUTPUT"
+grep '\[Run' "$EXP_OUTPUT" | tail -3 | sed 's/\x1b\[[0-9;]*m//g'
+echo "--- Process tree ---"
+pstree -p "$EXP_PID" 2>/dev/null || echo "EXPERIMENT PID DEAD"
+echo "--- Orphan check ---"
+TREE_PIDS=$(pstree -p "$EXP_PID" 2>/dev/null | grep -oP '\d+' | tr '\n' '|' | sed 's/|$//')
+pgrep -af "benchmark_pattern" 2>/dev/null | grep -vE "pgrep|${TREE_PIDS:-NOMATCH}" || echo "No orphans"
+echo "--- Recent result files ---"
+find /path/to/results -name "*.txt" -mmin -20 -type f 2>/dev/null | sort | tail -5
+```
+
+**Step 3: When experiment finishes** (process tree check shows PID dead), verify
+all expected result files exist and are non-empty. Check for orphaned processes.
+Report completion.
+
+#### Anti-pattern: `sleep N && check` in BACKGROUND Bash calls (NEVER DO THIS)
+
+Spawns persistent `sleep` processes that accumulate (20+ orphaned processes). Each
+background Bash call creates a new shell + sleep process that lives for the full
+duration and is never cleaned up.
 
 ### Clean Slate Between Experiments (CRITICAL)
 
