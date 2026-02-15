@@ -243,80 +243,63 @@ small core count for trial runs — it wastes time.
 After launching any experiment or long-running process, you MUST actively monitor
 it in the current conversation. NEVER do any of the following:
 - End the conversation by saying "the experiment will take X hours, check back later"
-- Create a separate monitoring script and leave
 - Suggest the user check results manually
 - Say "I'll let you know when it's done" and then stop
 
 #### Monitoring workflow
 
-**Step 1: Launch experiment in background.**
-Note the background task ID (for the output file path) and the experiment PID.
+Use an external `monitor.sh` script on the experiment machine. It runs
+independently, writes status to a file, and has ~0% CPU/memory overhead.
+Claude Code polls the status file using `sleep 100 ; cat <status_file>`.
 
-**Step 2: Run a periodic foreground health-check loop.**
-Use `sleep N ; health_check` in a foreground Bash call, where N matches the expected
-per-run duration (e.g., 900s for a ~15 min benchmark). Use `;` not `&&` to chain
-independent checks so one failure doesn't skip the rest.
-
-Each health check MUST verify:
-1. **Progress**: run count advancing (`grep -c '\[Run' <output_file>`)
-2. **Process tree**: correct shape (`pstree -p <PID>`)
-3. **Orphans**: no leftover processes from previous runs (`pgrep -af` for benchmark
-   binaries, filtered against the current process tree)
-4. **Data**: result files are non-empty and recently written (`find ... -mmin -N`)
-5. **Stalls**: if run count hasn't advanced across two consecutive checks, investigate
-
-Report anomalies immediately. Do NOT just report the run count — that alone is not
-a health check.
+**Step 1: Launch experiment and monitor on the experiment machine.**
 
 ```bash
-# Template for a single health check (chain with ; not &&)
-sleep 900 ;
-echo "=== $(date '+%H:%M:%S') Health Check ===" ;
-echo "--- Progress ---" ;
-RUNS=$(grep -c '\[Run' "$EXP_OUTPUT") ; echo "$RUNS/$TOTAL" ;
-grep '\[Run' "$EXP_OUTPUT" | tail -3 | sed 's/\x1b\[[0-9;]*m//g' ;
-echo "--- Process tree ---" ;
-pstree -p "$EXP_PID" 2>/dev/null || echo "EXPERIMENT PID DEAD" ;
-echo "--- Orphan check ---" ;
-TREE=$(pstree -p "$EXP_PID" 2>/dev/null | grep -oP '\d+' | sort -un) ;
-# Use specific binary paths to avoid matching pgrep itself
-CANDIDATES=$(pgrep -f "gapbs/bc|silo.*dbtest|perf/perf stat" 2>/dev/null | sort -un) ;
-if [[ -z "$CANDIDATES" ]]; then
-    echo "No benchmark processes found"
-else
-    ORPHANS=$(comm -23 <(echo "$CANDIDATES") <(echo "$TREE"))
-    if [[ -z "$ORPHANS" ]]; then
-        echo "No orphans"
-    else
-        found=0
-        for p in $ORPHANS; do
-            info=$(ps -p "$p" -o pid=,ppid=,etime=,args= 2>/dev/null)
-            if [[ -n "$info" ]]; then echo "ORPHAN: $info" ; found=1 ; fi
-        done
-        if [[ $found -eq 0 ]]; then echo "No orphans (transient PIDs already exited)" ; fi
-    fi
-fi ;
-echo "--- Recent result files ---" ;
-find /path/to/results -name "*.txt" -mmin -20 -type f 2>/dev/null | sort | tail -5
+# Launch experiment in background, capture PID
+sudo ./<experiment_script> > /tmp/experiment.log 2>&1 &
+EXP_PID=$!
+
+# Start monitor (writes to /tmp/experiment-status.txt every 300s)
+nohup ./monitor.sh /tmp/experiment.log $EXP_PID <total_runs> 300 > /dev/null 2>&1 &
 ```
 
-Key points for orphan detection:
-- Use **specific binary paths** in pgrep patterns (e.g., `gapbs/bc`, `perf/perf stat`)
-  to avoid matching pgrep's own command line.
-- Use `comm -23` to find PIDs present in candidates but NOT in the experiment's
-  process tree. This correctly excludes the current run's processes.
-- Handle **race conditions**: a PID found by pgrep may exit before `ps` runs.
-  Verify each orphan candidate with `ps` before reporting.
+If launching via Claude Code's Bash tool, use `run_in_background: true`
+for the experiment and note the output file path. Then start the monitor
+pointing at that output file.
 
-**Step 3: When experiment finishes** (process tree check shows PID dead), verify
-all expected result files exist and are non-empty. Check for orphaned processes.
-Report completion.
+**Step 2: Poll the status file periodically.**
 
-#### Anti-pattern: `sleep N && check` in BACKGROUND Bash calls (NEVER DO THIS)
+```bash
+# Local (Claude Code on same machine)
+sleep 100 ; cat /tmp/experiment-status.txt
 
-Spawns persistent `sleep` processes that accumulate (20+ orphaned processes). Each
-background Bash call creates a new shell + sleep process that lives for the full
-duration and is never cleaned up.
+# Remote (Claude Code on different machine)
+sleep 100 ; ssh exp-machine 'cat /tmp/experiment-status.txt'
+```
+
+`sleep 100` is within the Bash tool's default 120s timeout and is reliable.
+The `cat` / `ssh cat` is instant. No persistent connection needed.
+
+Each check, verify:
+1. **Progress**: run count advancing
+2. **Liveness**: status is ALIVE
+3. **Process tree**: correct process counts
+4. **Stalls**: stall_checks > 2 means no progress for multiple intervals
+
+**Step 3: When experiment finishes** (status shows DEAD / completed: true),
+verify all expected result files exist and are non-empty. Check for orphaned
+processes with `pgrep -af`. Report completion.
+
+#### Why not sleep-based health checks in Bash tool
+
+Embedding long sleeps (>120s) directly in Bash tool calls for health checks
+fails non-deterministically in both foreground and background modes: 0-byte
+output, exit code 1, task killed mid-sleep. `sleep 300` and `sleep 600`
+fail ~30-50% of the time. Background tasks also generate duplicate
+notifications (via `TaskOutput` and task-notification independently) that
+flood the conversation. The external monitor script avoids all these issues
+— Claude Code only uses short `sleep 100` for polling, never for the
+health check logic itself.
 
 ### Clean Slate Between Experiments (CRITICAL)
 
