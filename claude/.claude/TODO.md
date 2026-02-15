@@ -10,3 +10,11 @@
 
 ## Missing Plugins
 - shellcheck
+
+## Background Task Notifications
+- `TaskOutput` (blocking wait) does NOT suppress task-notification delivery
+- Every background task always fires both: TaskOutput result + async notification
+- For long monitoring loops (50+ background tasks), this causes a flood of stale
+  notifications that waste context window, cost tokens, and block the user
+- Need: a way to suppress/acknowledge notifications for tasks already consumed
+  via `TaskOutput`, or a `TaskStop`-like dismiss for completed tasks
