@@ -309,9 +309,8 @@ completely clean process state. **After each experiment finishes**, you MUST:
 1. Check the process list for any orphaned processes from the completed experiment.
    Use `pgrep -af` with patterns matching the experiment's binaries and background
    processes. Do NOT rely on the script's own cleanup — independently verify.
-2. If orphans are found, kill them (children first, then parents) and verify they
-   are gone before proceeding to the next experiment.
-3. Only start the next experiment after confirming a clean slate.
+2. If orphans are found, abort the experiment immediately.
+3. Inform the user with the problem, the reason of the problem and the solution.
 
 Common orphan sources:
 - Child processes surviving after parent is killed (SIGKILL doesn't propagate)
