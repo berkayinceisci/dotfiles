@@ -21,9 +21,9 @@ case "$HOST" in
         HDMI2_CONNECTED=$(xrandr | grep "^HDMI-2 connected")
         
         if [ -n "$HDMI1_CONNECTED" ] && [ -n "$HDMI2_CONNECTED" ]; then
-            # Dual monitor: HDMI-1 primary, HDMI-2 to the right
+            # Dual monitor: HDMI-1 primary, HDMI-2 vertical (rotated right) to the right
             xrandr --output HDMI-1 --mode 3840x2160 --rate 60.00 --primary \
-                   --output HDMI-2 --mode 3840x2160 --rate 60.00 --right-of HDMI-1
+                   --output HDMI-2 --mode 3840x2160 --rate 60.00 --rotate right --right-of HDMI-1
         elif [ -n "$HDMI1_CONNECTED" ]; then
             xrandr --output HDMI-1 --mode 3840x2160 --rate 60.00 --primary
         elif [ -n "$HDMI2_CONNECTED" ]; then

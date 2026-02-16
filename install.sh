@@ -219,7 +219,7 @@ if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 EOF
                         ;;
                     "popos")
-                        # Single external monitor
+                        # Dual monitor: HDMI-1 primary, HDMI-2 vertical (rotated right) to the right
                         sudo tee "$GDM_MONITORS_DIR/monitors.xml" > /dev/null << 'EOF'
 <monitors version="2">
   <configuration>
@@ -231,6 +231,28 @@ EOF
       <monitor>
         <monitorspec>
           <connector>HDMI-1</connector>
+          <vendor>unknown</vendor>
+          <product>unknown</product>
+          <serial>unknown</serial>
+        </monitorspec>
+        <mode>
+          <width>3840</width>
+          <height>2160</height>
+          <rate>60.00</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+    <logicalmonitor>
+      <x>3840</x>
+      <y>0</y>
+      <scale>1</scale>
+      <transform>
+        <rotation>right</rotation>
+        <flipped>no</flipped>
+      </transform>
+      <monitor>
+        <monitorspec>
+          <connector>HDMI-2</connector>
           <vendor>unknown</vendor>
           <product>unknown</product>
           <serial>unknown</serial>
