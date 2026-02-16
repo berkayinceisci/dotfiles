@@ -87,6 +87,9 @@ bindsym Mod1+Shift+p exec systemctl poweroff -i
 # lock screen
 bindsym Mod4+l exec --no-startup-id ~/.config/i3/lock.sh
 
+# toggle HDMI-2 rotation (vertical <-> horizontal for presentations)
+bindsym Mod1+Shift+t exec --no-startup-id ~/.config/i3/presentation_toggle.sh
+
 # Font for window titles. Will also be used by the bar unless a different font
 # is used in the bar {} block below.
 font pango:monospace 8
@@ -189,13 +192,6 @@ bindsym Mod1+Shift+minus move scratchpad
 # Show the next scratchpad window or hide the focused scratchpad window.
 # If there are multiple scratchpad windows, this command cycles through them.
 bindsym Mod1+minus scratchpad show
-
-# Startup applications (open on their respective workspaces)
-exec --no-startup-id i3-msg 'workspace 1; exec wezterm --config-file "$HOME/.config/wezterm/wezterm.lua"'
-exec --no-startup-id sleep 1 && i3-msg 'workspace 2; exec zen'
-exec --no-startup-id sleep 2 && i3-msg 'workspace 3; exec zotero'
-exec --no-startup-id sleep 3 && i3-msg 'workspace 4; exec obsidian'
-exec --no-startup-id sleep 5 && i3-msg 'workspace 5; exec spotify'
 
 # Define names for default workspaces for which we configure key bindings later on.
 # We use variables to avoid repeating the names in multiple places.
