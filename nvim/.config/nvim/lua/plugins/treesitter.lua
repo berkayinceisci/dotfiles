@@ -26,6 +26,7 @@ return {
 					"javascript",
 					"typescript",
 					"python",
+					"diff",
 				},
 				sync_install = false,
 				auto_install = true,
