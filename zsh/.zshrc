@@ -26,8 +26,8 @@ fi
 eval "$(atuin init zsh --disable-up-arrow)"
 
 precmd() {
-  # Disable mouse tracking modes that may leak from SSH/vim/tmux
-  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l'
+  # Reset terminal modes that may leak from SSH/vim/tmux
+  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l\e[?25h'
   print -Pn "\e]0;%1~\a"
 }
 
