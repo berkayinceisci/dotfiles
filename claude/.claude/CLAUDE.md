@@ -91,10 +91,7 @@ rm file.txt    # Bad: may prompt
 ```
 
 - When fixing shell scripts, account for the actual shell interpreter (bash vs zsh). Zsh expands globs before command substitution — test fixes against the correct shell. Always verify the fix works, don't just explain it.
-- When chaining multiple independent commands (e.g., health checks, diagnostic steps),
-  use `;` not `&&`. With `&&`, if any command returns non-zero (e.g., `grep` finding
-  no matches, `pgrep` finding no processes), all subsequent commands are skipped. Use
-  `&&` only when commands genuinely depend on each other's success.
+- When chaining multiple independent commands (e.g., health checks, diagnostic steps), use `;` not `&&`. With `&&`, if any command returns non-zero (e.g., `grep` finding no matches, `pgrep` finding no processes), all subsequent commands are skipped. Use `&&` only when commands genuinely depend on each other's success.
 
 - **Never use `[[ condition ]] && action` in loops.** If the last iteration's condition is false, the `&&` short-circuit sets the loop's exit code to 1, producing a misleading error even though all matching iterations succeeded. Use `if/then/fi` instead:
 ```bash
@@ -246,6 +243,14 @@ it in the current conversation. NEVER do any of the following:
 - Suggest the user check results manually
 - Say "I'll let you know when it's done" and then stop
 
+Instead, you MUST:
+- Stay in the conversation and poll the experiment's progress (through a dedicated file) at reasonable intervals (at most once per minute, using `sleep 100 ; cat /tmp/experiment-status.txt`).
+- Report progress updates to the user as you observe them.
+- If an error or anomaly is detected, IMMEDIATELY stop running further experiments
+  and diagnose/fix the issue before continuing.
+- Only consider the task complete when the experiment has finished successfully and
+  results have been collected/verified.
+
 #### Monitoring workflow
 
 Use an external `monitor.sh` script on the experiment machine. It runs
@@ -271,10 +276,12 @@ pointing at that output file.
 
 ```bash
 # Local (Claude Code on same machine)
-sleep 100 ; cat /tmp/experiment-status.txt
+sleep 100
+cat /tmp/experiment-status.txt
 
 # Remote (Claude Code on different machine)
-sleep 100 ; ssh exp-machine 'cat /tmp/experiment-status.txt'
+sleep 100
+ssh exp-machine 'cat /tmp/experiment-status.txt'
 ```
 
 `sleep 100` is within the Bash tool's default 120s timeout and is reliable.
@@ -284,6 +291,7 @@ Each check, verify:
 1. **Progress**: run count advancing
 2. **Liveness**: status is ALIVE
 3. **Process tree**: correct process counts
+4. **Results**: results are being collected properly
 4. **Stalls**: stall_checks > 2 means no progress for multiple intervals
 
 **Step 3: When experiment finishes** (status shows DEAD / completed: true),
@@ -300,6 +308,24 @@ notifications (via `TaskOutput` and task-notification independently) that
 flood the conversation. The external monitor script avoids all these issues
 — Claude Code only uses short `sleep 100` for polling, never for the
 health check logic itself.
+
+### Polling Best Practices (CRITICAL)
+
+- **ALWAYS `sleep` before reading the status file.** When the status file hasn't
+  changed, the Read/Bash tool returns cached results instantly. Without a sleep,
+  this creates a tight loop of hundreds of back-to-back reads per minute — wasting
+  API round-trips and cluttering the conversation. Always include a sleep to
+  enforce a minimum interval between checks:
+  ```bash
+  # GOOD: sleep enforces minimum interval between polls
+  sleep 100
+  cat /tmp/experiment-status.txt
+
+  # BAD: tight loop when file content is unchanged (cached reads return instantly)
+  cat /tmp/experiment-status.txt
+  ```
+- **Do NOT prepend `date;` to status-check commands.** The `date` command generates a unique output every call, which defeats caching and forces a new tool call round-trip even when the status file hasn't changed.
+- **Do NOT poll more than once per minute.** Most experiments take many minutes per run. Polling every few seconds wastes API round-trips and clutters the conversation.
 
 ### Clean Slate Between Experiments (CRITICAL)
 
