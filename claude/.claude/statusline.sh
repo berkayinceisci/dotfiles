@@ -67,13 +67,13 @@ fi
 
 # Get git branch
 if [[ -n "$cwd" ]]; then
-    branch=$(git -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    branch=$(git --no-optional-locks -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
 fi
 
 # Check if repo is dirty (any changes: staged, unstaged, or untracked)
 git_dirty=""
 if [[ -n "$cwd" && -n "$branch" ]]; then
-    if [[ -n $(git -C "$cwd" status --porcelain 2>/dev/null) ]]; then
+    if [[ -n $(git --no-optional-locks -C "$cwd" status --porcelain 2>/dev/null) ]]; then
         git_dirty="*"
     fi
 fi
