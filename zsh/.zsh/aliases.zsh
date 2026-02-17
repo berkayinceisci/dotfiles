@@ -1,6 +1,7 @@
 alias e="exit"
 alias v="nvim"
 alias tmux="tmux -f ~/.config/tmux/tmux.conf"
+alias t="tmux"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
 alias img="wezterm imgcat"
