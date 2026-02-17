@@ -44,28 +44,18 @@ exec --no-startup-id ~/.config/i3/xsettings.sh
 # display settings
 exec --no-startup-id ~/.config/i3/display_setup.sh
 
-# workspace is given to either HDMI-1-0 or HDMI-1-1 (whichever is connected)
-workspace 1 output HDMI-1-0 HDMI-1-1
-workspace 2 output HDMI-1-0 HDMI-1-1
-workspace 3 output HDMI-1-0 HDMI-1-1
-workspace 4 output HDMI-1-0 HDMI-1-1
-workspace 5 output HDMI-1-0 HDMI-1-1
-workspace 6 output HDMI-1-0 HDMI-1-1
-workspace 7 output HDMI-1-0 HDMI-1-1
-workspace 8 output HDMI-1-0 HDMI-1-1
-workspace 9 output HDMI-1-0 HDMI-1-1
-
-# popos: workspaces 1-9 on primary (HDMI-1), workspace 10 on vertical (HDMI-2)
-workspace 1 output HDMI-1
-workspace 2 output HDMI-1
-workspace 3 output HDMI-1
-workspace 4 output HDMI-1
-workspace 5 output HDMI-1
-workspace 6 output HDMI-1
-workspace 7 output HDMI-1
-workspace 8 output HDMI-1
-workspace 9 output HDMI-1
-workspace 10 output HDMI-2
+# workspace output assignments (i3 uses first available output as fallback)
+# popos: HDMI-1 (primary), HDMI-2 (vertical) | manjaro/ubuntu: HDMI-1-0 or HDMI-1-1
+workspace 1 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 2 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 3 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 4 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 5 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 6 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 7 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 8 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 9 output HDMI-1 HDMI-1-0 HDMI-1-1
+workspace 10 output HDMI-2 HDMI-1-0 HDMI-1-1
 
 # enable picom
 exec --no-startup-id picom -b
