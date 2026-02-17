@@ -27,7 +27,7 @@ eval "$(atuin init zsh --disable-up-arrow)"
 
 precmd() {
   # Reset terminal modes that may leak from SSH/vim/tmux
-  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l\e[?25h'
+  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l\e[?25h\e[?1l\e[?1049l'
   print -Pn "\e]0;%1~\a"
 }
 
