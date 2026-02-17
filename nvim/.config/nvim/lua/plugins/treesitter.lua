@@ -27,6 +27,7 @@ return {
 					"typescript",
 					"python",
 					"diff",
+					"ssh_config",
 				},
 				sync_install = false,
 				auto_install = true,
