@@ -3,9 +3,20 @@ set -euo pipefail
 
 # Toggle HDMI-2 between vertical (rotated right) and horizontal (normal)
 # for screen sharing presentations over Zoom.
+# Only applies to popos (dual-monitor mini PC setup).
+
+if [[ "$(hostname)" != "popos" ]]; then
+    notify-send "Presentation toggle" "Only available on popos (dual-monitor setup)"
+    exit 0
+fi
 
 OUTPUT="HDMI-2"
 PRIMARY="HDMI-1"
+
+if ! xrandr --query | grep -q "^${OUTPUT} connected"; then
+    notify-send "Presentation toggle" "HDMI-2 not connected"
+    exit 0
+fi
 
 current=$(xrandr --query | grep "^${OUTPUT} connected" | grep -o 'right\|left\|inverted\|normal' | head -1)
 
