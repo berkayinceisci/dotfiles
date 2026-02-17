@@ -1,0 +1,218 @@
+#!/bin/bash
+# Format files in a directory using the appropriate formatter per language.
+# Mirrors the formatter config from nvim conform.nvim.
+
+set -euo pipefail
+
+usage() {
+  cat <<EOF
+Usage: format [options] [directory]
+
+Format all supported files in a directory using language-appropriate formatters.
+
+Options:
+  -r          Recurse into subdirectories
+  -n          Dry run (show what would be formatted, don't modify)
+  -h          Show this help
+
+Supported formats:
+  .py         ruff (organize imports + format)
+  .rs         rustfmt
+  .c .h .cpp  clang-format
+  .lua        stylua
+  .json .js .ts .css .html .md
+              prettierd or prettier
+  .sh .bash .zsh
+              shfmt (2-space indent)
+  .tex        latexindent
+  .bib        bibtex-tidy
+EOF
+  exit 0
+}
+
+RECURSE=false
+DRY_RUN=false
+
+while getopts "rnh" opt; do
+  case "$opt" in
+    r) RECURSE=true ;;
+    n) DRY_RUN=true ;;
+    h) usage ;;
+    *) usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+TARGET="${1:-.}"
+
+if [[ ! -d "$TARGET" ]]; then
+  echo "Error: '$TARGET' is not a directory"
+  exit 1
+fi
+
+# Check if a command exists
+has() {
+  command -v "$1" &>/dev/null
+}
+
+# Pick first available command from arguments
+pick() {
+  for cmd in "$@"; do
+    if has "$cmd"; then
+      echo "$cmd"
+      return
+    fi
+  done
+  return 1
+}
+
+FORMATTED=0
+SKIPPED=0
+ERRORS=0
+
+format_file() {
+  local file="$1"
+  local ext="${file##*.}"
+  local cmd=""
+
+  case ".$ext" in
+    .py)
+      if has ruff; then
+        cmd="ruff"
+      fi
+      ;;
+    .rs)
+      if has rustfmt; then
+        cmd="rustfmt"
+      fi
+      ;;
+    .c | .h | .cpp | .cc | .cxx | .hpp)
+      if has clang-format; then
+        cmd="clang-format"
+      fi
+      ;;
+    .lua)
+      if has stylua; then
+        cmd="stylua"
+      fi
+      ;;
+    .json | .js | .ts | .css | .html | .md)
+      cmd=$(pick prettierd prettier) || true
+      ;;
+    .sh | .bash | .zsh)
+      if has shfmt; then
+        cmd="shfmt"
+      fi
+      ;;
+    .tex)
+      if has latexindent; then
+        cmd="latexindent"
+      fi
+      ;;
+    .bib)
+      if has bibtex-tidy; then
+        cmd="bibtex-tidy"
+      fi
+      ;;
+    *)
+      return
+      ;;
+  esac
+
+  if [[ -z "$cmd" ]]; then
+    echo "  SKIP $file (no formatter installed)"
+    ((SKIPPED++)) || true
+    return
+  fi
+
+  if $DRY_RUN; then
+    echo "  WOULD format $file ($cmd)"
+    return
+  fi
+
+  echo "  $cmd: $file"
+
+  case "$cmd" in
+    ruff)
+      if ! ruff check --select I --fix --quiet "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      if ! ruff format --quiet "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      ;;
+    rustfmt)
+      if ! rustfmt --edition 2021 "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      ;;
+    clang-format)
+      if ! clang-format -i "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      ;;
+    stylua)
+      if ! stylua "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      ;;
+    prettierd)
+      if ! prettierd "$file" > "$file.prettierd.tmp" 2>/dev/null; then
+        rm -f "$file.prettierd.tmp"
+        ((ERRORS++)) || true
+        return
+      fi
+      mv "$file.prettierd.tmp" "$file"
+      ;;
+    prettier)
+      if ! prettier --write "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      ;;
+    shfmt)
+      if ! shfmt -w -i 2 "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      ;;
+    latexindent)
+      if ! latexindent -w -s "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      # latexindent creates backup files
+      rm -f "${file}.bak"
+      rm -f "indent.log"
+      ;;
+    bibtex-tidy)
+      if ! bibtex-tidy --modify "$file" 2>/dev/null; then
+        ((ERRORS++)) || true
+        return
+      fi
+      ;;
+  esac
+
+  ((FORMATTED++)) || true
+}
+
+# Collect files
+if $RECURSE; then
+  while IFS= read -r -d '' file; do
+    format_file "$file"
+  done < <(find "$TARGET" -type f -not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/__pycache__/*' -not -path '*/target/*' -print0 | sort -z)
+else
+  for file in "$TARGET"/*; do
+    if [[ -f "$file" ]]; then
+      format_file "$file"
+    fi
+  done
+fi
+
+echo ""
+echo "Formatted: $FORMATTED  Skipped: $SKIPPED  Errors: $ERRORS"
