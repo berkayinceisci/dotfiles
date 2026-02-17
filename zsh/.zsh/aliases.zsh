@@ -12,9 +12,9 @@ alias ccd='~/.local/scripts-private/cc-with-session-logging --dangerously-skip-p
 alias dotfiles="cd ~/dotfiles/; nvim .; cd - > /dev/null"
 
 if [[ "$(uname)" == "Darwin" ]]; then
-    alias psa="ps -eo lstart,user,pid,%cpu,%mem,stat,command | tail -n +2 | sort -k5,5n -k2,2M -k3,3n -k4,4"
+    psa() { ps -eo lstart,user,pid,%cpu,%mem,stat,command | tail -n +2 | sort -k5,5n -k2,2M -k3,3n -k4,4 | grcat conf.ps; }
 else
-    alias psa="ps aux --sort=start_time | grep -v ' \[.*\]$'"
+    psa() { ps aux --sort=start_time | grep -v ' \[.*\]$' | grcat conf.ps; }
 fi
 
 if [[ -e ~/.cargo/bin/eza ]]; then
