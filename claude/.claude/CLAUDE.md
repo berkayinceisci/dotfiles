@@ -93,6 +93,37 @@ rm file.txt    # Bad: may prompt
 - When fixing shell scripts, account for the actual shell interpreter (bash vs zsh). Zsh expands globs before command substitution — test fixes against the correct shell. Always verify the fix works, don't just explain it.
 - When chaining multiple independent commands (e.g., health checks, diagnostic steps), use `;` not `&&`. With `&&`, if any command returns non-zero (e.g., `grep` finding no matches, `pgrep` finding no processes), all subsequent commands are skipped. Use `&&` only when commands genuinely depend on each other's success.
 
+- **`set -e` + `pipefail` and query commands**: Many commands return non-zero for
+  "not found" rather than actual errors (`grep` no match → 1, `pip show` not
+  installed → 1, `dpkg-query` not found → 1, `command -v` not found → 1,
+  `diff` files differ → 1). With `set -euo pipefail`, these kill the script.
+  Distinguish **actions** (must fail loudly) from **queries** (wrap in `if`):
+```bash
+# ACTIONS — never suppress errors
+make -j"$(nproc)"
+pip install "pkg==1.0"
+wrmsr -a 0x1A4 0xF
+
+# QUERIES — use if to absorb expected non-zero exit codes
+if ver="$(pip show pkg 2>/dev/null | awk '/^Version:/ {print $2}')"; then
+    echo "installed: $ver"
+fi
+
+if dpkg-query -W -f='${Version}' pkg 2>/dev/null; then ...; fi
+if command -v binary >/dev/null 2>&1; then ...; fi
+if grep -q "pattern" file 2>/dev/null; then ...; fi
+```
+  Also beware of `pipefail` + `grep -q`: when `grep -q` matches early, it exits
+  and closes the pipe, giving the upstream command SIGPIPE (exit 141). `pipefail`
+  propagates that. Use process substitution to avoid:
+```bash
+# BAD: pipefail propagates SIGPIPE (exit 141) from left side
+if cmd_with_lots_of_output 2>&1 | grep -q 'pattern'; then ...
+
+# GOOD: process substitution — grep reads from a subshell, no SIGPIPE
+if grep -q 'pattern' <(cmd_with_lots_of_output 2>&1); then ...
+```
+
 - **Never use `[[ condition ]] && action` in loops.** If the last iteration's condition is false, the `&&` short-circuit sets the loop's exit code to 1, producing a misleading error even though all matching iterations succeeded. Use `if/then/fi` instead:
 ```bash
 # BAD: exit code 1 if last item doesn't match condition
