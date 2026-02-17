@@ -3,18 +3,22 @@
 Host manjaro
     HostName ${MANJARO_HOST}
     User inceisciberkay
+    HostKeyAlias manjaro
 
 Host ubuntu
     HostName ${UBUNTU_HOST}
     User berkay
+    HostKeyAlias ubuntu
 
 Host macos
     HostName ${MACOS_HOST}
     User inceisciberkay
+    HostKeyAlias macos
 
 Host popos
     HostName ${POPOS_HOST}
     User berkayinceisci
+    HostKeyAlias popos
 
 # VT
 
