@@ -2,3 +2,13 @@
 on = "T"
 run = "plugin toggle-pane max-preview"
 desc = "Maximize or restore the preview pane"
+
+[[mgr.prepend_keymap]]
+on = "u"
+run = "plugin restore"
+desc = "Restore last deleted files/folders"
+
+[[mgr.prepend_keymap]]
+on = "U"
+run = "plugin restore -- --interactive"
+desc = "Restore deleted files/folders (Interactive)"
