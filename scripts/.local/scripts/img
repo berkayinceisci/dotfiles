@@ -1,0 +1,57 @@
+#!/bin/bash
+# img - Display images inline in the terminal
+# Uses iTerm2 inline image protocol (supported by WezTerm, iTerm2, etc.)
+#
+# Usage: img <file> [file...]
+#        command | img
+
+set -euo pipefail
+
+if [[ -n "${TMUX:-}" ]]; then
+    echo "Error: inline images not supported inside tmux" >&2
+    exit 1
+fi
+
+print_usage() {
+    echo "Usage: img <file> [file...]"
+    echo "       command | img"
+}
+
+display_image() {
+    local file="$1"
+    local b64data name_b64 size
+
+    if [[ "$file" == "-" ]]; then
+        b64data=$(base64 | tr -d '\n')
+        printf '\e]1337;File=inline=1:%s\a' "$b64data"
+    else
+        if [[ ! -f "$file" ]]; then
+            echo "Error: File not found: $file" >&2
+            return 1
+        fi
+
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+            size=$(stat -f %z "$file")
+        else
+            size=$(stat --format=%s "$file")
+        fi
+
+        name_b64=$(printf '%s' "$(basename "$file")" | base64 | tr -d '\n')
+        b64data=$(base64 < "$file" | tr -d '\n')
+
+        printf '\e]1337;File=name=%s;size=%d;inline=1:%s\a' "$name_b64" "$size" "$b64data"
+    fi
+    printf '\n'
+}
+
+if [[ $# -eq 0 ]]; then
+    if [[ -t 0 ]]; then
+        print_usage
+        exit 1
+    fi
+    display_image "-"
+else
+    for file in "$@"; do
+        display_image "$file"
+    done
+fi

@@ -4,7 +4,6 @@ alias tmux="tmux -f ~/.config/tmux/tmux.conf"
 alias t="tmux"
 alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
-alias img="wezterm imgcat"
 alias glow="glow -p"
 alias tldr='tldr -c'
 alias ccn='~/.local/scripts-private/cc-with-session-logging'
