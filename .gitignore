@@ -4,6 +4,8 @@
 **/atuin-receipt.json
 tmux/.config/tmux/plugins/
 tmux/.config/tmux/resurrect/
+yazi/.config/yazi/plugins/
+yazi/.config/yazi/package.toml
 cc-session.md
 ssh_config.secrets
 ssh/.ssh/config
