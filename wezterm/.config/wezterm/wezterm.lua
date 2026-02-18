@@ -39,6 +39,13 @@ if wezterm.target_triple == "aarch64-apple-darwin" then
 	-- config.macos_window_background_blur = 30
 	-- config.window_background_opacity = 0.7
 	-- select_random_wallpaper()
+
+	wezterm.on("update-status", function(window, pane)
+		local date = wezterm.strftime("%a %b %-d  %H:%M")
+		window:set_right_status(wezterm.format({
+			{ Text = date .. "  " },
+		}))
+	end)
 else
 	super_key = "SUPER" -- windows key
 	alt_key = "ALT" -- alt key
@@ -98,7 +105,7 @@ config.window_padding = {
 	bottom = 0,
 }
 
-config.hide_tab_bar_if_only_one_tab = true
+config.hide_tab_bar_if_only_one_tab = false
 config.use_fancy_tab_bar = false
 
 config.enable_kitty_keyboard = false
