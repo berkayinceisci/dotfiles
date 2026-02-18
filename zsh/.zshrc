@@ -28,6 +28,8 @@ eval "$(atuin init zsh --disable-up-arrow)"
 precmd() {
   # Reset terminal modes that may leak from SSH/vim/tmux
   printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l\e[?25h\e[?1l'
+  # Exit alternate screen buffer only outside tmux (causes redraw issues inside tmux)
+  [[ -z "$TMUX" ]] && printf '\e[?1049l'
   print -Pn "\e]0;%1~\a"
 }
 
