@@ -39,6 +39,14 @@ When a command is blocked by a hook (e.g., "BLOCKED: sudo is not allowed"):
 - When answering questions about code, ALWAYS include the relevant code snippet(s) in your response. Never provide an explanation without showing the actual code being discussed.
 - When the user asks about something in their repo or config files, ALWAYS search the actual repo/config first before giving generic advice. Never assume — look at the code.
 
+## Document Generation
+
+When writing documents, reports, or any prose that makes factual claims:
+- Every factual claim must be directly traceable to a source file you read in this session.
+- If a claim is not directly from a source file, mark it with `[[VERIFY]]`.
+- This includes: acronym expansions, specific numbers, names, paper titles, algorithm names, and definitions.
+- When in doubt, mark it. False confidence is worse than a `[[VERIFY]]` tag.
+
 ## Conversation Guidelines
 
 Primary Objective: Engage in honest, insight-driven dialogue that advances understanding.
