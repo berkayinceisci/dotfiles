@@ -11,6 +11,15 @@ alias ccd='~/.local/scripts-private/cc-with-session-logging --dangerously-skip-p
 
 alias dotfiles="cd ~/dotfiles/; nvim .; cd - > /dev/null"
 
+function y() {
+    local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+    yazi "$@" --cwd-file="$tmp"
+    if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+        builtin cd -- "$cwd"
+    fi
+    rm -f -- "$tmp"
+}
+
 if [[ "$(uname)" == "Darwin" ]]; then
     psa() { ps -eo lstart,user,pid,%cpu,%mem,stat,command | tail -n +2 | sort -k5,5n -k2,2M -k3,3n -k4,4 | grcat conf.ps; }
 else
