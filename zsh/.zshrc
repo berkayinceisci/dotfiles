@@ -57,6 +57,7 @@ export PATH="$HOME/go/bin:$PATH"
 
 . "$HOME/.cargo/env"
 
+export EDITOR="nvim"
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
