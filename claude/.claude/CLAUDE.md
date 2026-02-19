@@ -418,6 +418,19 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 
 ## Plotting
 
+### Workflow (CRITICAL)
+
+- After writing or updating plotting code, **immediately run it** to generate the plots.
+  Do NOT ask the user whether to run — just run. The code-write-run cycle should be seamless.
+- After plots are generated, **immediately analyze them** (read the PNG files, describe
+  trends, anomalies, key observations). Do NOT ask the user whether to analyze — just do it.
+- The full pipeline is: write code → run → analyze. All three steps happen without pausing
+  for confirmation.
+- **Parallelize across parameter sets.** When a plotting script needs to be run multiple
+  times with different parameters (e.g., different experiments, configs, or datasets),
+  run invocations in parallel rather than sequentially. For small batches (3-4 invocations),
+  use parallel Bash tool calls in a single response. For larger batches, use `xargs -P`.
+
 - Plot titles must be as descriptive as possible, including all key parameters and context.
 - Output file names must be equally descriptive, encoding key parameters (e.g., platform, event, dataset, method, bin size, date). Any information in the title should also be recoverable from the filename.
 - Any information encoded in the output file name must also appear in the plot title, and vice versa.
@@ -426,6 +439,25 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 - Use CDF (not CCDF) with linear scale (no log scale on axes) for distribution plots.
 - Side-by-side panels that show the same metric must share axis limits so they are visually comparable.
 - Always save plots in both PNG (dpi=150) and PDF formats. Use separate directories with the format suffix appended to the category name: `{category}-png/` and `{category}-pdf/` (e.g., `plots/latency_analysis-png/{experiment}/file.png` and `plots/latency_analysis-pdf/{experiment}/file.pdf`). The rest of the hierarchy is preserved identically in both.
+- **CDF plot colors**: Use maximally distinguishable colors for CDF curves. When curves represent distinct categories (benchmarks, workloads), use an explicit color list: `['black', 'green', 'blue', 'red', 'magenta', 'tab:orange', 'tab:brown']`. Extend with `'tab:cyan'`, `'tab:olive'`, `'tab:gray'`, `'tab:pink'` if needed. Do not use colormaps (viridis, tab10) for CDFs — they produce visually similar adjacent colors that are hard to distinguish.
+
+### Plot Generation Performance (CRITICAL)
+
+Plotting scripts must be as fast as possible while preserving correctness. Apply these
+optimizations proactively:
+
+- **Never read the same file more than once.** If a script needs multiple derived values
+  from one data file (e.g., summary stats + CDF samples + with-zero samples), read the
+  file in a single pass and compute all results from that one read. Three passes over a
+  30M-row CSV is 3× slower than one pass.
+- **Pickle-cache loaded data.** When a script loads expensive data (large CSVs, parsed
+  perf output), cache the result to a `.cache/` directory using `pickle`. On re-runs
+  (e.g., iterating on plot code), load from cache instead of re-parsing. Include a
+  `--no-cache` flag to force reload. The cache key should hash all parameters that
+  affect the loaded data (file paths, sample limits, frequencies, etc.) **and the
+  modification time (`os.path.getmtime()`) of each source file**, so that updated
+  raw data automatically invalidates stale caches.
+- **Add `.cache/` to `.gitignore`** in any project that uses pickle caching.
 
 ## Whitespace (CRITICAL)
 
