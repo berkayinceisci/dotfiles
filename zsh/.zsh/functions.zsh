@@ -97,3 +97,7 @@ open() {
         esac
     fi
 }
+
+ssht() {
+    ssh -t "$@" "tmux attach"
+}
