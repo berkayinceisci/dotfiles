@@ -118,6 +118,64 @@ config.keys = {
 	{ key = "n", mods = alt_key, action = wezterm.action.DisableDefaultAssignment },
 	{ key = "n", mods = super_key, action = act.SpawnWindow },
 	{ key = "q", mods = super_key, action = act.CloseCurrentTab({ confirm = false }) },
+	{
+		key = "n",
+		mods = super_key .. "|SHIFT",
+		action = wezterm.action_callback(function(window, pane)
+			pane:move_to_new_window()
+		end),
+	},
+	{
+		key = "m",
+		mods = super_key .. "|SHIFT",
+		action = wezterm.action_callback(function(window, pane)
+			local current_id = window:mux_window():window_id()
+			local pane_id = tostring(pane:pane_id())
+			local others = {}
+			for _, w in ipairs(wezterm.mux.all_windows()) do
+				if w:window_id() ~= current_id and #w:tabs() > 0 then
+					table.insert(others, w)
+				end
+			end
+			if #others == 0 then
+				return
+			elseif #others == 1 then
+				wezterm.background_child_process({
+					"wezterm", "cli", "move-pane-to-new-tab",
+					"--pane-id", pane_id,
+					"--window-id", tostring(others[1]:window_id()),
+				})
+			else
+				local choices = {}
+				for _, w in ipairs(others) do
+					local titles = {}
+					for _, t in ipairs(w:tabs()) do
+						table.insert(titles, t:active_pane():get_title())
+					end
+					table.insert(choices, {
+						label = table.concat(titles, " | "),
+						id = tostring(w:window_id()),
+					})
+				end
+				window:perform_action(
+					act.InputSelector({
+						title = "Move tab to window",
+						choices = choices,
+						action = wezterm.action_callback(function(_, _, id)
+							if id then
+								wezterm.background_child_process({
+									"wezterm", "cli", "move-pane-to-new-tab",
+									"--pane-id", pane_id,
+									"--window-id", id,
+								})
+							end
+						end),
+					}),
+					pane
+				)
+			end
+		end),
+	},
 	{ key = "[", mods = super_key, action = act.MoveTabRelative(-1) },
 	{ key = "]", mods = super_key, action = act.MoveTabRelative(1) },
 	{ key = "h", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
