@@ -279,6 +279,24 @@ EOF
     else
         echo "  ⚠ display_setup.sh not found, skipping display manager config"
     fi
+
+    # Install udev rule for display hotplug (laptops only)
+    # Re-runs display_setup.sh when monitors are connected/disconnected
+    HOST=$(hostname)
+    if [[ "$HOST" == "manjaro" || "$HOST" == "ubuntu" ]]; then
+        echo ""
+        echo "Installing display hotplug udev rule..."
+        HOTPLUG_SCRIPT="$HOME/.config/i3/hotplug_display.sh"
+        if [[ -f "$DOTFILES_DIR/i3/.config/i3/hotplug_display.sh" ]]; then
+            sudo tee /etc/udev/rules.d/95-display-hotplug.rules > /dev/null << EOF
+ACTION=="change", SUBSYSTEM=="drm", RUN+="$HOTPLUG_SCRIPT"
+EOF
+            sudo udevadm control --reload-rules
+            echo "  ✓ Display hotplug udev rule installed"
+        else
+            echo "  ⚠ hotplug_display.sh not found, skipping udev rule"
+        fi
+    fi
 fi
 
 # System-level configurations (GUI only)
