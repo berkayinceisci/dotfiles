@@ -1,0 +1,18 @@
+#!/bin/bash
+read -r free_mb total_mb <<< $(free -m | awk '/^Swap:/ {print $4, $2}')
+read -r free_h total_h <<< $(free -h | awk '/^Swap:/ {print $4, $2}')
+
+if [[ $total_mb -eq 0 ]]; then
+    echo "Swap: N/A"
+    exit 0
+fi
+
+echo "Swap free: $free_h/$total_h"
+echo ""
+
+# Color based on free swap
+if [[ $free_mb -lt $((total_mb / 4)) ]]; then
+    echo "#bf616a"
+elif [[ $free_mb -lt $((total_mb / 2)) ]]; then
+    echo "#ebcb8b"
+fi

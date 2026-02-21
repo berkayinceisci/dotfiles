@@ -20,6 +20,10 @@ interval=5
 command=~/.config/i3blocks/memory
 interval=5
 
+[swap]
+command=~/.config/i3blocks/swap
+interval=5
+
 [load]
 command=~/.config/i3blocks/load
 interval=5
