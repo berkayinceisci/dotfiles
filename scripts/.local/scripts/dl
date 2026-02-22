@@ -1,0 +1,62 @@
+#!/bin/bash
+# dl - Download media from URLs
+#
+# Usage: dl <url>           Download video (yt-dlp)
+#        dl -i <url>        Download image/gif (yt-dlp or curl for direct URLs)
+
+set -euo pipefail
+
+print_usage() {
+    echo "Usage: dl <url>           Download video"
+    echo "       dl -i <url>        Download image/gif"
+}
+
+require_ytdlp() {
+    if ! command -v yt-dlp >/dev/null 2>&1; then
+        echo "Error: yt-dlp not found" >&2
+        exit 1
+    fi
+}
+
+download_video() {
+    local url="$1"
+    require_ytdlp
+    yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" --print after_move:filepath "$url"
+}
+
+download_image() {
+    local url="$1"
+
+    # Direct file URL — use curl
+    if [[ "$url" =~ \.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$ ]]; then
+        local filename
+        filename=$(basename "${url%%\?*}")
+        curl -fLo "$filename" "$url"
+        echo "$filename"
+    else
+        # Platform URL (Twitter, Instagram, etc.) — use yt-dlp
+        require_ytdlp
+        yt-dlp --print after_move:filepath "$url"
+    fi
+}
+
+if [[ $# -eq 0 ]]; then
+    print_usage
+    exit 1
+fi
+
+mode="video"
+if [[ "$1" == "-i" ]]; then
+    mode="image"
+    shift
+fi
+
+if [[ $# -eq 0 ]]; then
+    print_usage
+    exit 1
+fi
+
+case "$mode" in
+    video) download_video "$1" ;;
+    image) download_image "$1" ;;
+esac
