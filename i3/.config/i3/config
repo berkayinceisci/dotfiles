@@ -77,6 +77,9 @@ bindsym Mod1+Shift+p exec systemctl poweroff -i
 # lock screen
 bindsym Mod4+l exec --no-startup-id ~/.config/i3/lock.sh
 
+# re-apply display settings (recovery from HDMI signal loss)
+bindsym Mod1+Shift+d exec --no-startup-id ~/.config/i3/display_setup.sh
+
 # toggle HDMI-2 rotation (vertical <-> horizontal for presentations)
 bindsym Mod1+Shift+t exec --no-startup-id ~/.config/i3/presentation_toggle.sh
 
