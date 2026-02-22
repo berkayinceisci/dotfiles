@@ -60,6 +60,7 @@ export PATH="$HOME/go/bin:$PATH"
 
 export EDITOR="nvim"
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # node is installed through brew in mac, therefore nvm does not exist
