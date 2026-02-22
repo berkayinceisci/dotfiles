@@ -134,35 +134,35 @@ format_file() {
 
   case "$cmd" in
     ruff)
-      if ! ruff check --select I --fix --quiet "$file" 2>/dev/null; then
+      if ! ruff check --select I --fix --quiet "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
-      if ! ruff format --quiet "$file" 2>/dev/null; then
+      if ! ruff format --quiet "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
       ;;
     rustfmt)
-      if ! rustfmt --edition 2021 "$file" 2>/dev/null; then
+      if ! rustfmt --edition 2021 "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
       ;;
     clang-format)
-      if ! clang-format -i "$file" 2>/dev/null; then
+      if ! clang-format -i "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
       ;;
     stylua)
-      if ! stylua "$file" 2>/dev/null; then
+      if ! stylua "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
       ;;
     prettierd)
-      if ! prettierd "$file" > "$file.prettierd.tmp" 2>/dev/null; then
+      if ! prettierd "$file" > "$file.prettierd.tmp" 2>&1; then
         rm -f "$file.prettierd.tmp"
         ((ERRORS++)) || true
         return
@@ -170,19 +170,19 @@ format_file() {
       mv "$file.prettierd.tmp" "$file"
       ;;
     prettier)
-      if ! prettier --write "$file" 2>/dev/null; then
+      if ! prettier --write "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
       ;;
     shfmt)
-      if ! shfmt -w -i 2 "$file" 2>/dev/null; then
+      if ! shfmt -w -i 2 "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
       ;;
     latexindent)
-      if ! latexindent -w -s "$file" 2>/dev/null; then
+      if ! latexindent -w -s "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
@@ -191,7 +191,7 @@ format_file() {
       rm -f "indent.log"
       ;;
     bibtex-tidy)
-      if ! bibtex-tidy --modify "$file" 2>/dev/null; then
+      if ! bibtex-tidy --modify "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
