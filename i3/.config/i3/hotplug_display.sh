@@ -8,18 +8,18 @@ LOCK="/tmp/hotplug_display.lock"
 # Debounce: skip if another instance ran in the last 5 seconds
 # (udev fires multiple events per single hotplug)
 if [[ -f "$LOCK" ]]; then
-    last=$(stat -c %Y "$LOCK" 2>/dev/null || echo 0)
-    now=$(date +%s)
-    if (( now - last < 5 )); then
-        exit 0
-    fi
+  last=$(stat -c %Y "$LOCK" 2>/dev/null || echo 0)
+  now=$(date +%s)
+  if ((now - last < 5)); then
+    exit 0
+  fi
 fi
 touch "$LOCK"
 
 # Find the user owning the X session
 X_USER=$(who | awk '/:0/ || /:1/ {print $1; exit}')
 if [[ -z "$X_USER" ]]; then
-    exit 0
+  exit 0
 fi
 
 X_HOME=$(eval echo "~$X_USER")
