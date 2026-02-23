@@ -61,12 +61,17 @@ pick() {
   return 1
 }
 
-FORMATTED=0
+CHANGED=0
+UNCHANGED=0
 SKIPPED=0
 ERRORS=0
 
 format_file() {
   local file="$1"
+  # Skip symlinks — atomic-write formatters (shfmt, etc.) would replace the link
+  if [[ -L "$file" ]]; then
+    return
+  fi
   local ext="${file##*.}"
   local cmd=""
 
@@ -125,6 +130,9 @@ format_file() {
     return
   fi
 
+  local hash_before
+  hash_before=$(md5sum "$file")
+
   echo "  $cmd: $file"
 
   case "$cmd" in
@@ -165,7 +173,7 @@ format_file() {
       mv "$file.prettierd.tmp" "$file"
       ;;
     prettier)
-      if ! prettier --write "$file" 2>&1; then
+      if ! prettier --write "$file" &>/dev/null; then
         ((ERRORS++)) || true
         return
       fi
@@ -193,7 +201,11 @@ format_file() {
       ;;
   esac
 
-  ((FORMATTED++)) || true
+  if [[ "$(md5sum "$file")" == "$hash_before" ]]; then
+    ((UNCHANGED++)) || true
+  else
+    ((CHANGED++)) || true
+  fi
 }
 
 # Single file mode
@@ -228,4 +240,4 @@ else
 fi
 
 echo ""
-echo "Formatted: $FORMATTED  Skipped: $SKIPPED  Errors: $ERRORS"
+echo "Changed: $CHANGED  Unchanged: $UNCHANGED  Skipped: $SKIPPED  Errors: $ERRORS"
