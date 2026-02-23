@@ -141,9 +141,13 @@ config.keys = {
 				return
 			elseif #others == 1 then
 				wezterm.background_child_process({
-					"wezterm", "cli", "move-pane-to-new-tab",
-					"--pane-id", pane_id,
-					"--window-id", tostring(others[1]:window_id()),
+					"wezterm",
+					"cli",
+					"move-pane-to-new-tab",
+					"--pane-id",
+					pane_id,
+					"--window-id",
+					tostring(others[1]:window_id()),
 				})
 			else
 				local choices = {}
@@ -164,9 +168,13 @@ config.keys = {
 						action = wezterm.action_callback(function(_, _, id)
 							if id then
 								wezterm.background_child_process({
-									"wezterm", "cli", "move-pane-to-new-tab",
-									"--pane-id", pane_id,
-									"--window-id", id,
+									"wezterm",
+									"cli",
+									"move-pane-to-new-tab",
+									"--pane-id",
+									pane_id,
+									"--window-id",
+									id,
 								})
 							end
 						end),
