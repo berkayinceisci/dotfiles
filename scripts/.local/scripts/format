@@ -6,9 +6,9 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: format [options] [directory]
+Usage: format [options] [file|directory]
 
-Format all supported files in a directory using language-appropriate formatters.
+Format a single file or all supported files in a directory.
 
 Options:
   -r          Recurse into subdirectories
@@ -44,11 +44,6 @@ done
 shift $((OPTIND - 1))
 
 TARGET="${1:-.}"
-
-if [[ ! -d "$TARGET" ]]; then
-  echo "Error: '$TARGET' is not a directory"
-  exit 1
-fi
 
 # Check if a command exists
 has() {
@@ -200,6 +195,17 @@ format_file() {
 
   ((FORMATTED++)) || true
 }
+
+# Single file mode
+if [[ -f "$TARGET" ]]; then
+  format_file "$TARGET"
+  exit 0
+fi
+
+if [[ ! -d "$TARGET" ]]; then
+  echo "Error: '$TARGET' is not a file or directory"
+  exit 1
+fi
 
 # Collect files
 if $RECURSE; then
