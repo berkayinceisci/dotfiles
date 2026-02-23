@@ -33,68 +33,57 @@ Host pine
 
 Host ece5504
     HostName lnx-prd-04.ece.vt.edu
-    ProxyJump ark
     User berkayinceisci
 
 # MoatLab
 
 Host hds01
     HostName ${HDS01_HOST}
-    ProxyJump ark
     User berkay
     Port 9999
 
 Host hds02
     HostName ${HDS02_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
 Host hds03
     HostName ${HDS03_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
 Host hds04
     HostName ${HDS04_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
 Host hds05
     HostName ${HDS05_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
 Host hds06
     HostName ${HDS06_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
 Host hds07
     HostName ${HDS07_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
 Host kopernik
     HostName ${KOPERNIK_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
 Host genesis
     HostName ${GENESIS_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
 Host r2d2
     HostName ${R2D2_HOST}
-    ProxyJump ark
     User berkay
     Port 22
 
@@ -108,7 +97,6 @@ Host ark
     HostName ${ARK_HOST}
     User berkay
     Port 55555
-    Port 22
 
 # GNR
 
@@ -128,3 +116,11 @@ Host gnr-astera
     ProxyJump gnrproxy
     User berkay
     Port 22
+
+# ProxyJump ark when reachable, fall back to popos (Tailscale exit node on same network)
+# On popos itself, no jump needed when ark is down (direct access)
+Match host hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2,ece5504 exec "nc -z -w 3 ${ARK_HOST} 55555 2>/dev/null"
+    ProxyJump ark
+
+Match host hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2,ece5504 exec "! nc -z -w 3 ${ARK_HOST} 55555 2>/dev/null && [ $(hostname) != popos ]"
+    ProxyJump popos
