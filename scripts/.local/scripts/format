@@ -20,7 +20,7 @@ Supported formats:
   .rs         rustfmt
   .c .h .cpp  clang-format
   .lua        stylua
-  .json .js .ts .css .html .md
+  .json .js .ts .css .html
               prettierd or prettier
   .sh .bash .zsh
               shfmt (2-space indent)
@@ -91,10 +91,10 @@ format_file() {
         cmd="stylua"
       fi
       ;;
-    .json | .js | .ts | .css | .html | .md)
+    .json | .js | .ts | .css | .html)
       cmd=$(pick prettierd prettier) || true
       ;;
-    .sh | .bash | .zsh)
+    .sh | .bash)
       if has shfmt; then
         cmd="shfmt"
       fi
@@ -209,9 +209,16 @@ fi
 
 # Collect files
 if $RECURSE; then
-  while IFS= read -r -d '' file; do
-    format_file "$file"
-  done < <(find "$TARGET" -type f -not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/__pycache__/*' -not -path '*/target/*' -print0 | sort -z)
+  # Use git ls-files to skip gitignored files when inside a repo
+  if git -C "$TARGET" rev-parse --show-toplevel &>/dev/null; then
+    while IFS= read -r -d '' file; do
+      format_file "$file"
+    done < <(git -C "$TARGET" ls-files -z --cached --others --exclude-standard | sort -z | while IFS= read -r -d '' rel; do printf '%s\0' "$TARGET/$rel"; done)
+  else
+    while IFS= read -r -d '' file; do
+      format_file "$file"
+    done < <(find "$TARGET" -type f -not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/__pycache__/*' -not -path '*/target/*' -print0 | sort -z)
+  fi
 else
   for file in "$TARGET"/*; do
     if [[ -f "$file" ]]; then
