@@ -10,7 +10,8 @@ return {
 		else
 			vim.g.vimtex_view_method = "general"
 			vim.g.vimtex_view_general_viewer = "zathura"
-			vim.g.vimtex_view_general_options = [[--synctex-forward @line:1:@tex @pdf -x "nvr --remote +%{line} %{input}"]]
+			vim.g.vimtex_view_general_options =
+				[[--synctex-forward @line:1:@tex @pdf -x "nvr --remote +%{line} %{input}"]]
 		end
 
 		-- Compiler settings (latexmk)
