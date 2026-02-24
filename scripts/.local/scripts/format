@@ -22,8 +22,8 @@ Supported formats:
   .lua        stylua
   .json .js .ts .css .html
               prettierd or prettier
-  .sh .bash .zsh
-              shfmt (2-space indent)
+  .sh .bash
+              shfmt
   .tex        latexindent
   .bib        bibtex-tidy
 EOF
@@ -179,7 +179,7 @@ format_file() {
       fi
       ;;
     shfmt)
-      if ! shfmt -w -i 2 "$file" 2>&1; then
+      if ! shfmt -w "$file" 2>&1; then
         ((ERRORS++)) || true
         return
       fi
