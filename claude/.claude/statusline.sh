@@ -55,133 +55,133 @@ cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 
 # Format directory (shorten home path)
 if [[ -n "$cwd" ]]; then
-  home_dir="${HOME:-$(eval echo ~)}"
-  display_dir=$(echo "$cwd" | sed "s|^$home_dir|~|")
-  # Shorten to last 2 components if too long
-  if [[ ${#display_dir} -gt 30 ]]; then
-    display_dir="…/$(basename "$(dirname "$cwd")")/$(basename "$cwd")"
-  fi
+	home_dir="${HOME:-$(eval echo ~)}"
+	display_dir=$(echo "$cwd" | sed "s|^$home_dir|~|")
+	# Shorten to last 2 components if too long
+	if [[ ${#display_dir} -gt 30 ]]; then
+		display_dir="…/$(basename "$(dirname "$cwd")")/$(basename "$cwd")"
+	fi
 else
-  display_dir="~"
+	display_dir="~"
 fi
 
 # Get git branch
 if [[ -n "$cwd" ]]; then
-  branch=$(git --no-optional-locks -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
+	branch=$(git --no-optional-locks -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
 fi
 
 # Check if repo is dirty (any changes: staged, unstaged, or untracked)
 git_dirty=""
 if [[ -n "$cwd" && -n "$branch" ]]; then
-  if [[ -n $(git --no-optional-locks -C "$cwd" status --porcelain 2>/dev/null) ]]; then
-    git_dirty="*"
-  fi
+	if [[ -n $(git --no-optional-locks -C "$cwd" status --porcelain 2>/dev/null) ]]; then
+		git_dirty="*"
+	fi
 fi
 
 # Function to get Pro usage with caching
 get_usage() {
-  local now=$(date +%s)
-  local cache_time=0
+	local now=$(date +%s)
+	local cache_time=0
 
-  # Check if cache exists and is fresh
-  if [[ -f "$CACHE_FILE" ]]; then
-    cache_time=$(head -1 "$CACHE_FILE" 2>/dev/null || echo 0)
-    if ((now - cache_time < CACHE_TTL)); then
-      # Cache is fresh, use it
-      tail -n +2 "$CACHE_FILE"
-      return
-    fi
-  fi
+	# Check if cache exists and is fresh
+	if [[ -f "$CACHE_FILE" ]]; then
+		cache_time=$(head -1 "$CACHE_FILE" 2>/dev/null || echo 0)
+		if ((now - cache_time < CACHE_TTL)); then
+			# Cache is fresh, use it
+			tail -n +2 "$CACHE_FILE"
+			return
+		fi
+	fi
 
-  # Cache is stale or doesn't exist, fetch new data
-  # Get credentials based on platform
-  local creds=""
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS - use Keychain
-    creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
-  else
-    # Linux - read from credentials file
-    local creds_file="$HOME/.claude/.credentials.json"
-    if [[ -f "$creds_file" ]]; then
-      creds=$(cat "$creds_file")
-    fi
-  fi
-  if [[ -z "$creds" ]]; then
-    echo "|||"
-    return
-  fi
+	# Cache is stale or doesn't exist, fetch new data
+	# Get credentials based on platform
+	local creds=""
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		# macOS - use Keychain
+		creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
+	else
+		# Linux - read from credentials file
+		local creds_file="$HOME/.claude/.credentials.json"
+		if [[ -f "$creds_file" ]]; then
+			creds=$(cat "$creds_file")
+		fi
+	fi
+	if [[ -z "$creds" ]]; then
+		echo "|||"
+		return
+	fi
 
-  local token=$(echo "$creds" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
-  if [[ -z "$token" ]]; then
-    echo "|||"
-    return
-  fi
+	local token=$(echo "$creds" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+	if [[ -z "$token" ]]; then
+		echo "|||"
+		return
+	fi
 
-  # Call API
-  local response=$(curl -s --max-time 5 \
-    -H "Authorization: Bearer $token" \
-    -H "anthropic-beta: oauth-2025-04-20" \
-    "https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
+	# Call API
+	local response=$(curl -s --max-time 5 \
+		-H "Authorization: Bearer $token" \
+		-H "anthropic-beta: oauth-2025-04-20" \
+		"https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
 
-  if [[ -z "$response" ]]; then
-    echo "|||"
-    return
-  fi
+	if [[ -z "$response" ]]; then
+		echo "|||"
+		return
+	fi
 
-  local five_hour=$(echo "$response" | jq -r '.five_hour.utilization // 0' 2>/dev/null)
-  local seven_day=$(echo "$response" | jq -r '.seven_day.utilization // 0' 2>/dev/null)
-  local five_hour_resets=$(echo "$response" | jq -r '.five_hour.resets_at // empty' 2>/dev/null)
-  local seven_day_resets=$(echo "$response" | jq -r '.seven_day.resets_at // empty' 2>/dev/null)
+	local five_hour=$(echo "$response" | jq -r '.five_hour.utilization // 0' 2>/dev/null)
+	local seven_day=$(echo "$response" | jq -r '.seven_day.utilization // 0' 2>/dev/null)
+	local five_hour_resets=$(echo "$response" | jq -r '.five_hour.resets_at // empty' 2>/dev/null)
+	local seven_day_resets=$(echo "$response" | jq -r '.seven_day.resets_at // empty' 2>/dev/null)
 
-  # Write to cache
-  {
-    echo "$now"
-    echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
-  } >"$CACHE_FILE" 2>/dev/null
+	# Write to cache
+	{
+		echo "$now"
+		echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
+	} >"$CACHE_FILE" 2>/dev/null
 
-  echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
+	echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
 }
 
 # Format reset time as relative (e.g., "2h30m" or "3d12h")
 format_reset_time() {
-  local reset_time=$1
-  if [[ -z "$reset_time" ]]; then
-    echo ""
-    return
-  fi
+	local reset_time=$1
+	if [[ -z "$reset_time" ]]; then
+		echo ""
+		return
+	fi
 
-  local now=$(date +%s)
-  local reset_epoch
-  # Try GNU date first, then BSD date (macOS)
-  reset_epoch=$(date -d "$reset_time" +%s 2>/dev/null)
-  if [[ -z "$reset_epoch" ]]; then
-    # BSD date (macOS): parse ISO 8601 format
-    # Strip fractional seconds and convert +00:00 to +0000
-    local clean_time=$(echo "$reset_time" | sed -E 's/\.[0-9]+//; s/:([0-9]{2})$/\1/')
-    reset_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$clean_time" +%s 2>/dev/null)
-  fi
-  if [[ -z "$reset_epoch" ]]; then
-    echo ""
-    return
-  fi
+	local now=$(date +%s)
+	local reset_epoch
+	# Try GNU date first, then BSD date (macOS)
+	reset_epoch=$(date -d "$reset_time" +%s 2>/dev/null)
+	if [[ -z "$reset_epoch" ]]; then
+		# BSD date (macOS): parse ISO 8601 format
+		# Strip fractional seconds and convert +00:00 to +0000
+		local clean_time=$(echo "$reset_time" | sed -E 's/\.[0-9]+//; s/:([0-9]{2})$/\1/')
+		reset_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$clean_time" +%s 2>/dev/null)
+	fi
+	if [[ -z "$reset_epoch" ]]; then
+		echo ""
+		return
+	fi
 
-  local diff=$((reset_epoch - now))
-  if ((diff <= 0)); then
-    echo "now"
-    return
-  fi
+	local diff=$((reset_epoch - now))
+	if ((diff <= 0)); then
+		echo "now"
+		return
+	fi
 
-  local days=$((diff / 86400))
-  local hours=$(((diff % 86400) / 3600))
-  local mins=$(((diff % 3600) / 60))
+	local days=$((diff / 86400))
+	local hours=$(((diff % 86400) / 3600))
+	local mins=$(((diff % 3600) / 60))
 
-  if ((days > 0)); then
-    echo "${days}d${hours}h"
-  elif ((hours > 0)); then
-    echo "${hours}h${mins}m"
-  else
-    echo "${mins}m"
-  fi
+	if ((days > 0)); then
+		echo "${days}d${hours}h"
+	elif ((hours > 0)); then
+		echo "${hours}h${mins}m"
+	else
+		echo "${mins}m"
+	fi
 }
 
 # Get usage data
@@ -205,16 +205,16 @@ cost_fmt=$(awk "BEGIN {printf \"%.2f\", ${cost:-0}}")
 
 # Determine warning colors based on usage levels
 get_usage_colors() {
-  local pct=$1
-  local default_bg=$2
-  local default_fg=$3
-  if ((pct >= 80)); then
-    echo "${BG_RED}|${FG_RED}"
-  elif ((pct >= 60)); then
-    echo "${BG_YELLOW}|${FG_YELLOW}"
-  else
-    echo "${default_bg}|${default_fg}"
-  fi
+	local pct=$1
+	local default_bg=$2
+	local default_fg=$3
+	if ((pct >= 80)); then
+		echo "${BG_RED}|${FG_RED}"
+	elif ((pct >= 60)); then
+		echo "${BG_YELLOW}|${FG_YELLOW}"
+	else
+		echo "${default_bg}|${default_fg}"
+	fi
 }
 
 ctx_colors=$(get_usage_colors "$context_pct_fmt" "$BG_ORANGE" "$FG_ORANGE")
@@ -238,10 +238,10 @@ context_display="${context_pct_fmt}% ${context_used_k}K/${context_max}K"
 # Helper function to create a capsule
 # Usage: capsule "text" "bg_color" "fg_color_for_cap"
 capsule() {
-  local text=$1
-  local bg=$2
-  local fg_cap=$3
-  echo "${fg_cap}${LEFT_CAP}${RESET}${bg}${FG_WHITE}${BOLD}${text}${RESET}${fg_cap}${RIGHT_CAP}${RESET}"
+	local text=$1
+	local bg=$2
+	local fg_cap=$3
+	echo "${fg_cap}${LEFT_CAP}${RESET}${bg}${FG_WHITE}${BOLD}${text}${RESET}${fg_cap}${RIGHT_CAP}${RESET}"
 }
 
 # Build capsule segments
@@ -252,15 +252,15 @@ output+=$(capsule " ${display_dir} " "$BG_BLUE" "$FG_BLUE")
 
 # Git branch segment (magenta) - only if in a git repo
 if [[ -n "$branch" ]]; then
-  output+=" "
-  output+=$(capsule "  ${branch}${git_dirty} " "$BG_MAGENTA" "$FG_MAGENTA")
+	output+=" "
+	output+=$(capsule "  ${branch}${git_dirty} " "$BG_MAGENTA" "$FG_MAGENTA")
 fi
 
 # Model segment (teal)
 if [[ -n "$model" ]]; then
-  model_lower=$(echo "$model" | tr '[:upper:]' '[:lower:]')
-  output+=" "
-  output+=$(capsule " ${model_lower} " "$BG_CYAN" "$FG_CYAN")
+	model_lower=$(echo "$model" | tr '[:upper:]' '[:lower:]')
+	output+=" "
+	output+=$(capsule " ${model_lower} " "$BG_CYAN" "$FG_CYAN")
 fi
 
 # Context segment (orange, or warning color)
