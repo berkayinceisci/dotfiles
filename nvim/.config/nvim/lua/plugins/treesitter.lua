@@ -28,6 +28,7 @@ return {
 					"python",
 					"diff",
 					"ssh_config",
+					"csv",
 				},
 				sync_install = false,
 				auto_install = true,
