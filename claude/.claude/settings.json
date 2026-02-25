@@ -36,10 +36,6 @@
           {
             "type": "command",
             "command": "filepath=\"$CLAUDE_FILE_PATH\"; case \"$filepath\" in *.sh) command -v shellcheck >/dev/null && shellcheck \"$filepath\" 2>&1 | head -20 ;; *.py) python3 -m py_compile \"$filepath\" 2>&1 ;; *.zshrc) zsh -n \"$filepath\" 2>&1 | head -5 ;; *.bashrc) bash -n \"$filepath\" 2>&1 | head -5 ;; esac"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/post-edit-format.sh"
           }
         ]
       }
@@ -53,7 +49,8 @@
     "feature-dev@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "clangd-lsp@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": true
+    "pyright-lsp@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true
   },
   "skipDangerousModePermissionPrompt": true,
   "editMode": "vim"
