@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euo pipefail
+
+# Cross-platform "open" for Linux.
+# On macOS, use the native `open` command instead.
+
+file="${1:-}"
+
+if [[ -z "$file" ]]; then
+    echo "Usage: xopen <file|url>"
+    exit 1
+fi
+
+# Handle URLs
+if [[ "$file" =~ ^https?:// ]]; then
+    if command -v zen >/dev/null 2>&1; then
+        zen "$file"
+    else
+        echo "Zen Browser not found"
+        exit 1
+    fi
+    exit
+fi
+
+# Handle directories
+if [[ -d "$file" ]]; then
+    if command -v thunar >/dev/null 2>&1; then
+        thunar "$file"
+    elif command -v nautilus >/dev/null 2>&1; then
+        nautilus "$file"
+    else
+        xdg-open "$file"
+    fi
+    exit
+fi
+
+# Handle files by extension
+xdg-open "$file" &>/dev/null

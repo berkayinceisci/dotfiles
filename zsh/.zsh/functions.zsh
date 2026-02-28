@@ -53,48 +53,7 @@ open() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         command open "$@"
     else
-        local file="$1"
-
-        if [[ -z "$file" ]]; then
-            echo "Usage: open <file|url>"
-            return 1
-        fi
-
-        # Handle URLs
-        if [[ "$file" =~ ^https?:// ]]; then
-            if command -v zen >/dev/null 2>&1; then
-                zen "$file"
-            else
-                echo "Zen Browser not found"
-                return 1
-            fi
-            return
-        fi
-
-        if [[ -d "$file" ]]; then
-            if command -v thunar >/dev/null 2>&1; then
-                thunar "$file"
-            elif command -v nautilus >/dev/null 2>&1; then
-                nautilus "$file"
-            else
-                xdg-open "$file"
-            fi
-            return
-        fi
-
-        case "${file:l}" in
-            *.pdf)
-                if command -v zathura >/dev/null 2>&1; then
-                    zathura "$file" &>/dev/null
-                else
-                    echo "Install zathura"
-                    return 1
-                fi
-                ;;
-            *)
-                xdg-open "$file" &>/dev/null
-                ;;
-        esac
+        xopen "$@"
     fi
 }
 
