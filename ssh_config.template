@@ -1,3 +1,8 @@
+Host *
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    ConnectTimeout 10
+
 # Tailscale
 
 Host manjaro
