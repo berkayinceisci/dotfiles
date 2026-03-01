@@ -350,6 +350,13 @@ with open(p, 'w') as f:
 		if [ -d "/Applications/SwiftBar.app" ]; then
 			echo "Configuring SwiftBar..."
 			defaults write com.ameba.SwiftBar PluginDirectory -string "$HOME/.config/swiftbar"
+			# Add to login items (idempotent: osascript won't duplicate)
+			if ! osascript -e 'tell application "System Events" to get the name of every login item' 2>/dev/null | grep -q "SwiftBar"; then
+				osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/SwiftBar.app", hidden:false}' >/dev/null 2>&1
+				echo "  ✓ SwiftBar added to login items"
+			else
+				echo "  ✓ SwiftBar already in login items"
+			fi
 			echo "  ✓ SwiftBar configured"
 			echo "  Note: Open SwiftBar and grant necessary permissions"
 		else
