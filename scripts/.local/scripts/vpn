@@ -3,14 +3,42 @@ set -euo pipefail
 # VT VPN via Tailscale exit node (popos lab machine)
 
 EXIT_NODE="popos"
+OS="$(uname -s)"
+RESOLV_BACKUP="/tmp/resolv.conf.pre-vpn"
+
+# Detect tailscale binary (macOS app vs standard CLI)
+if [[ "$OS" == "Darwin" ]] && [[ -f "/Applications/Tailscale.app/Contents/MacOS/Tailscale" ]]; then
+    TS_CMD="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+else
+    TS_CMD="tailscale"
+fi
 
 # Check if currently using an exit node
-current=$(tailscale status --json | jq -r '.ExitNodeStatus.ID // empty')
+current=$("$TS_CMD" status --json | jq -r '.ExitNodeStatus.ID // empty')
 
 if [[ -n "$current" ]]; then
-    sudo tailscale set --exit-node=
+    # Turn VPN off
+    if [[ "$OS" == "Linux" ]]; then
+        sudo tailscale set --exit-node=
+        # Restore original DNS
+        if [[ -f "$RESOLV_BACKUP" ]]; then
+            sudo cp "$RESOLV_BACKUP" /etc/resolv.conf
+            rm -f "$RESOLV_BACKUP"
+        fi
+    else
+        "$TS_CMD" set --exit-node=
+    fi
     echo "VPN: off"
 else
-    sudo tailscale set --exit-node="$EXIT_NODE"
+    # Turn VPN on
+    if [[ "$OS" == "Linux" ]]; then
+        # Backup current DNS before switching
+        cp /etc/resolv.conf "$RESOLV_BACKUP"
+        sudo tailscale set --exit-node="$EXIT_NODE"
+        # Point DNS to Tailscale's resolver (routes through exit node)
+        printf 'nameserver 100.100.100.100\n' | sudo tee /etc/resolv.conf >/dev/null
+    else
+        "$TS_CMD" set --exit-node="$EXIT_NODE"
+    fi
     echo "VPN: on"
 fi
