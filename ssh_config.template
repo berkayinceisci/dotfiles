@@ -7,7 +7,7 @@ Host *
 
 Host manjaro
     HostName ${MANJARO_HOST}
-    User inceisciberkay
+    User berkay
     HostKeyAlias manjaro
 
 Host ubuntu
