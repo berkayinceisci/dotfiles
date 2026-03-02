@@ -22,7 +22,7 @@ Host macos
 
 Host popos
     HostName ${POPOS_HOST}
-    User berkayinceisci
+    User berkay
     HostKeyAlias popos
 
 # VT
