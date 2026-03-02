@@ -36,10 +36,6 @@ Host pine
     ProxyJump rlogin-random
     User berkayinceisci
 
-Host ece5504
-    HostName lnx-prd-04.ece.vt.edu
-    User berkayinceisci
-
 # MoatLab
 
 Host hds01
@@ -124,8 +120,8 @@ Host gnr-astera
 
 # ProxyJump ark when reachable, fall back to popos (Tailscale exit node on same network)
 # On popos itself, no jump needed when ark is down (direct access)
-Match host hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2,ece5504 exec "nc -z -w 3 ${ARK_HOST} 55555 2>/dev/null"
+Match host hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2 exec "nc -z -w 3 ${ARK_HOST} 55555 2>/dev/null"
     ProxyJump ark
 
-Match host hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2,ece5504 exec "! nc -z -w 3 ${ARK_HOST} 55555 2>/dev/null && [ $(hostname) != popos ]"
+Match host hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2 exec "! nc -z -w 3 ${ARK_HOST} 55555 2>/dev/null && [ $(hostname) != popos ]"
     ProxyJump popos
