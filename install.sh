@@ -136,9 +136,24 @@ for package in */; do
 		fi
 	done < <(cd "$package" && find . -type f | sed 's|^\./||')
 
+	# Remove directory-level symlinks that block stow tree folding.
+	# Even symlinks pointing into the repo must go — stow will recreate them.
+	# Also remove now-empty real directories (bottom-up via sort -r).
+	while IFS= read -r rel_dir; do
+		target="$HOME/$rel_dir"
+		if [[ -L "$target" ]]; then
+			rm -f "$target"
+		elif [[ -d "$target" ]]; then
+			resolved="$(readlink -f "$target" 2>/dev/null || true)"
+			if [[ "$resolved" != "$DOTFILES_DIR"/* ]]; then
+				rmdir --ignore-fail-on-non-empty "$target" 2>/dev/null || true
+			fi
+		fi
+	done < <(cd "$package" && find . -mindepth 1 -type d | sed 's|^\./||' | sort -r)
+
 	echo "  → Stowing $package"
 	if [[ "$package" == "claude" ]]; then
-		stow --ignore='cc-session\.md' "$package"
+		stow --no-folding --ignore='cc-session\.md' "$package"
 	else
 		stow --ignore='cc-session\.md' --ignore='\.claude' "$package"
 	fi
