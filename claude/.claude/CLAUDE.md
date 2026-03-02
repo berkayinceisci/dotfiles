@@ -484,6 +484,13 @@ optimizations proactively:
   affect the loaded data (file paths, sample limits, frequencies, etc.) **and the
   modification time (`os.path.getmtime()`) of each source file**, so that updated
   raw data automatically invalidates stale caches.
+- **Per-script cache subdirectories (CRITICAL).** Each script MUST use its own
+  subdirectory under `.cache/`, named after the script's cache prefix:
+  `.cache/zero_frac_mlp/`, `.cache/phase_regime/`, `.cache/am/`, etc. NEVER write
+  cache files to the flat `.cache/` root. This prevents concurrent agents from
+  colliding — one agent running `--no-cache` on script A must not affect script B's
+  cached data. When implementing `--no-cache`, only delete files within the script's
+  own subdirectory, never `rm -rf .cache/` or `rm .cache/*.pkl`.
 - **Add `.cache/` to `.gitignore`** in any project that uses pickle caching.
 
 ## Whitespace (CRITICAL)
