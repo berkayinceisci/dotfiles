@@ -12,7 +12,14 @@ cd "$DOTFILES_DIR"
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 	echo "Detected: Linux"
 	OS="linux"
-	ZEN_POLICIES_DIR="/opt/zen-browser/distribution"
+	# Check for both possible Zen Browser installation paths on Linux
+	if [ -d "/opt/zen" ]; then
+		ZEN_POLICIES_DIR="/opt/zen/distribution"
+	elif [ -d "/opt/zen-browser" ]; then
+		ZEN_POLICIES_DIR="/opt/zen-browser/distribution"
+	else
+		ZEN_POLICIES_DIR="/opt/zen/distribution" # Default fallback
+	fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
 	echo "Detected: macOS"
 	OS="macos"
@@ -153,7 +160,7 @@ for package in */; do
 
 	echo "  → Stowing $package"
 	if [[ "$package" == "claude" ]]; then
-		stow --no-folding --ignore='cc-session\.md' "$package"
+		stow --no-folding --ignore='cc-session\.md' --ignore='history\.jsonl' --ignore='cache' --ignore='my-session-logs' "$package"
 	else
 		stow --ignore='cc-session\.md' --ignore='\.claude' "$package"
 	fi
