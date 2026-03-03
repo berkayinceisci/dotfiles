@@ -14,7 +14,8 @@ fi
 # Handle URLs
 if [[ "$file" =~ ^https?:// ]]; then
     if command -v zen >/dev/null 2>&1; then
-        zen "$file"
+        zen "$file" &>/dev/null &
+        disown
     else
         echo "Zen Browser not found"
         exit 1
@@ -25,14 +26,22 @@ fi
 # Handle directories
 if [[ -d "$file" ]]; then
     if command -v thunar >/dev/null 2>&1; then
-        thunar "$file"
+        thunar "$file" &>/dev/null &
+        disown
     elif command -v nautilus >/dev/null 2>&1; then
-        nautilus "$file"
+        nautilus "$file" &>/dev/null &
+        disown
     else
-        xdg-open "$file"
+        xdg-open "$file" &>/dev/null &
+        disown
     fi
     exit
 fi
 
 # Handle files by extension
-xdg-open "$file" &>/dev/null
+if [[ ! -e "$file" ]]; then
+    echo "No such file: $file"
+    exit 1
+fi
+xdg-open "$file" &>/dev/null &
+disown
