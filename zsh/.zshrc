@@ -12,6 +12,8 @@ setopt HIST_SAVE_NO_DUPS
 bindkey '^P' history-search-backward
 bindkey '^N' history-search-forward
 
+setopt NO_BG_NICE
+
 bindkey '^[[1;5D' backward-word # ctrl-leftarrow
 bindkey '^[[1;5C' forward-word  # ctrl-rightarrow
 bindkey '^H' backward-kill-word # ctrl-backspace
