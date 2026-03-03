@@ -4,44 +4,50 @@ set -euo pipefail
 # Cross-platform "open" for Linux.
 # On macOS, use the native `open` command instead.
 
-file="${1:-}"
-
-if [[ -z "$file" ]]; then
-    echo "Usage: xopen <file|url>"
+if [[ $# -eq 0 ]]; then
+    echo "Usage: xopen <file|url> [file|url ...]"
     exit 1
 fi
 
-# Handle URLs
-if [[ "$file" =~ ^https?:// ]]; then
-    if command -v zen >/dev/null 2>&1; then
-        zen "$file" &>/dev/null &
-        disown
-    else
-        echo "Zen Browser not found"
-        exit 1
-    fi
-    exit
-fi
+open_one() {
+    local file="$1"
 
-# Handle directories
-if [[ -d "$file" ]]; then
-    if command -v thunar >/dev/null 2>&1; then
-        thunar "$file" &>/dev/null &
-        disown
-    elif command -v nautilus >/dev/null 2>&1; then
-        nautilus "$file" &>/dev/null &
-        disown
-    else
-        xdg-open "$file" &>/dev/null &
-        disown
+    # Handle URLs
+    if [[ "$file" =~ ^https?:// ]]; then
+        if command -v zen >/dev/null 2>&1; then
+            zen "$file" &>/dev/null &
+            disown
+        else
+            echo "Zen Browser not found"
+            return 1
+        fi
+        return
     fi
-    exit
-fi
 
-# Handle files by extension
-if [[ ! -e "$file" ]]; then
-    echo "No such file: $file"
-    exit 1
-fi
-xdg-open "$file" &>/dev/null &
-disown
+    # Handle directories
+    if [[ -d "$file" ]]; then
+        if command -v thunar >/dev/null 2>&1; then
+            thunar "$file" &>/dev/null &
+            disown
+        elif command -v nautilus >/dev/null 2>&1; then
+            nautilus "$file" &>/dev/null &
+            disown
+        else
+            xdg-open "$file" &>/dev/null &
+            disown
+        fi
+        return
+    fi
+
+    # Handle files by extension
+    if [[ ! -e "$file" ]]; then
+        echo "No such file: $file"
+        return 1
+    fi
+    xdg-open "$file" &>/dev/null &
+    disown
+}
+
+for arg in "$@"; do
+    open_one "$arg"
+done
