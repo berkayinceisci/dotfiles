@@ -17,6 +17,12 @@ Use Grep to locate relevant sections before reading entire large files.
 Never re-read a file you've already read in this session.
 For files over 500 lines, use offset/limit to read only the relevant section.
 
+### Image Files (CRITICAL)
+- **NEVER read or open PNG files** without asking the user first. PNG images consume massive context and often hit dimension limits.
+- When you need to analyze a plot/image, prefer reading the **PDF version** (which is always generated alongside PNGs per the plotting rules).
+- **NEVER use Bash to open/crop/process PNG files** (e.g., `Image.open('*.png')`, `PIL`, `cv2`, `convert`). If image processing is needed, ask the user first.
+- A hook enforces this — respect it. Do not attempt workarounds.
+
 ### Responses
 Don't echo back file contents you just read — the user can see them.
 Don't narrate tool calls ("Let me read the file..." / "Now I'll edit..."). Just do it.
@@ -449,8 +455,9 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 
 - After writing or updating plotting code, **immediately run it** to generate the plots.
   Do NOT ask the user whether to run — just run. The code-write-run cycle should be seamless.
-- After plots are generated, **immediately analyze them** (read the PNG files, describe
+- After plots are generated, **immediately analyze them** (read the PDF files, describe
   trends, anomalies, key observations). Do NOT ask the user whether to analyze — just do it.
+  **Use PDF versions for analysis, not PNGs** — PNGs consume excessive context.
 - The full pipeline is: write code → run → analyze. All three steps happen without pausing
   for confirmation.
 - **Parallelize across parameter sets.** When a plotting script needs to be run multiple
