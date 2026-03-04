@@ -491,6 +491,12 @@ optimizations proactively:
   affect the loaded data (file paths, sample limits, frequencies, etc.) **and the
   modification time (`os.path.getmtime()`) of each source file**, so that updated
   raw data automatically invalidates stale caches.
+- **Cache only parsed raw data, not derived analysis.** The cache should store the
+  expensive-to-load structured data (parsed CSVs, perf stat intervals, timing anchors)
+  — not downstream computations (quantile binning, correlations, alignment, regime
+  assignment). Derived analysis must be recomputed on every run so that algorithm
+  changes (e.g., bin count formula, alignment method) take effect immediately without
+  `--no-cache`. Reserve `--no-cache` for when the raw data parsing logic itself changes.
 - **Per-script cache subdirectories (CRITICAL).** Each script MUST use its own
   subdirectory under `.cache/`, named after the script's cache prefix:
   `.cache/zero_frac_mlp/`, `.cache/phase_regime/`, `.cache/am/`, etc. NEVER write
