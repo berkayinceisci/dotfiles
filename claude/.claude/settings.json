@@ -27,6 +27,15 @@
             "command": "~/.claude/hooks/block-nfs-writes.sh"
           }
         ]
+      },
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/block-png-read.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [
