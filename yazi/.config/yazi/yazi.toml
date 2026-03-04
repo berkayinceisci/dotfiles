@@ -6,6 +6,7 @@ show_hidden = true
 [opener]
 xopen = [
     { run = 'xopen "$@"', desc = "Open", for = "linux" },
+    { run = 'open "$@"', desc = "Open", for = "macos" },
 ]
 
 [[open.prepend_rules]]
