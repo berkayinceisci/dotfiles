@@ -62,5 +62,6 @@
     "playwright@claude-plugins-official": true
   },
   "skipDangerousModePermissionPrompt": true,
-  "editMode": "vim"
+  "editMode": "vim",
+  "effortLevel": "high"
 }
