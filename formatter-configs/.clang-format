@@ -1,0 +1,13 @@
+# Global fallback — projects with their own .clang-format override this.
+# Linux kernel style: tabs, 8-wide, 80 columns, braces on same line for
+# functions (next line) and control flow (same line).
+BasedOnStyle: LLVM
+IndentWidth: 8
+UseTab: Always
+TabWidth: 8
+ColumnLimit: 80
+BreakBeforeBraces: Linux
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+IndentCaseLabels: false
