@@ -43,6 +43,8 @@ keymap.set("v", "<leader>cw", [["ay:%s/<C-r>a/<C-r>a/gI<Left><Left><Left>]])
 
 -- copy the current working directory of the buffer to the clipboard (not works in ssh)
 keymap.set("n", "<leader>cd", [[:let @+=expand('%:p:h')<CR>]], { noremap = true, silent = true })
+-- copy the absolute path of the current file to the clipboard (not works in ssh)
+keymap.set("n", "<leader>cc", [[:let @+=expand('%:p')<CR>]], { noremap = true, silent = true })
 
 -- make the current file executable (not that useful, the command itself is easy enough)
 -- keymap.set("n", "<leader>exe", "<cmd>!chmod +x %<CR>", { silent = true })
