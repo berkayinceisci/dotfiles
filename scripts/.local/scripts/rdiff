@@ -1,0 +1,36 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+    echo "Usage: rdiff [diff-options...] file1 file2"
+    echo "Files can be local or remote (host:path)"
+    exit 1
+fi
+
+args=("$@")
+file1="${args[-2]}"
+file2="${args[-1]}"
+diff_opts=("${args[@]:0:$#-2}")
+
+a="$file1" b="$file2"
+cleanup=()
+
+trap 'rm -f "${cleanup[@]}"' EXIT
+
+if [[ "$file1" == *:* ]]; then
+    a=$(mktemp)
+    cleanup+=("$a")
+    scp "$file1" "$a"
+fi
+
+if [[ "$file2" == *:* ]]; then
+    b=$(mktemp)
+    cleanup+=("$b")
+    scp "$file2" "$b"
+fi
+
+if [[ ${#diff_opts[@]} -eq 0 ]]; then
+    diff "$a" "$b"
+else
+    diff "${diff_opts[@]}" "$a" "$b"
+fi
