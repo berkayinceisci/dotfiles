@@ -10,6 +10,7 @@ alias ccn='~/.local/scripts-private/cc-with-session-logging'
 alias ccd='~/.local/scripts-private/cc-with-session-logging --dangerously-skip-permissions'
 
 alias dotfiles="cd ~/dotfiles/; nvim .; cd - > /dev/null"
+alias scp="scp -p"
 
 function y() {
     local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
