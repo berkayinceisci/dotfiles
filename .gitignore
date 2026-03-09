@@ -9,4 +9,5 @@ yazi/.config/yazi/package.toml
 cc-session.md
 ssh_config.secrets
 ssh/.ssh/config
+atuin/.config/atuin/config.toml
 yt-sync-music.secrets
