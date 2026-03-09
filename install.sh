@@ -76,6 +76,23 @@ else
 	echo "  ⚠ ssh_config.template not found, skipping SSH config."
 fi
 
+# Generate Atuin config from template (uses ARK_HOST from ssh_config.secrets)
+echo ""
+echo "Setting up Atuin config..."
+
+ATUIN_TEMPLATE="$DOTFILES_DIR/atuin_config.template"
+ATUIN_TARGET="$DOTFILES_DIR/atuin/.config/atuin/config.toml"
+
+if [[ -f "$ATUIN_TEMPLATE" ]] && [[ -n "${ARK_HOST:-}" ]]; then
+	mkdir -p "$DOTFILES_DIR/atuin/.config/atuin"
+	envsubst <"$ATUIN_TEMPLATE" >"$ATUIN_TARGET"
+	echo "  ✓ Atuin config rendered to atuin/.config/atuin/config.toml"
+elif [[ -f "$ATUIN_TEMPLATE" ]]; then
+	echo "  ⚠ ARK_HOST not set (ssh_config.secrets not loaded?), skipping Atuin config."
+else
+	echo "  ⚠ atuin_config.template not found, skipping Atuin config."
+fi
+
 # Stow packages
 echo ""
 echo "Stowing dotfiles..."
@@ -161,6 +178,8 @@ for package in */; do
 	echo "  → Stowing $package"
 	if [[ "$package" == "claude" ]]; then
 		stow --no-folding --ignore='cc-session\.md' --ignore='history\.jsonl' --ignore='cache' --ignore='my-session-logs' "$package"
+	elif [[ "$package" == "atuin" ]]; then
+		stow --no-folding "$package"
 	else
 		stow --ignore='cc-session\.md' --ignore='\.claude' "$package"
 	fi
