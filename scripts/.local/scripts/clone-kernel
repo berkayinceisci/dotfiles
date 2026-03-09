@@ -3,7 +3,12 @@ set -euo pipefail
 
 REPO_URL="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 VERSION="${1:-latest}"
-TARGET_DIR="${2:-linux}"
+if [[ "$VERSION" == "latest" ]]; then
+    TARGET_DIR="${2:-linux-latest}"
+else
+    SANITIZED=$(echo "$VERSION" | tr '.' '_')
+    TARGET_DIR="${2:-linux-${SANITIZED}}"
+fi
 
 if [[ -d "$TARGET_DIR" ]]; then
     echo "Directory '$TARGET_DIR' already exists"
