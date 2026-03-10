@@ -4,7 +4,7 @@
 # Capsule-style display showing: directory, git branch, model, context %, tokens, 5h/7d usage, session cost
 
 CACHE_FILE="/tmp/claude-usage-cache"
-CACHE_TTL=60 # seconds
+CACHE_TTL=120 # seconds
 
 # Powerline characters for capsule edges (require Nerd Font)
 # U+E0B6 = left rounded, U+E0B4 = right rounded
@@ -123,8 +123,13 @@ get_usage() {
 		-H "anthropic-beta: oauth-2025-04-20" \
 		"https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
 
-	if [[ -z "$response" ]]; then
-		echo "|||"
+	# On empty or error response, return stale cache if available
+	if [[ -z "$response" ]] || echo "$response" | jq -e '.error' >/dev/null 2>&1; then
+		if [[ -f "$CACHE_FILE" ]]; then
+			tail -n +2 "$CACHE_FILE"
+		else
+			echo "|||"
+		fi
 		return
 	fi
 
