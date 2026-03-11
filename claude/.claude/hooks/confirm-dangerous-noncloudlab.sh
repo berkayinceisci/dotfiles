@@ -40,8 +40,8 @@ if [[ "$tool_name" == "Bash" ]]; then
 		ask_permission "mkfs requires your approval"
 	fi
 
-	# dd
-	if [[ "$command" =~ (^|[^a-zA-Z0-9_])dd([^a-zA-Z0-9_]|$) ]]; then
+	# dd (match only actual dd commands with key=value args, not variables named dd)
+	if [[ "$command" =~ (^|[^a-zA-Z0-9_])dd[[:space:]]+[a-z]+= ]]; then
 		ask_permission "dd requires your approval"
 	fi
 
