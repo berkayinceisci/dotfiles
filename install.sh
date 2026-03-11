@@ -406,6 +406,21 @@ with open(p, 'w') as f:
 	fi
 fi
 
+# Configure sshd to accept TERMIUS env var from SSH clients
+# (allows Termius mobile app to identify itself via SendEnv)
+HOST=$(hostname)
+if [[ "$HOST" == "manjaro" || "$HOST" == "popos" ]]; then
+	echo ""
+	echo "Configuring sshd AcceptEnv..."
+	if grep -q 'AcceptEnv.*TERMIUS' /etc/ssh/sshd_config 2>/dev/null; then
+		echo "  ✓ sshd AcceptEnv TERMIUS already configured"
+	else
+		echo "AcceptEnv TERMIUS" | sudo tee -a /etc/ssh/sshd_config >/dev/null
+		sudo systemctl restart sshd
+		echo "  ✓ sshd AcceptEnv TERMIUS added and sshd restarted"
+	fi
+fi
+
 # Set up ccusage-push cron job (only on specific machines)
 echo ""
 echo "Setting up ccusage sync..."
