@@ -8,6 +8,8 @@ set -e
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DOTFILES_DIR"
 
+HOST=$(hostname 2>/dev/null || cat /etc/hostname)
+
 # Detect OS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 	echo "Detected: Linux"
@@ -218,7 +220,6 @@ if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 			echo "  Detected: GDM"
 			# GDM uses monitors.xml for display configuration
 			# Generate monitors.xml based on hostname
-			HOST=$(hostname)
 			GDM_MONITORS_DIR="/var/lib/gdm3/.config"
 			[ -d "/var/lib/gdm/.config" ] && GDM_MONITORS_DIR="/var/lib/gdm/.config"
 
@@ -325,7 +326,6 @@ EOF
 
 	# Install udev rule for display hotplug (laptops only)
 	# Re-runs display_setup.sh when monitors are connected/disconnected
-	HOST=$(hostname)
 	if [[ "$HOST" == "manjaro" || "$HOST" == "ubuntu" ]]; then
 		echo ""
 		echo "Installing display hotplug udev rule..."
@@ -408,7 +408,6 @@ fi
 
 # Configure sshd to accept TERMIUS env var from SSH clients
 # (allows Termius mobile app to identify itself via SendEnv)
-HOST=$(hostname)
 if [[ "$HOST" == "manjaro" || "$HOST" == "popos" ]]; then
 	echo ""
 	echo "Configuring sshd AcceptEnv..."
@@ -425,12 +424,10 @@ fi
 echo ""
 echo "Setting up ccusage sync..."
 
-HOST=$(hostname)
-
 if [[ "$OS" == "macos" ]] ||
 	[[ "$HOST" == "manjaro" ]] ||
 	[[ "$HOST" == "ubuntu" ]] ||
-	[[ "$(hostname -f 2>/dev/null || hostname)" == *.cloudlab.us ]]; then
+	[[ "$(hostname -f 2>/dev/null || cat /etc/hostname)" == *.cloudlab.us ]]; then
 	CCUSAGE_PUSH="$HOME/.local/scripts/ccusage-push"
 	CRON_ENTRY="*/30 * * * * $CCUSAGE_PUSH"
 

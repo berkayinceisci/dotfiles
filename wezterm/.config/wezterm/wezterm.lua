@@ -94,7 +94,9 @@ config.font = wezterm.font_with_fallback({
 -- config.color_scheme = "Glacier"
 -- config.color_scheme = "Google (dark) (terminal.sexy)"
 -- config.color_scheme = "Gruvbox Dark (Gogh)"
-config.color_scheme = "JetBrains Darcula"
+-- config.color_scheme = "JetBrains Darcula"
+-- config.color_scheme = "Gotham (Gogh)"
+config.color_scheme = "Grandshell (terminal.sexy)"
 -- config.color_scheme = "jubi"
 
 config.window_padding = {
