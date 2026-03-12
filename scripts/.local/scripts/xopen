@@ -16,6 +16,10 @@ is_remote() {
     [[ -n "${SSH_CONNECTION:-}" && -n "${LC_OPEN_HOST:-}" ]]
 }
 
+# Environment prefix for opening GUI apps on the local machine via SSH.
+# Linux needs DISPLAY and DBUS; macOS `open` works without them.
+REMOTE_OPEN_ENV="export DISPLAY=:0; export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$(id -u)/bus; export PATH=\$HOME/.local/scripts:\$PATH"
+
 open_remote() {
     local file="$1"
 
@@ -23,7 +27,7 @@ open_remote() {
     if [[ "$file" =~ ^https?:// ]]; then
         local escaped
         escaped=$(printf '%q' "$file")
-        ssh "$LC_OPEN_HOST" "PATH=\$HOME/.local/scripts:\$PATH; xopen $escaped 2>/dev/null || command open $escaped 2>/dev/null" &
+        ssh "$LC_OPEN_HOST" "$REMOTE_OPEN_ENV; xopen $escaped 2>/dev/null || command open $escaped 2>/dev/null" &
         disown
         return
     fi
@@ -48,7 +52,7 @@ open_remote() {
 
     (
         scp -q "$abs_path" "$LC_OPEN_HOST:$tmp_path" && \
-        ssh "$LC_OPEN_HOST" "PATH=\$HOME/.local/scripts:\$PATH; xopen $escaped 2>/dev/null || command open $escaped 2>/dev/null"
+        ssh "$LC_OPEN_HOST" "$REMOTE_OPEN_ENV; xopen $escaped 2>/dev/null || command open $escaped 2>/dev/null"
     ) &
     disown
 }
