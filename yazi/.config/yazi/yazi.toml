@@ -17,6 +17,10 @@ use = "xopen"
 mime = "application/pdf"
 use = "xopen"
 
+[[open.prepend_rules]]
+mime = "image/*"
+use = "xopen"
+
 [preview]
 wrap = "yes"
 max_width = 4096
