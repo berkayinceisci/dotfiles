@@ -13,7 +13,7 @@ if [[ $# -eq 0 ]]; then
 fi
 
 is_remote() {
-    [[ -n "${SSH_CONNECTION:-}" && -n "${LC_OPEN_HOST:-}" ]]
+    [[ -n "${SSH_CONNECTION:-}" && -n "${LC_OPEN_HOST:-}" && "$(hostname)" != "$LC_OPEN_HOST" ]]
 }
 
 # Environment prefix for opening GUI apps on the local machine via SSH.
@@ -92,7 +92,11 @@ open_one() {
         echo "No such file: $file"
         return 1
     fi
-    xdg-open "$file" &>/dev/null &
+    if [[ "$(uname)" == "Darwin" ]]; then
+        command open "$file" &>/dev/null &
+    else
+        xdg-open "$file" &>/dev/null &
+    fi
     disown
 }
 
