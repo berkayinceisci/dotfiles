@@ -3,11 +3,55 @@ set -euo pipefail
 
 # Cross-platform "open" for Linux.
 # On macOS, use the native `open` command instead.
+#
+# When in an SSH session with LC_OPEN_HOST set, SCPs files to the
+# local machine's /tmp and opens them there.
 
 if [[ $# -eq 0 ]]; then
     echo "Usage: xopen <file|url> [file|url ...]"
     exit 1
 fi
+
+is_remote() {
+    [[ -n "${SSH_CONNECTION:-}" && -n "${LC_OPEN_HOST:-}" ]]
+}
+
+open_remote() {
+    local file="$1"
+
+    # URLs: open on local machine directly
+    if [[ "$file" =~ ^https?:// ]]; then
+        local escaped
+        escaped=$(printf '%q' "$file")
+        ssh "$LC_OPEN_HOST" "PATH=\$HOME/.local/scripts:\$PATH; xopen $escaped 2>/dev/null || command open $escaped 2>/dev/null" &
+        disown
+        return
+    fi
+
+    # Directories: not practical to forward
+    if [[ -d "$file" ]]; then
+        echo "Cannot open remote directories on local machine"
+        return 1
+    fi
+
+    if [[ ! -e "$file" ]]; then
+        echo "No such file: $file"
+        return 1
+    fi
+
+    local abs_path basename remote_host tmp_path escaped
+    abs_path="$(realpath "$file")"
+    basename="$(basename "$abs_path")"
+    remote_host="$(hostname)"
+    tmp_path="/tmp/remote-${remote_host}-${basename}"
+    escaped=$(printf '%q' "$tmp_path")
+
+    (
+        scp -q "$abs_path" "$LC_OPEN_HOST:$tmp_path" && \
+        ssh "$LC_OPEN_HOST" "PATH=\$HOME/.local/scripts:\$PATH; xopen $escaped 2>/dev/null || command open $escaped 2>/dev/null"
+    ) &
+    disown
+}
 
 open_one() {
     local file="$1"
@@ -49,5 +93,9 @@ open_one() {
 }
 
 for arg in "$@"; do
-    open_one "$arg"
+    if is_remote; then
+        open_remote "$arg"
+    else
+        open_one "$arg"
+    fi
 done

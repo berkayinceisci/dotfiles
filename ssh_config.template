@@ -2,6 +2,7 @@ Host *
     ServerAliveInterval 60
     ServerAliveCountMax 3
     ConnectTimeout 10
+    SendEnv LC_OPEN_HOST
 
 # Tailscale
 
