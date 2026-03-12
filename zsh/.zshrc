@@ -59,6 +59,12 @@ export PATH="$HOME/go/bin:$PATH"
 
 . "$HOME/.cargo/env"
 
+# Set LC_OPEN_HOST so remote machines know where to send files back
+# LC_ prefix is forwarded by SSH by default (SendEnv/AcceptEnv LC_*)
+if [[ -z "${SSH_CONNECTION:-}" ]]; then
+    export LC_OPEN_HOST="$(hostname)"
+fi
+
 export EDITOR="nvim"
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
