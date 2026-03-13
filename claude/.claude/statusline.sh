@@ -235,8 +235,9 @@ seven_day_bg=$(echo "$seven_day_colors" | cut -d'|' -f1)
 seven_day_fg=$(echo "$seven_day_colors" | cut -d'|' -f2)
 
 # Format context with amount (e.g., "42% 80K/200K")
-# Calculate actual context usage from percentage (not cumulative tokens)
-context_max=200 # 200K context window
+# Calculate actual context usage from the model's context window size
+context_window_size=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
+context_max=$(awk "BEGIN {printf \"%.0f\", ${context_window_size} / 1000}")
 context_used_k=$(awk "BEGIN {printf \"%.0f\", (${context_pct:-0}/100) * ${context_max}}")
 context_display="${context_pct_fmt}% ${context_used_k}K/${context_max}K"
 
