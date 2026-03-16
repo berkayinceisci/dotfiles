@@ -3,7 +3,6 @@
     "DISABLE_COST_WARNINGS": "1",
     "DISABLE_SESSION_LIMIT_WARNINGS": "1"
   },
-  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -61,7 +60,7 @@
     "pyright-lsp@claude-plugins-official": true,
     "playwright@claude-plugins-official": true
   },
+  "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true,
-  "editMode": "vim",
-  "effortLevel": "high"
+  "editMode": "vim"
 }
