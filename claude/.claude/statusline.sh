@@ -51,6 +51,8 @@ input=$(cat)
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // empty')
 model=$(echo "$input" | jq -r '.model.display_name // empty')
 context_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
+# Get raw token counts for precise context display
+context_used_tokens=$(echo "$input" | jq -r '((.context_window.current_usage.input_tokens // 0) + (.context_window.current_usage.cache_creation_input_tokens // 0) + (.context_window.current_usage.cache_read_input_tokens // 0))')
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 
 # Format directory (shorten home path)
@@ -235,10 +237,11 @@ seven_day_bg=$(echo "$seven_day_colors" | cut -d'|' -f1)
 seven_day_fg=$(echo "$seven_day_colors" | cut -d'|' -f2)
 
 # Format context with amount (e.g., "42% 80K/200K")
-# Calculate actual context usage from the model's context window size
-context_window_size=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
+# Calculate actual context usage from raw token counts for fine granularity
+context_window_size=$(echo "$input" | jq -r '.context_window.context_window_size // 1000000')
 context_max=$(awk "BEGIN {printf \"%.0f\", ${context_window_size} / 1000}")
-context_used_k=$(awk "BEGIN {printf \"%.0f\", (${context_pct:-0}/100) * ${context_max}}")
+context_used_k=$(awk "BEGIN {printf \"%.0f\", ${context_used_tokens} / 1000}")
+context_pct_fmt=$(awk "BEGIN {printf \"%.1f\", (${context_used_tokens} / ${context_window_size}) * 100}")
 context_display="${context_pct_fmt}% ${context_used_k}K/${context_max}K"
 
 # Helper function to create a capsule
