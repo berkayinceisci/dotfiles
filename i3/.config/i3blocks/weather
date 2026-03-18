@@ -27,6 +27,6 @@ fi
 
 # Update cache in background for next run
 (
-    weather=$(curl -s "wttr.in/$CITY?format=j1" --max-time 10 | jq -r '.current_condition[0] | "\(.weatherDesc[0].value) \(.temp_F)°F"' 2>/dev/null)
+    weather=$(curl -s "wttr.in/$CITY?format=j1" --max-time 10 | jq -r '.data.current_condition[0] | "\(.weatherDesc[0].value) \(.temp_F)°F"' 2>/dev/null)
     [[ -n "$weather" ]] && echo "$weather" > "$CACHE_FILE"
 ) &
