@@ -4,6 +4,12 @@ Host *
     ConnectTimeout 10
     SendEnv LC_OPEN_HOST
 
+# GitHub (use HTTPS port to bypass firewalls blocking SSH)
+Host github.com
+    Hostname ssh.github.com
+    Port 443
+    User git
+
 # Tailscale
 
 Host manjaro
