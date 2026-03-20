@@ -27,6 +27,8 @@ fi
 
 # Update cache in background for next run
 (
-    weather=$(curl -s "wttr.in/$CITY?format=j1" --max-time 10 | jq -r '.data.current_condition[0] | "\(.weatherDesc[0].value) \(.temp_F)°F"' 2>/dev/null)
+    json=$(curl -s "wttr.in/$CITY?format=j1" --max-time 10)
+    # API response structure varies: sometimes .current_condition, sometimes .data.current_condition
+    weather=$(echo "$json" | jq -r '(.data.current_condition // .current_condition)[0] | "\(.weatherDesc[0].value) \(.temp_F)°F"' 2>/dev/null)
     [[ -n "$weather" ]] && echo "$weather" > "$CACHE_FILE"
 ) &
