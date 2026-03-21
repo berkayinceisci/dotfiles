@@ -21,7 +21,18 @@ require_ytdlp() {
 download_video() {
     local url="$1"
     require_ytdlp
-    yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" --print after_move:filepath "$url"
+    local filepath
+    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" --print after_move:filepath "$url")
+    echo "$filepath"
+    if [[ -f "$filepath" ]]; then
+        local size
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+            size=$(stat -f%z "$filepath")
+        else
+            size=$(stat -c%s "$filepath")
+        fi
+        echo "Size: $(numfmt --to=iec "$size" 2>/dev/null || echo "${size} bytes")"
+    fi
 }
 
 download_image() {
