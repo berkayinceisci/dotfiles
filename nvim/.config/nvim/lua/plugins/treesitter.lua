@@ -51,19 +51,58 @@ return {
 						enable = true,
 						lookahead = true,
 						keymaps = {
-							["a="] = { query = "@assignment.outer", desc = "Select outer part of an assignment" },
-							["i="] = { query = "@assignment.inner", desc = "Select inner part of an assignment" },
-							["a;"] = { query = "@statement.outer", desc = "Select outer part of a statement" },
-							["aa"] = { query = "@parameter.outer", desc = "Select outer part of a parameter" },
-							["ia"] = { query = "@parameter.inner", desc = "Select inner part of a parameter" },
-							["ai"] = { query = "@conditional.outer", desc = "Select outer part of a conditional" },
-							["ii"] = { query = "@conditional.inner", desc = "Select inner part of a conditional" },
-							["al"] = { query = "@loop.outer", desc = "Select outer part of a loop" },
-							["il"] = { query = "@loop.inner", desc = "Select inner part of a loop" },
-							["af"] = { query = "@function.outer", desc = "Select outer part of a function" },
-							["if"] = { query = "@function.inner", desc = "Select inner part of a function" },
-							["as"] = { query = "@class.outer", desc = "Select outer part of a struct/class" },
-							["is"] = { query = "@class.inner", desc = "Select inner part of a struct/class" },
+							["a="] = {
+								query = "@assignment.outer",
+								desc = "Select outer part of an assignment",
+							},
+							["i="] = {
+								query = "@assignment.inner",
+								desc = "Select inner part of an assignment",
+							},
+							["a;"] = {
+								query = "@statement.outer",
+								desc = "Select outer part of a statement",
+							},
+							["aa"] = {
+								query = "@parameter.outer",
+								desc = "Select outer part of a parameter",
+							},
+							["ia"] = {
+								query = "@parameter.inner",
+								desc = "Select inner part of a parameter",
+							},
+							["ai"] = {
+								query = "@conditional.outer",
+								desc = "Select outer part of a conditional",
+							},
+							["ii"] = {
+								query = "@conditional.inner",
+								desc = "Select inner part of a conditional",
+							},
+							["al"] = {
+								query = "@loop.outer",
+								desc = "Select outer part of a loop",
+							},
+							["il"] = {
+								query = "@loop.inner",
+								desc = "Select inner part of a loop",
+							},
+							["af"] = {
+								query = "@function.outer",
+								desc = "Select outer part of a function",
+							},
+							["if"] = {
+								query = "@function.inner",
+								desc = "Select inner part of a function",
+							},
+							["as"] = {
+								query = "@class.outer",
+								desc = "Select outer part of a struct/class",
+							},
+							["is"] = {
+								query = "@class.inner",
+								desc = "Select inner part of a struct/class",
+							},
 						},
 					},
 					swap = {
@@ -75,31 +114,79 @@ return {
 						enable = true,
 						set_jumps = true,
 						goto_next_start = {
-							["];"] = { query = "@statement.outer", desc = "Next statement start" },
-							["]a"] = { query = "@parameter.outer", desc = "Next argument/parameter start" },
-							["]f"] = { query = "@function.outer", desc = "Next method/function def start" },
-							["]s"] = { query = "@class.outer", desc = "Next struct/class start" },
-							["]i"] = { query = "@conditional.outer", desc = "Next conditional start" },
+							["];"] = {
+								query = "@statement.outer",
+								desc = "Next statement start",
+							},
+							["]a"] = {
+								query = "@parameter.outer",
+								desc = "Next argument/parameter start",
+							},
+							["]f"] = {
+								query = "@function.outer",
+								desc = "Next method/function def start",
+							},
+							["]s"] = {
+								query = "@class.outer",
+								desc = "Next struct/class start",
+							},
+							["]i"] = {
+								query = "@conditional.outer",
+								desc = "Next conditional start",
+							},
 							["]l"] = { query = "@loop.outer", desc = "Next loop start" },
 						},
 						goto_next_end = {
-							["]A"] = { query = "@parameter.outer", desc = "Next argument/parameter end" },
-							["]F"] = { query = "@function.outer", desc = "Next method/function def end" },
-							["]S"] = { query = "@class.outer", desc = "Next struct/class end" },
-							["]I"] = { query = "@conditional.outer", desc = "Next conditional end" },
+							["]A"] = {
+								query = "@parameter.outer",
+								desc = "Next argument/parameter end",
+							},
+							["]F"] = {
+								query = "@function.outer",
+								desc = "Next method/function def end",
+							},
+							["]S"] = {
+								query = "@class.outer",
+								desc = "Next struct/class end",
+							},
+							["]I"] = {
+								query = "@conditional.outer",
+								desc = "Next conditional end",
+							},
 							["]L"] = { query = "@loop.outer", desc = "Next loop end" },
 						},
 						goto_previous_start = {
-							["[;"] = { query = "@statement.outer", desc = "Prev statement start" },
-							["[f"] = { query = "@function.outer", desc = "Prev method/function def start" },
-							["[s"] = { query = "@class.outer", desc = "Prev struct/class start" },
-							["[i"] = { query = "@conditional.outer", desc = "Prev conditional start" },
+							["[;"] = {
+								query = "@statement.outer",
+								desc = "Prev statement start",
+							},
+							["[f"] = {
+								query = "@function.outer",
+								desc = "Prev method/function def start",
+							},
+							["[s"] = {
+								query = "@class.outer",
+								desc = "Prev struct/class start",
+							},
+							["[i"] = {
+								query = "@conditional.outer",
+								desc = "Prev conditional start",
+							},
 							["[l"] = { query = "@loop.outer", desc = "Prev loop start" },
 						},
 						goto_previous_end = {
-							["[F"] = { query = "@function.outer", desc = "Prev method/function def end" },
-							["[S"] = { query = "@class.outer", desc = "Prev struct/class end" },
-							["[I"] = { query = "@conditional.outer", desc = "Prev conditional end" },
+							["[F"] = {
+								query = "@function.outer",
+								desc = "Prev method/function def end",
+							},
+							["[S"] = {
+								query = "@class.outer",
+								desc = "Prev struct/class end",
+							},
+							["[I"] = {
+								query = "@conditional.outer",
+								desc = "Prev conditional end",
+							},
 							["[L"] = { query = "@loop.outer", desc = "Prev loop end" },
 						},
 					},

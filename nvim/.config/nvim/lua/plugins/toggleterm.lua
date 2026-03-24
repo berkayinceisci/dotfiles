@@ -22,7 +22,12 @@ return {
 		vim.cmd("autocmd! TermOpen term://* lua set_terminal_keymaps()")
 
 		-- open terminal in the current file directory
-		vim.keymap.set("n", "<leader>.f", "<CMD>TermExec cmd='cd \"%:p:h\"'<CR>", { noremap = true, silent = true })
+		vim.keymap.set(
+			"n",
+			"<leader>.f",
+			"<CMD>TermExec cmd='cd \"%:p:h\"'<CR>",
+			{ noremap = true, silent = true }
+		)
 
 		-- open terminal in the current project root directory
 		vim.keymap.set("n", "<leader>.r", function()
