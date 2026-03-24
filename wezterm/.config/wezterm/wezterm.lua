@@ -106,6 +106,7 @@ config.window_padding = {
 	bottom = 0,
 }
 
+config.native_macos_fullscreen_mode = false
 config.hide_tab_bar_if_only_one_tab = false
 config.use_fancy_tab_bar = false
 

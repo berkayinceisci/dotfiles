@@ -71,14 +71,12 @@ export EDITOR="nvim"
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # node is installed through brew in mac, therefore nvm does not exist
-    # nvm installation script does not add the following lines if they already exist
-    export NVM_DIR="$HOME/.nvm"
-    export PATH="$HOME/.nvm/versions/node/*/bin:$PATH"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+export NVM_DIR="$HOME/.nvm"
+export PATH="$HOME/.nvm/versions/node/*/bin:$PATH"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     export PATH="/usr/local/texlive/2025/bin/x86_64-linux:$PATH"
     export WLR_DRM_NO_MODIFIERS=1
 elif [[ "$OSTYPE" == "darwin"* ]]; then
