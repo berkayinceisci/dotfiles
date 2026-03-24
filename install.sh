@@ -417,7 +417,8 @@ with open(p, 'w') as f:
 				echo "  ✓ SwiftBar already in login items"
 			fi
 			echo "  ✓ SwiftBar configured"
-			echo "  Note: Open SwiftBar and grant necessary permissions"
+			open -a SwiftBar
+			echo "  Note: Grant necessary permissions if prompted"
 		else
 			echo "  ⚠ SwiftBar not installed. Install with: brew install --cask swiftbar"
 		fi
