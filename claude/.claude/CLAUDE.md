@@ -228,6 +228,24 @@ BG_PIDS+=("$!")
 3. Only after confirming the process is truly gone, take corrective action
 4. **Never `rm -rf` experiment results without first confirming no running process is writing to them**
 
+### Verifying a Clean Machine (CRITICAL)
+
+When asked to confirm all processes are dead or the machine is clean, **NEVER rely
+solely on `pgrep -af` or `grep` with specific patterns.** Pattern-based searches miss
+processes with unexpected names, respawned children, or commands you didn't anticipate.
+
+**Always use `ps aux` (unfiltered) and visually scan the full output.** Specifically:
+
+1. Run `sudo ps aux --sort=-%cpu` to see everything by CPU usage.
+2. Look for ANY user-space process consuming CPU that isn't a known system service
+   (sshd, systemd, cron, tmux, zsh, etc.) or the current session (claude, node, nvim).
+3. After killing processes, **re-check with `ps aux` again** — loop-style wrappers
+   (e.g., `loop-cmd.sh`) respawn children immediately after you kill them. You must
+   kill the parent wrapper first, then the children.
+4. Check for `cat ...fifo` or other blocking processes that consume 0% CPU but
+   indicate orphaned infrastructure (e.g., `perf record` stop FIFOs).
+5. Only declare the machine clean after a full `ps aux` scan shows nothing unexpected.
+
 ## Batch Parallel Execution
 
 ### Prefer `xargs -P` over bash background jobs
