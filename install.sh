@@ -10,6 +10,12 @@ cd "$DOTFILES_DIR"
 
 HOST=$(hostname 2>/dev/null || cat /etc/hostname)
 
+# Ensure ssh.github.com:443 is in known_hosts (used by NVM and other tools
+# that connect to GitHub over SSH on port 443)
+if ! ssh-keygen -F "[ssh.github.com]:443" &>/dev/null; then
+	ssh-keyscan -p 443 ssh.github.com >>~/.ssh/known_hosts 2>/dev/null
+fi
+
 # Detect OS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 	echo "Detected: Linux"
@@ -371,9 +377,21 @@ with open(p, 'w') as f:
 	# Install Zen Browser policies
 	if [ -f "$DOTFILES_DIR/zen/policies.json" ]; then
 		echo "Installing Zen Browser policies..."
-		sudo mkdir -p "$ZEN_POLICIES_DIR"
-		sudo ln -sf "$DOTFILES_DIR/zen/policies.json" "$ZEN_POLICIES_DIR/policies.json"
-		echo "  ✓ Zen Browser policies installed to $ZEN_POLICIES_DIR/policies.json"
+		if [[ "$OS" == "macos" ]]; then
+			# macOS: Requires App Management permission for the terminal app.
+			# On first run (fresh install), the terminal won't have this yet,
+			# so we warn and skip — it will succeed on a subsequent run.
+			if sudo mkdir -p "$ZEN_POLICIES_DIR" 2>/dev/null; then
+				sudo ln -sf "$DOTFILES_DIR/zen/policies.json" "$ZEN_POLICIES_DIR/policies.json"
+				echo "  ✓ Zen Browser policies installed to $ZEN_POLICIES_DIR/policies.json"
+			else
+				echo "  ⚠ Could not modify Zen.app (grant App Management permission to your terminal, then re-run)"
+			fi
+		else
+			sudo mkdir -p "$ZEN_POLICIES_DIR"
+			sudo ln -sf "$DOTFILES_DIR/zen/policies.json" "$ZEN_POLICIES_DIR/policies.json"
+			echo "  ✓ Zen Browser policies installed to $ZEN_POLICIES_DIR/policies.json"
+		fi
 	else
 		echo "  ⚠ Zen Browser policies.json not found, skipping..."
 	fi
