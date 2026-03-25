@@ -20,6 +20,15 @@ case "$HOST" in
 	HDMI1_CONNECTED=$(xrandr | grep "^HDMI-1 connected")
 	HDMI2_CONNECTED=$(xrandr | grep "^HDMI-2 connected")
 
+	# Turn off outputs first to force GPU to re-negotiate signal
+	if [ -n "$HDMI1_CONNECTED" ]; then
+		xrandr --output HDMI-1 --off
+	fi
+	if [ -n "$HDMI2_CONNECTED" ]; then
+		xrandr --output HDMI-2 --off
+	fi
+	sleep 2
+
 	if [ -n "$HDMI1_CONNECTED" ] && [ -n "$HDMI2_CONNECTED" ]; then
 		# Dual monitor: HDMI-1 primary, HDMI-2 vertical (rotated right) to the right
 		xrandr --output HDMI-1 --mode 3840x2160 --rate 60.00 --primary \
