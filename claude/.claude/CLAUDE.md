@@ -57,6 +57,17 @@ When a command is blocked by a hook (e.g., "BLOCKED: sudo is not allowed"):
 - If the user requests a change in some configuration, they change should always be reproducible through the dotfiles
 - Before proposing a fix, fully read and understand the existing configuration and the user's dotfiles management approach (stow-based). Do not propose changes that conflict with stow symlink structure. Never edit profile files directly when they should be recreated through stow.
 
+## Compression
+
+- Use `pigz` instead of `gzip` for compression. It parallelizes across cores and is much faster on multi-core machines.
+  ```bash
+  # GOOD: parallel compression
+  tar cf - dir/ | pigz > archive.tar.gz
+
+  # BAD: single-threaded
+  tar czf archive.tar.gz dir/
+  ```
+
 ## Core Principles
 
 - Never delete any comments while doing updates.
