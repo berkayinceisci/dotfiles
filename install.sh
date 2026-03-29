@@ -186,6 +186,12 @@ for package in */; do
 	echo "  → Stowing $package"
 	if [[ "$package" == "claude" ]]; then
 		stow --no-folding --ignore='cc-session\.md' --ignore='history\.jsonl' --ignore='cache' --ignore='my-session-logs' "$package"
+		# Ensure shell scripts in the claude package are executable
+		find "$DOTFILES_DIR/claude" -name "*.sh" -exec chmod +x {} \;
+		# jq is required by the Claude Code statusline script
+		if ! command -v jq >/dev/null 2>&1; then
+			echo "  ⚠ jq not installed (required by Claude Code statusline). Install with: sudo apt install jq (or brew install jq)"
+		fi
 	elif [[ "$package" == "atuin" ]]; then
 		stow --no-folding "$package"
 	else
