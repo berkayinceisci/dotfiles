@@ -503,6 +503,7 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 - Side-by-side panels that show the same metric must share axis limits so they are visually comparable.
 - Always save plots in both PNG (dpi=150) and PDF formats. Use separate directories with the format suffix appended to the category name: `{category}-png/` and `{category}-pdf/` (e.g., `plots/latency_analysis-png/{experiment}/file.png` and `plots/latency_analysis-pdf/{experiment}/file.pdf`). The rest of the hierarchy is preserved identically in both.
 - **CDF plot colors**: Use maximally distinguishable colors for CDF curves. When curves represent distinct categories (benchmarks, workloads), use an explicit color list: `['black', 'green', 'blue', 'red', 'magenta', 'tab:orange', 'tab:brown']`. Extend with `'tab:cyan'`, `'tab:olive'`, `'tab:gray'`, `'tab:pink'` if needed. Do not use colormaps (viridis, tab10) for CDFs — they produce visually similar adjacent colors that are hard to distinguish.
+- **Never use `loc="best"` for legend placement.** It is O(n) on data points and can take hours on large datasets (100M+ samples). Always use a fixed location: `loc="upper right"`, `loc="upper left"`, etc.
 
 ### Plot Generation Performance (CRITICAL)
 
