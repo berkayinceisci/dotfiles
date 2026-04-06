@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+NVM_DEFAULT=$(cat "$HOME/.nvm/alias/default")
+export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$NVM_DEFAULT/bin:$PATH"
+
 # Sync an unlisted YouTube playlist to a local directory using yt-dlp.
 # Intended to run as a daily cron job.
 # Playlist URL is read from ~/dotfiles/yt-sync-music.secrets (age-encrypted).
@@ -21,7 +24,7 @@ DEST_DIR="$HOME/Multimedia/Music/Spotifyda-Olmayanlar"
 ARCHIVE_FILE="$DEST_DIR/.yt-dlp-archive"
 LOG_FILE="$DEST_DIR/.yt-sync.log"
 UNAVAILABLE_FILE="$DEST_DIR/unavailable.txt"
-NODE_BIN="$HOME/.nvm/versions/node/v21.6.1/bin/node"
+NODE_BIN="$(command -v node)"
 
 mkdir -p "$DEST_DIR"
 
@@ -34,10 +37,10 @@ mkdir -p "$DEST_DIR"
         --download-archive "$ARCHIVE_FILE" \
         -f "bestaudio/best" \
         --extract-audio \
+        --audio-format opus \
         --output "$DEST_DIR/%(title)s [%(id)s].%(ext)s" \
         --no-overwrites \
         --ignore-errors \
-        --no-post-overwrites \
         --embed-thumbnail \
         --add-metadata \
         --sleep-interval 5 \
