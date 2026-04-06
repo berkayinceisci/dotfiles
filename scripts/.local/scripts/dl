@@ -2,12 +2,14 @@
 # dl - Download media from URLs
 #
 # Usage: dl <url>           Download video (yt-dlp)
+#        dl -o <name> <url> Download video with custom filename (extension added automatically)
 #        dl -i <url>        Download image/gif (yt-dlp or curl for direct URLs)
 
 set -euo pipefail
 
 print_usage() {
     echo "Usage: dl <url>           Download video"
+    echo "       dl -o <name> <url> Download video with custom filename"
     echo "       dl -i <url>        Download image/gif"
 }
 
@@ -20,9 +22,14 @@ require_ytdlp() {
 
 download_video() {
     local url="$1"
+    local name="${2:-}"
     require_ytdlp
+    local -a extra_args=()
+    if [[ -n "$name" ]]; then
+        extra_args+=(--output "${name}.%(ext)s")
+    fi
     local filepath
-    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" --print after_move:filepath "$url")
+    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" "${extra_args[@]}" --print after_move:filepath "$url")
     echo "$filepath"
     if [[ -f "$filepath" ]]; then
         local size
@@ -65,17 +72,22 @@ if [[ $# -eq 0 ]]; then
 fi
 
 mode="video"
-if [[ "$1" == "-i" ]]; then
-    mode="image"
-    shift
-fi
+output_name=""
+url=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -i) mode="image"; shift ;;
+        -o) output_name="$2"; shift 2 ;;
+        *) url="$1"; shift ;;
+    esac
+done
 
-if [[ $# -eq 0 ]]; then
+if [[ -z "$url" ]]; then
     print_usage
     exit 1
 fi
 
 case "$mode" in
-    video) download_video "$1" ;;
-    image) download_image "$1" ;;
+    video) download_video "$url" "$output_name" ;;
+    image) download_image "$url" ;;
 esac
