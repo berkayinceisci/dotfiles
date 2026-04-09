@@ -125,10 +125,9 @@ Host gnr-astera
     User berkay
     Port 22
 
-# ProxyJump ark when reachable, fall back to popos (Tailscale exit node on same network)
-# On popos itself, no jump needed when ark is down (direct access)
-Match originalhost hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2 exec "nc -z -w 3 ${ARK_HOST} 55555 2>/dev/null"
-    ProxyJump ark
-
-Match originalhost hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2 exec "! nc -z -w 3 ${ARK_HOST} 55555 2>/dev/null && [ $(hostname) != popos ]"
+# ProxyJump for MoatLab hosts: if target not directly reachable and not on
+# popos, jump through popos (on VT lab network + Tailscale). Otherwise direct.
+# Note: macOS nc uses -G for connect timeout; Linux nc uses -w (-w on macOS
+# is idle-only and causes ~75s hangs when the host is unreachable).
+Match originalhost hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2 exec "case $(uname) in Darwin) f='-G';; *) f='-w';; esac; ! nc -z $f 2 %h %p 2>/dev/null && [ $(hostname) != popos ]"
     ProxyJump popos
