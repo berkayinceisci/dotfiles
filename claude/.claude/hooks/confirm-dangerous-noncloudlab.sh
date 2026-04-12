@@ -25,6 +25,19 @@ tool_name=$(echo "$input" | jq -r '.tool_name // empty' 2>/dev/null || true)
 if [[ "$tool_name" == "Bash" ]]; then
 	command=$(echo "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
 
+	# Skip checks when command is an ssh invocation targeting a cloudlab host.
+	# The dangerous bits run remotely on cloudlab, not locally.
+	# Strip leading comment lines and blank lines; find the first real command.
+	first_cmd=$(echo "$command" | awk '
+		/^[[:space:]]*#/ {next}
+		/^[[:space:]]*$/ {next}
+		{sub(/^[[:space:]]+/, ""); print; exit}
+	')
+	if [[ "$first_cmd" =~ ^ssh[[:space:]] ]] && \
+	   [[ "$command" == *.cloudlab.us* ]]; then
+		exit 0
+	fi
+
 	# sudo anywhere in command
 	if [[ "$command" =~ (^|[^a-zA-Z0-9_])sudo([^a-zA-Z0-9_]|$) ]]; then
 		ask_permission "sudo requires your approval"
