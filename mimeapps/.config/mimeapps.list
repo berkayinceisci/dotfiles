@@ -1,0 +1,30 @@
+[Default Applications]
+text/html=zen-browser.desktop
+x-scheme-handler/http=zen-browser.desktop
+x-scheme-handler/https=zen-browser.desktop
+x-scheme-handler/about=brave-browser.desktop
+x-scheme-handler/unknown=brave-browser.desktop
+x-scheme-handler/chrome=zen-browser.desktop
+application/x-extension-htm=zen-browser.desktop
+application/x-extension-html=zen-browser.desktop
+application/x-extension-shtml=zen-browser.desktop
+application/xhtml+xml=zen-browser.desktop
+application/x-extension-xhtml=zen-browser.desktop
+application/x-extension-xht=zen-browser.desktop
+x-scheme-handler/obsidian=obsidian.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+application/pdf=org.gnome.Evince.desktop
+
+[Added Associations]
+image/png=org.gnome.eog.desktop;
+text/x-bibtex=org.gnome.gedit.desktop;
+x-scheme-handler/http=zen-browser.desktop;
+x-scheme-handler/https=zen-browser.desktop;
+x-scheme-handler/chrome=zen-browser.desktop;
+text/html=zen-browser.desktop;
+application/x-extension-htm=zen-browser.desktop;
+application/x-extension-html=zen-browser.desktop;
+application/x-extension-shtml=zen-browser.desktop;
+application/xhtml+xml=zen-browser.desktop;
+application/x-extension-xhtml=zen-browser.desktop;
+application/x-extension-xht=zen-browser.desktop;
