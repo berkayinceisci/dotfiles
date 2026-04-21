@@ -106,13 +106,13 @@ echo ""
 echo "Stowing dotfiles..."
 
 # Linux-specific packages to skip on macOS
-LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura")
+LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura" "mimeapps")
 
 # macOS-specific packages to skip on Linux
 MACOS_ONLY_PACKAGES=("swiftbar")
 
 # Packages to skip on headless cloudlab machines
-CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura")
+CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps")
 
 for package in */; do
 	package="${package%/}" # Remove trailing slash
