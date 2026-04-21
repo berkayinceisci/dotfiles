@@ -1,16 +1,14 @@
 #!/bin/bash
-# dl - Download media from URLs
+# dl - Download media from URLs (auto-detects video/image/PDF)
 #
-# Usage: dl <url>           Download video (yt-dlp)
-#        dl -o <name> <url> Download video with custom filename (extension added automatically)
-#        dl -i <url>        Download image/gif (yt-dlp or curl for direct URLs)
+# Usage: dl <url>           Auto-detect and download
+#        dl -o <name> <url> Download video with custom filename
 
 set -euo pipefail
 
 print_usage() {
-    echo "Usage: dl <url>           Download video"
+    echo "Usage: dl <url>           Download (auto-detect video/image/PDF)"
     echo "       dl -o <name> <url> Download video with custom filename"
-    echo "       dl -i <url>        Download image/gif"
 }
 
 require_ytdlp() {
@@ -28,8 +26,11 @@ download_video() {
     if [[ -n "$name" ]]; then
         extra_args+=(--output "${name}.%(ext)s")
     fi
-    local filepath
-    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" "${extra_args[@]}" --print after_move:filepath "$url")
+    local filepath rc=0
+    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url") || rc=$?
+    if [[ $rc -ne 0 ]]; then
+        return $rc
+    fi
     echo "$filepath"
     if [[ -f "$filepath" ]]; then
         local size
@@ -42,28 +43,152 @@ download_video() {
     fi
 }
 
-download_image() {
+# yt-dlp fallback for platform image posts (Instagram image posts, etc.)
+download_platform_image() {
     local url="$1"
+    require_ytdlp
+    yt-dlp --print after_move:filepath "$url"
+}
 
-    # Direct file URL — use curl
-    if [[ "$url" =~ \.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$ ]]; then
-        local filename
-        filename=$(basename "${url%%\?*}")
-        curl -fLo "$filename" "$url"
-        echo "$filename"
-    # URL with format in query parameter (e.g. Twitter: ?format=jpg)
-    elif [[ "$url" =~ [?\&]format=(jpg|jpeg|png|gif|webp) ]]; then
-        local ext="${BASH_REMATCH[1]}"
-        local base
-        base=$(basename "${url%%\?*}")
-        local filename="${base}.${ext}"
-        curl -fLo "$filename" "$url"
-        echo "$filename"
-    else
-        # Platform URL (Twitter, Instagram, etc.) — use yt-dlp
-        require_ytdlp
-        yt-dlp --print after_move:filepath "$url"
+# Twitter/X image posts: yt-dlp's twitter extractor rejects image-only tweets,
+# so use fxtwitter's public JSON API to extract photo URLs, then curl each one
+download_twitter_images() {
+    local url="$1"
+    local api_url
+    api_url=$(echo "$url" | sed -E 's#^https?://(www\.|mobile\.)?(twitter\.com|x\.com)/#https://api.fxtwitter.com/#')
+
+    local media_urls
+    media_urls=$(curl -sf --max-time 15 "$api_url" | python3 -c '
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    for p in d.get("tweet", {}).get("media", {}).get("photos", []) or []:
+        print(p["url"])
+except Exception:
+    sys.exit(1)
+') || {
+        echo "Error: failed to fetch tweet metadata from $api_url" >&2
+        return 1
+    }
+
+    if [[ -z "$media_urls" ]]; then
+        echo "Error: no images found in tweet" >&2
+        return 1
     fi
+
+    while IFS= read -r media_url; do
+        [[ -z "$media_url" ]] && continue
+        download_direct "$media_url" ""
+    done <<< "$media_urls"
+}
+
+# Derive a filename from URL; synthesize extension from hint when URL basename has none
+derive_filename() {
+    local url="$1"
+    local hint="${2:-}"  # mime type or extension
+
+    local filename
+    filename=$(basename "${url%%\?*}")
+
+    if [[ -n "$filename" && "$filename" == *.* ]]; then
+        echo "$filename"
+        return
+    fi
+
+    local ext
+    case "$hint" in
+        image/jpeg|jpg|jpeg)  ext="jpg" ;;
+        image/png|png)        ext="png" ;;
+        image/gif|gif)        ext="gif" ;;
+        image/webp|webp)      ext="webp" ;;
+        image/svg+xml|svg)    ext="svg" ;;
+        image/bmp|bmp)        ext="bmp" ;;
+        application/pdf*|pdf) ext="pdf" ;;
+        *) ext="bin" ;;
+    esac
+    echo "${filename:-download}.${ext}"
+}
+
+download_direct() {
+    local url="$1"
+    local hint="${2:-}"
+    local filename
+    filename=$(derive_filename "$url" "$hint")
+    curl -fLo "$filename" "$url"
+    echo "$filename"
+}
+
+# Fetch Content-Type via HEAD (following redirects); empty string on failure
+head_content_type() {
+    local url="$1"
+    curl -sIL --max-time 10 -o /dev/null -w '%{content_type}' "$url" 2>/dev/null || true
+}
+
+# Try video download; on "No video could be found" (image-only post), fall back to image mode
+download_platform() {
+    local url="$1"
+    local name="${2:-}"
+    local errfile
+    errfile=$(mktemp)
+
+    local rc=0
+    download_video "$url" "$name" 2> >(tee "$errfile" >&2) || rc=$?
+    wait 2>/dev/null || true
+
+    if [[ $rc -eq 0 ]]; then
+        rm -f "$errfile"
+        return 0
+    fi
+
+    local has_no_video=0
+    if grep -q "No video could be found" "$errfile"; then
+        has_no_video=1
+    fi
+    rm -f "$errfile"
+
+    if [[ $has_no_video -eq 1 ]]; then
+        if [[ "$url" =~ (twitter\.com|x\.com)/ ]]; then
+            echo "-> No video in tweet, fetching image(s) via fxtwitter API..." >&2
+            download_twitter_images "$url"
+        else
+            echo "-> No video in post, downloading as image..." >&2
+            download_platform_image "$url"
+        fi
+    else
+        return $rc
+    fi
+}
+
+dispatch() {
+    local url="$1"
+    local name="${2:-}"
+
+    # Fast path: URL patterns (no network)
+    if [[ "$url" =~ \.pdf(\?.*)?$ ]]; then
+        download_direct "$url" "pdf"
+        return
+    fi
+    if [[ "$url" =~ \.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$ ]]; then
+        download_direct "$url" "${BASH_REMATCH[1]}"
+        return
+    fi
+    if [[ "$url" =~ [?\&]format=(jpg|jpeg|png|gif|webp) ]]; then
+        download_direct "$url" "${BASH_REMATCH[1]}"
+        return
+    fi
+
+    # HEAD check for proxy/CDN URLs without a usable path
+    local ctype
+    ctype=$(head_content_type "$url")
+    case "$ctype" in
+        image/*|application/pdf*)
+            download_direct "$url" "$ctype"
+            return
+            ;;
+    esac
+
+    # Platform URL (Twitter, YouTube, etc.): try video, fall back to image
+    download_platform "$url" "$name"
 }
 
 if [[ $# -eq 0 ]]; then
@@ -71,13 +196,12 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-mode="video"
 output_name=""
 url=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -i) mode="image"; shift ;;
         -o) output_name="$2"; shift 2 ;;
+        -h|--help) print_usage; exit 0 ;;
         *) url="$1"; shift ;;
     esac
 done
@@ -87,7 +211,4 @@ if [[ -z "$url" ]]; then
     exit 1
 fi
 
-case "$mode" in
-    video) download_video "$url" "$output_name" ;;
-    image) download_image "$url" ;;
-esac
+dispatch "$url" "$output_name"
