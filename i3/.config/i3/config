@@ -63,12 +63,12 @@ exec --no-startup-id picom -b
 exec_always --no-startup-id ~/.config/i3/wallpaper.sh
 
 # Saved Screenshots
-bindsym Mod4+Shift+3 exec --no-startup-id maim --window $(xdotool getactivewindow) "/home/$USER/Pictures/$(date)"
-bindsym Mod4+Shift+4 exec --no-startup-id maim --select "/home/$USER/Pictures/$(date)"
+bindsym Mod4+Shift+3 exec --no-startup-id bash -c 'eval $(xdotool getactivewindow getwindowgeometry --shell) && flameshot gui --region "${WIDTH}x${HEIGHT}+${X}+${Y}" --raw > "/home/$USER/Pictures/$(date)"'
+bindsym Mod4+Shift+4 exec --no-startup-id bash -c 'flameshot gui --raw > "/home/$USER/Pictures/$(date)"'
 
 # Clipboard Screenshots
-bindsym Ctrl+Mod4+Shift+3 exec --no-startup-id maim | xclip -selection clipboard -t image/png
-bindsym Ctrl+Mod4+Shift+4 exec --no-startup-id maim --select | xclip -selection clipboard -t image/png
+bindsym Ctrl+Mod4+Shift+3 exec --no-startup-id flameshot screen --clipboard
+bindsym Ctrl+Mod4+Shift+4 exec --no-startup-id flameshot gui --clipboard
 
 # shutdown
 bindsym Mod1+Shift+Escape exec systemctl poweroff -i
