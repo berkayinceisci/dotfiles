@@ -31,26 +31,55 @@ allow_command() {
 	exit 0
 }
 
-# Decide whether the command is targeting cloudlab (directly or via sourced /
-# redirected files). Sets CLOUDLAB_SCRIPT=1 if so.
-detect_cloudlab_script() {
-	CLOUDLAB_SCRIPT=0
-	[[ "$command" == *.cloudlab.us* ]] && { CLOUDLAB_SCRIPT=1; return; }
+# Decide whether the command is targeting a trusted remote — either cloudlab
+# (directly or via sourced / redirected files) or a port-forwarded local VM
+# reached through an ssh-wrapper script. Sets REMOTE_TRUSTED=1 if so.
+detect_trusted_remote_script() {
+	REMOTE_TRUSTED=0
+	[[ "$command" == *.cloudlab.us* ]] && { REMOTE_TRUSTED=1; return; }
 	local path
 	while IFS= read -r path; do
-		[[ -z "$path" || ! -r "$path" ]] && continue
+		# Expand leading ~/ (hook receives the raw command string).
+		path="${path/#\~/$HOME}"
+		[[ -z "$path" || ! -f "$path" || ! -r "$path" ]] && continue
+		# cloudlab target anywhere in the file.
 		if grep -q '\.cloudlab\.us' "$path" 2>/dev/null; then
-			CLOUDLAB_SCRIPT=1
+			REMOTE_TRUSTED=1
+			return
+		fi
+		# Port-forwarded local VM: an ssh/scp/rsync line targeting
+		# localhost (or 127.0.0.1 / [::1]) on a specified port — the
+		# standard qemu/vagrant/virtualbox wrapper pattern. Join
+		# backslash-continuation lines first so the check still fires
+		# when the ssh invocation is wrapped across multiple lines.
+		if awk '
+			BEGIN { buf = "" }
+			{
+				line = $0
+				if (sub(/\\$/, "", line)) { buf = buf line " "; next }
+				line = buf line; buf = ""
+				if (line ~ /(^|[^[:alnum:]_])(ssh|scp|rsync)[[:space:]]/ &&
+				    line ~ /(localhost|127\.0\.0\.1|\[::1\])/ &&
+				    line ~ /-p[[:space:]]/) { found = 1; exit }
+			}
+			END { exit(found ? 0 : 1) }
+		' "$path" 2>/dev/null; then
+			REMOTE_TRUSTED=1
 			return
 		fi
 	done < <(
 		{
 			# `|| true` so that "no match" (grep exit 1) doesn't kill
-			# the subshell under set -e and skip the other extractor.
+			# the subshell under set -e and skip the other extractors.
 			grep -oE '<[[:space:]]*[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
 				| sed -E 's/^<[[:space:]]*//' || true
 			grep -oE '(^|[[:space:]&;(`])(source|\.)[[:space:]]+[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
 				| sed -E 's/^[[:space:]&;(`]*(source|\.)[[:space:]]+//' || true
+			# Path-like tokens (absolute, relative, or ~-prefixed) so
+			# that ssh-wrapper scripts passed as the command's first
+			# argument are inspected too.
+			grep -oE '(^|[[:space:]&;(`])(/|\./|\.\./|~/)[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
+				| sed -E 's/^[[:space:]&;(`]+//' || true
 		}
 	)
 }
@@ -59,16 +88,18 @@ input=$(cat)
 tool_name=$(echo "$input" | jq -r '.tool_name // empty' 2>/dev/null || true)
 
 # Match a dangerous ERE pattern on lines that are NOT ssh invocations targeting
-# a *.cloudlab.us host. Lines containing both `ssh ` and `.cloudlab.us` are
-# exempt — the dangerous bits inside such lines run remotely on cloudlab.
+# a trusted remote (a *.cloudlab.us host or a port-forwarded local VM). Lines
+# that contain `ssh ` and target a trusted remote are exempt — the dangerous
+# bits inside such lines run on the remote, not locally.
 danger_check() {
 	local pattern="$1"
 	# Check the command line-by-line, after joining backslash-continuation lines.
-	# Lines that are part of a remote ssh-to-cloudlab invocation are exempt. This
-	# includes multi-line quoted scripts: when an `ssh ... .cloudlab.us` line
-	# opens a quote that isn't closed on the same line, subsequent lines are
-	# considered "inside remote" until the matching closing quote is seen.
-	awk -v pat="$pattern" -v cloudlab_script="$CLOUDLAB_SCRIPT" '
+	# Lines that are part of a remote ssh-to-trusted-target invocation are
+	# exempt. This includes multi-line quoted scripts: when an `ssh ...`
+	# line opens a quote that isn't closed on the same line, subsequent
+	# lines are considered "inside remote" until the matching closing
+	# quote is seen.
+	awk -v pat="$pattern" -v remote_trusted="$REMOTE_TRUSTED" '
 		function count_unescaped(s, ch,    i, c, prev, n) {
 			n = 0; prev = ""
 			for (i = 1; i <= length(s); i++) {
@@ -106,16 +137,18 @@ danger_check() {
 			if (line ~ /^[[:space:]]*#/) next
 			if (line ~ /^[[:space:]]*$/) next
 
-			# ssh/scp/rsync line targeting cloudlab: exempt. The line
-			# qualifies if it contains `.cloudlab.us` directly, OR if
-			# the overall command mentions `.cloudlab.us` somewhere
-			# (e.g. hostname in a for-loop header, stored in ${h}).
+			# ssh/scp/rsync line targeting a trusted remote: exempt.
+			# The line qualifies if it contains `.cloudlab.us` directly,
+			# OR if the overall command has been pre-classified as
+			# targeting a trusted remote (cloudlab hostname anywhere
+			# in a sourced/redirected/path-argument file, or an ssh
+			# wrapper that targets a port-forwarded local VM).
 			# If it opens a heredoc or a quote that does not close on
 			# the same line, enter "inside remote" state so subsequent
 			# lines are also exempt.
-			is_remote_cmd = (line ~ /(^|[^a-zA-Z0-9_])(ssh|scp|rsync)[[:space:]]/)
+			is_remote_cmd = (line ~ /(^|[^a-zA-Z0-9_])(ssh|scp|rsync)[^[:space:]]*[[:space:]]/)
 			line_has_cloudlab = (line ~ /\.cloudlab\.us/)
-			if (is_remote_cmd && (line_has_cloudlab || cloudlab_script)) {
+			if (is_remote_cmd && (line_has_cloudlab || remote_trusted)) {
 				# Heredoc: <<[-]?["]?WORD["]?  at end of line (with
 				# optional trailing whitespace). The end-of-line
 				# anchor avoids misfiring on `<<` inside a closed
@@ -149,7 +182,7 @@ danger_check() {
 if [[ "$tool_name" == "Bash" ]]; then
 	command=$(echo "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
 
-	detect_cloudlab_script
+	detect_trusted_remote_script
 
 	# sudo anywhere in command
 	if danger_check '(^|[^a-zA-Z0-9_])sudo([^a-zA-Z0-9_]|$)'; then
@@ -181,10 +214,11 @@ if [[ "$tool_name" == "Bash" ]]; then
 		ask_permission "chown -R requires your approval"
 	fi
 
-	# No local danger and command targets cloudlab — auto-allow so Claude
-	# Code's default Bash permission doesn't ask either.
-	if [[ "$CLOUDLAB_SCRIPT" == "1" ]]; then
-		allow_command "cloudlab-targeting command: auto-allowed"
+	# No local danger and command targets a trusted remote (cloudlab or a
+	# port-forwarded local VM) — auto-allow so Claude Code's default Bash
+	# permission doesn't ask either.
+	if [[ "$REMOTE_TRUSTED" == "1" ]]; then
+		allow_command "trusted-remote-targeting command: auto-allowed"
 	fi
 fi
 
