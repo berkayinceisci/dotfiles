@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Search Emoji
+Comment=Pick an emoji and type/copy it
+Exec=rofimoji
+Type=Application
+Terminal=false
+Categories=Utility;

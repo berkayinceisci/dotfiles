@@ -28,12 +28,11 @@ bindsym Mod1+Return exec --no-startup-id ~/.config/i3/terminal_open.sh
 # start zen browser
 bindsym Mod1+BackSpace exec zen
 
-# rofi application mode
+# rofi launcher (drun default; Shift+Right cycles to calc and clipboard)
 bindsym Mod1+space exec --no-startup-id rofi -show drun -theme ~/.config/rofi/config.rasi
-# rofi file mode
-bindsym Mod1+f exec --no-startup-id rofi -show file-browser-extended -file-browser-depth 0
-# rofi emoji mode
-bindsym Mod1+period exec --no-startup-id rofimoji
+
+# greenclip clipboard history daemon
+exec --no-startup-id greenclip daemon
 
 # kill focused window
 bindsym Mod1+Q kill
