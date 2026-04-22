@@ -10,7 +10,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/confirm-dangerous-noncloudlab.sh"
+            "command": "~/.claude/hooks/confirm-dangerous-local.sh"
           },
           {
             "type": "command",
