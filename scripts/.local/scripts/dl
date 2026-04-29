@@ -27,7 +27,7 @@ download_video() {
         extra_args+=(--output "${name}.%(ext)s")
     fi
     local filepath rc=0
-    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url") || rc=$?
+    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" -I 1 ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url") || rc=$?
     if [[ $rc -ne 0 ]]; then
         return $rc
     fi
