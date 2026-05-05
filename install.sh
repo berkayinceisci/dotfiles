@@ -192,6 +192,20 @@ for package in */; do
 		if ! command -v jq >/dev/null 2>&1; then
 			echo "  ⚠ jq not installed (required by Claude Code statusline). Install with: sudo apt install jq (or brew install jq)"
 		fi
+	elif [[ "$package" == "codex" ]]; then
+		stow --no-folding \
+			--ignore='auth\.json' \
+			--ignore='history\.jsonl' \
+			--ignore='cache' \
+			--ignore='log' \
+			--ignore='logs_.*\.sqlite.*' \
+			--ignore='sessions' \
+			--ignore='shell_snapshots' \
+			--ignore='state_.*\.sqlite.*' \
+			--ignore='tmp' \
+			"$package"
+		# Ensure shell scripts in the codex package are executable
+		find "$DOTFILES_DIR/codex" -name "*.sh" -exec chmod +x {} \;
 	elif [[ "$package" == "atuin" ]]; then
 		stow --no-folding "$package"
 	else
