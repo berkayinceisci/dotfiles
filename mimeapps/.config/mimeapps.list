@@ -14,6 +14,11 @@ application/x-extension-xht=zen-browser.desktop
 x-scheme-handler/obsidian=obsidian.desktop
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 application/pdf=org.gnome.Evince.desktop
+image/png=org.gnome.eog.desktop
+image/jpeg=org.gnome.eog.desktop
+image/gif=org.gnome.eog.desktop
+text/plain=org.gnome.gedit.desktop
+application/xml=org.gnome.gedit.desktop
 
 [Added Associations]
 image/png=org.gnome.eog.desktop;
@@ -28,3 +33,4 @@ application/x-extension-shtml=zen-browser.desktop;
 application/xhtml+xml=zen-browser.desktop;
 application/x-extension-xhtml=zen-browser.desktop;
 application/x-extension-xht=zen-browser.desktop;
+image/jpeg=org.gnome.gThumb.desktop;feh.desktop;
