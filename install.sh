@@ -215,6 +215,34 @@ done
 
 echo "  ✓ Stowing complete"
 
+# Prevent Wine from hijacking common file type associations (Linux with GUI only)
+# winemenubuilder.exe creates XDG .desktop files for Windows file associations,
+# overriding native Linux handlers for images, text, PDFs, etc.
+if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
+	echo ""
+	echo "Cleaning up Wine file association hijacks..."
+
+	# Remove wine-extension .desktop files for formats that have native Linux handlers.
+	# Wine recreates these via winemenubuilder on every app install — the reg key below
+	# disables that. This rm -f is idempotent and safe to re-run.
+	WINE_COMMON_EXTS=(gif jpe jfif png txt htm pdf xml rtf ini)
+	for ext in "${WINE_COMMON_EXTS[@]}"; do
+		rm -f ~/.local/share/applications/wine-extension-"$ext".desktop
+	done
+	update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
+	echo "  ✓ Removed wine-extension .desktop files for common formats"
+
+	# Disable winemenubuilder.exe so Wine never re-registers these associations
+	if command -v wine >/dev/null 2>&1; then
+		wine reg add "HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides" \
+			/v winemenubuilder.exe /t REG_SZ /d "" /f >/dev/null 2>&1 && \
+			echo "  ✓ winemenubuilder.exe disabled in Wine registry" || \
+			echo "  ⚠ Could not disable winemenubuilder.exe (Wine may not be initialized yet)"
+	else
+		echo "  ⊘ Wine not installed, skipping winemenubuilder disable"
+	fi
+fi
+
 # Configure display manager for login screen (Linux with GUI only)
 if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 	echo ""
