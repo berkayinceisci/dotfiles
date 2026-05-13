@@ -2,8 +2,8 @@
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
-    echo "Usage: rdiff [diff-options...] file1 file2"
-    echo "Files can be local or remote (host:path)"
+    echo "Usage: rdiff [diff-options...] path1 path2"
+    echo "Paths can be local or remote (host:path); files or directories"
     exit 1
 fi
 
@@ -12,21 +12,42 @@ file1="${args[-2]}"
 file2="${args[-1]}"
 diff_opts=("${args[@]:0:$#-2}")
 
-a="$file1" b="$file2"
 cleanup=()
+trap 'for p in "${cleanup[@]+"${cleanup[@]}"}"; do rm -rf "$p"; done' EXIT
 
-trap 'rm -f "${cleanup[@]}"' EXIT
+fetch() {
+    local spec="$1"
+    if [[ "$spec" != *:* ]]; then
+        printf '%s\n' "$spec"
+        return
+    fi
 
-if [[ "$file1" == *:* ]]; then
-    a=$(mktemp)
-    cleanup+=("$a")
-    scp "$file1" "$a"
-fi
+    local host="${spec%%:*}"
+    local path="${spec#*:}"
+    local tmp
+    if ssh "$host" "[ -d \"$path\" ]"; then
+        tmp=$(mktemp -d)
+        cleanup+=("$tmp")
+        scp -rq "$spec" "$tmp/"
+        printf '%s\n' "$tmp/$(basename "$path")"
+    else
+        tmp=$(mktemp)
+        cleanup+=("$tmp")
+        scp -q "$spec" "$tmp"
+        printf '%s\n' "$tmp"
+    fi
+}
 
-if [[ "$file2" == *:* ]]; then
-    b=$(mktemp)
-    cleanup+=("$b")
-    scp "$file2" "$b"
+a=$(fetch "$file1")
+b=$(fetch "$file2")
+
+# auto-add -r if either side is a directory and the user didn't already pass it
+if [[ -d "$a" || -d "$b" ]]; then
+    has_r=0
+    for opt in "${diff_opts[@]+"${diff_opts[@]}"}"; do
+        [[ "$opt" == "-r" || "$opt" == "--recursive" ]] && has_r=1
+    done
+    [[ $has_r -eq 0 ]] && diff_opts+=("-r")
 fi
 
 if [[ ${#diff_opts[@]} -eq 0 ]]; then
