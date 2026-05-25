@@ -36,6 +36,7 @@ allow_command() {
 # reached through an ssh-wrapper script. Sets REMOTE_TRUSTED=1 if so.
 detect_trusted_remote_script() {
 	REMOTE_TRUSTED=0
+	TRUSTED_FILE_CONTENT=""
 	[[ "$command" == *.cloudlab.us* ]] && { REMOTE_TRUSTED=1; return; }
 	# Use command substitution + here-string instead of `done < <(...)`:
 	# bash 3.2 (macOS /bin/bash) has a parser bug where process substitution
@@ -57,22 +58,21 @@ detect_trusted_remote_script() {
 				| sed -E 's/^[[:space:]&;(`]+//' || true
 		}
 	)
-	local path
+	local path trusted
 	while IFS= read -r path; do
 		# Expand leading ~/ (hook receives the raw command string).
 		path="${path/#\~/$HOME}"
 		[[ -z "$path" || ! -f "$path" || ! -r "$path" ]] && continue
+		trusted=0
 		# cloudlab target anywhere in the file.
 		if grep -q '\.cloudlab\.us' "$path" 2>/dev/null; then
-			REMOTE_TRUSTED=1
-			return
-		fi
+			trusted=1
 		# Port-forwarded local VM: an ssh/scp/rsync line targeting
 		# localhost (or 127.0.0.1 / [::1]) on a specified port — the
 		# standard qemu/vagrant/virtualbox wrapper pattern. Join
 		# backslash-continuation lines first so the check still fires
 		# when the ssh invocation is wrapped across multiple lines.
-		if awk '
+		elif awk '
 			BEGIN { buf = "" }
 			{
 				line = $0
@@ -84,8 +84,15 @@ detect_trusted_remote_script() {
 			}
 			END { exit(found ? 0 : 1) }
 		' "$path" 2>/dev/null; then
+			trusted=1
+		fi
+		if [[ $trusted -eq 1 ]]; then
 			REMOTE_TRUSTED=1
-			return
+			# Append file contents so danger_check inspects them
+			# under the same per-line rules. ssh-to-trusted-remote
+			# lines inside the file stay exempt; locally-dangerous
+			# lines (e.g. a `rm -rf` next to the ssh) get caught.
+			TRUSTED_FILE_CONTENT+=$'\n'"$(cat "$path")"
 		fi
 	done <<<"$paths"
 }
@@ -182,7 +189,7 @@ danger_check() {
 			if (line ~ pat) { found=1; exit }
 		}
 		END {exit(found ? 0 : 1)}
-	' <<<"$command"
+	' <<<"$command${TRUSTED_FILE_CONTENT:-}"
 }
 
 if [[ "$tool_name" == "Bash" ]]; then
