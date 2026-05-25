@@ -37,6 +37,26 @@ allow_command() {
 detect_trusted_remote_script() {
 	REMOTE_TRUSTED=0
 	[[ "$command" == *.cloudlab.us* ]] && { REMOTE_TRUSTED=1; return; }
+	# Use command substitution + here-string instead of `done < <(...)`:
+	# bash 3.2 (macOS /bin/bash) has a parser bug where process substitution
+	# containing escaped backticks inside single-quoted regexes fails with
+	# "bad substitution: no closing `)' in <(".
+	local paths
+	paths=$(
+		{
+			# `|| true` so that "no match" (grep exit 1) doesn't kill
+			# the subshell under set -e and skip the other extractors.
+			grep -oE '<[[:space:]]*[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
+				| sed -E 's/^<[[:space:]]*//' || true
+			grep -oE '(^|[[:space:]&;(`])(source|\.)[[:space:]]+[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
+				| sed -E 's/^[[:space:]&;(`]*(source|\.)[[:space:]]+//' || true
+			# Path-like tokens (absolute, relative, or ~-prefixed) so
+			# that ssh-wrapper scripts passed as the command's first
+			# argument are inspected too.
+			grep -oE '(^|[[:space:]&;(`])(/|\./|\.\./|~/)[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
+				| sed -E 's/^[[:space:]&;(`]+//' || true
+		}
+	)
 	local path
 	while IFS= read -r path; do
 		# Expand leading ~/ (hook receives the raw command string).
@@ -67,21 +87,7 @@ detect_trusted_remote_script() {
 			REMOTE_TRUSTED=1
 			return
 		fi
-	done < <(
-		{
-			# `|| true` so that "no match" (grep exit 1) doesn't kill
-			# the subshell under set -e and skip the other extractors.
-			grep -oE '<[[:space:]]*[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
-				| sed -E 's/^<[[:space:]]*//' || true
-			grep -oE '(^|[[:space:]&;(`])(source|\.)[[:space:]]+[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
-				| sed -E 's/^[[:space:]&;(`]*(source|\.)[[:space:]]+//' || true
-			# Path-like tokens (absolute, relative, or ~-prefixed) so
-			# that ssh-wrapper scripts passed as the command's first
-			# argument are inspected too.
-			grep -oE '(^|[[:space:]&;(`])(/|\./|\.\./|~/)[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
-				| sed -E 's/^[[:space:]&;(`]+//' || true
-		}
-	)
+	done <<<"$paths"
 }
 
 input=$(cat)
