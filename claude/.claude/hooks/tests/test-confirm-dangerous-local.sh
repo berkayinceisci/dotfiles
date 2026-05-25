@@ -108,6 +108,18 @@ chmod +x "$WRAPPER"
 assert_decision "vm-ssh.sh wrapper (port-forward VM)" "allow" \
     "bash $WRAPPER 'sudo X'"
 
+# 8b. Port-forward VM wrapper script whose filename does NOT contain
+#     `ssh|scp|rsync` as a substring. Trust has to come from the path-token
+#     matching, not from the outer command line looking ssh-like.
+WRAPPER_NO_SSH="$TMPDIR/connect-vm.sh"
+cat > "$WRAPPER_NO_SSH" <<'EOF'
+#!/bin/bash
+ssh -p 2222 user@localhost "$@"
+EOF
+chmod +x "$WRAPPER_NO_SSH"
+assert_decision "wrapper with no ssh in filename" "allow" \
+    "bash $WRAPPER_NO_SSH 'sudo X'"
+
 # 9. source ./cloudlab-env.sh && rm -rf /tmp/x
 #    The rm runs locally; sourcing an env file does not redirect it to
 #    the remote. The hook should still ask, even though REMOTE_TRUSTED=1.

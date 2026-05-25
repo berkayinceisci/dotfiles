@@ -37,31 +37,39 @@ allow_command() {
 detect_trusted_remote_script() {
 	REMOTE_TRUSTED=0
 	TRUSTED_FILE_CONTENT=""
+	TRUSTED_PATHS=()
 	[[ "$command" == *.cloudlab.us* ]] && { REMOTE_TRUSTED=1; return; }
 	# Use command substitution + here-string instead of `done < <(...)`:
 	# bash 3.2 (macOS /bin/bash) has a parser bug where process substitution
 	# containing escaped backticks inside single-quoted regexes fails with
 	# "bad substitution: no closing `)' in <(".
-	local paths
-	paths=$(
+	# Each extracted path is tagged with its origin: `S` for source/.,
+	# `R` for `<` redirect, `P` for a positional path argument. Only
+	# `P`-tagged paths become line-level trust markers in danger_check;
+	# source/redirect targets contribute their *contents* only, so the
+	# outer line that source/redirects them must still be danger-checked
+	# (e.g. `source cloudlab-env.sh && rm -rf /tmp/x` should still ask).
+	local sep=$'\t'
+	local tagged_paths
+	tagged_paths=$(
 		{
 			# `|| true` so that "no match" (grep exit 1) doesn't kill
 			# the subshell under set -e and skip the other extractors.
 			grep -oE '<[[:space:]]*[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
-				| sed -E 's/^<[[:space:]]*//' || true
+				| sed -E "s/^<[[:space:]]*/R$sep/" || true
 			grep -oE '(^|[[:space:]&;(`])(source|\.)[[:space:]]+[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
-				| sed -E 's/^[[:space:]&;(`]*(source|\.)[[:space:]]+//' || true
+				| sed -E "s/^[[:space:]&;(\`]*(source|\.)[[:space:]]+/S$sep/" || true
 			# Path-like tokens (absolute, relative, or ~-prefixed) so
 			# that ssh-wrapper scripts passed as the command's first
 			# argument are inspected too.
 			grep -oE '(^|[[:space:]&;(`])(/|\./|\.\./|~/)[^[:space:]|&;()<>"'"'"'\`]+' <<<"$command" \
-				| sed -E 's/^[[:space:]&;(`]+//' || true
+				| sed -E "s/^[[:space:]&;(\`]*/P$sep/" || true
 		}
 	)
-	local path trusted
-	while IFS= read -r path; do
+	local tag raw_path path trusted seen_sr=""
+	while IFS="$sep" read -r tag raw_path; do
 		# Expand leading ~/ (hook receives the raw command string).
-		path="${path/#\~/$HOME}"
+		path="${raw_path/#\~/$HOME}"
 		[[ -z "$path" || ! -f "$path" || ! -r "$path" ]] && continue
 		trusted=0
 		# cloudlab target anywhere in the file.
@@ -88,13 +96,29 @@ detect_trusted_remote_script() {
 		fi
 		if [[ $trusted -eq 1 ]]; then
 			REMOTE_TRUSTED=1
+			# Positional path-arg refs only: remember the path so
+			# danger_check can treat lines that invoke the wrapper
+			# (e.g. `bash /path/connect-vm.sh ...`) as remote-trusted,
+			# even when the wrapper's filename doesn't contain
+			# `ssh|scp|rsync` as a substring. Source/redirect targets
+			# don't get this treatment — see the comment block above.
+			# The path-arg extractor also catches absolute paths that
+			# appear right after `source`/`.`/`<`, so skip P entries
+			# already seen as S/R targets (extraction order is R, S, P,
+			# so seen_sr is fully built by the time we process Ps).
+			if [[ "$tag" == "S" || "$tag" == "R" ]]; then
+				seen_sr+="$raw_path"$'\n'
+			elif [[ "$tag" == "P" ]] && \
+			     ! grep -qFx -- "$raw_path" <<<"$seen_sr"; then
+				TRUSTED_PATHS+=("$path")
+			fi
 			# Append file contents so danger_check inspects them
 			# under the same per-line rules. ssh-to-trusted-remote
 			# lines inside the file stay exempt; locally-dangerous
 			# lines (e.g. a `rm -rf` next to the ssh) get caught.
 			TRUSTED_FILE_CONTENT+=$'\n'"$(cat "$path")"
 		fi
-	done <<<"$paths"
+	done <<<"$tagged_paths"
 }
 
 input=$(cat)
@@ -106,13 +130,23 @@ tool_name=$(echo "$input" | jq -r '.tool_name // empty' 2>/dev/null || true)
 # bits inside such lines run on the remote, not locally.
 danger_check() {
 	local pattern="$1"
+	# Build a regex alternation of regex-escaped trusted paths. A line
+	# that mentions one of these paths is treated as remote-trusted (the
+	# typical case: `bash /path/to/vm-wrapper.sh 'sudo X'` where the
+	# wrapper has already been classified as ssh-to-port-forwarded-VM).
+	local tp_re="" p q
+	for p in "${TRUSTED_PATHS[@]:-}"; do
+		[[ -z "$p" ]] && continue
+		q=$(printf '%s' "$p" | sed 's/[][\\.^$*+?(){}|]/\\&/g')
+		tp_re+="${tp_re:+|}$q"
+	done
 	# Check the command line-by-line, after joining backslash-continuation lines.
 	# Lines that are part of a remote ssh-to-trusted-target invocation are
 	# exempt. This includes multi-line quoted scripts: when an `ssh ...`
 	# line opens a quote that isn't closed on the same line, subsequent
 	# lines are considered "inside remote" until the matching closing
 	# quote is seen.
-	awk -v pat="$pattern" -v remote_trusted="$REMOTE_TRUSTED" '
+	awk -v pat="$pattern" -v remote_trusted="$REMOTE_TRUSTED" -v tp_re="$tp_re" '
 		function count_unescaped(s, ch,    i, c, prev, n) {
 			n = 0; prev = ""
 			for (i = 1; i <= length(s); i++) {
@@ -159,7 +193,8 @@ danger_check() {
 			# If it opens a heredoc or a quote that does not close on
 			# the same line, enter "inside remote" state so subsequent
 			# lines are also exempt.
-			is_remote_cmd = (line ~ /(^|[^a-zA-Z0-9_])(ssh|scp|rsync)[^[:space:]]*[[:space:]]/)
+			is_remote_cmd = (line ~ /(^|[^a-zA-Z0-9_])(ssh|scp|rsync)[^[:space:]]*[[:space:]]/) \
+				|| (tp_re != "" && line ~ tp_re)
 			line_has_cloudlab = (line ~ /\.cloudlab\.us/)
 			if (is_remote_cmd && (line_has_cloudlab || remote_trusted)) {
 				# Heredoc: <<[-]?["]?WORD["]?  at end of line (with
