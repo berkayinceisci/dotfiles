@@ -10,10 +10,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/confirm-dangerous-local.sh"
-          },
-          {
-            "type": "command",
             "command": "~/.claude/hooks/confirm-git.sh"
           }
         ]
