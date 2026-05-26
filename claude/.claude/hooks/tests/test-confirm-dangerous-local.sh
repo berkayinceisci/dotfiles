@@ -138,15 +138,15 @@ EOF
 assert_decision "bash < setup.sh (cloudlab inside)" "allow" "bash < $SETUP"
 
 # 11. bash < setup.sh where setup.sh mixes a cloudlab ssh (the trust marker)
-#     with a locally-dangerous rm -rf. The outer command has no danger
-#     token, but the file's contents are inspected per-line: the ssh line
-#     is exempt, the rm -rf line is not -> ask.
+#     with a locally-dangerous rm -rf. Only the command Claude runs is
+#     checked, not the file contents. The outer command has no danger
+#     token, and the file's cloudlab ssh marks REMOTE_TRUSTED=1 -> allow.
 SETUP_MIX="$TMPDIR/setup-mixed.sh"
 cat > "$SETUP_MIX" <<'EOF'
 ssh user@node-0.experiment.cloudlab.us 'echo ok'
 rm -rf /home/someuser/important
 EOF
-assert_decision "bash < setup.sh (cloudlab ssh + local rm)" "ask" \
+assert_decision "bash < setup.sh (cloudlab ssh + local rm)" "allow" \
     "bash < $SETUP_MIX"
 
 # 12. Plain command with no redirections / source / path / danger tokens
