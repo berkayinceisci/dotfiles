@@ -36,7 +36,6 @@ allow_command() {
 # reached through an ssh-wrapper script. Sets REMOTE_TRUSTED=1 if so.
 detect_trusted_remote_script() {
 	REMOTE_TRUSTED=0
-	TRUSTED_FILE_CONTENT=""
 	TRUSTED_PATHS=()
 	[[ "$command" == *.cloudlab.us* ]] && { REMOTE_TRUSTED=1; return; }
 	# Use command substitution + here-string instead of `done < <(...)`:
@@ -45,10 +44,15 @@ detect_trusted_remote_script() {
 	# "bad substitution: no closing `)' in <(".
 	# Each extracted path is tagged with its origin: `S` for source/.,
 	# `R` for `<` redirect, `P` for a positional path argument. Only
-	# `P`-tagged paths become line-level trust markers in danger_check;
-	# source/redirect targets contribute their *contents* only, so the
-	# outer line that source/redirects them must still be danger-checked
+	# `P`-tagged paths become line-level trust markers in danger_check
+	# (so a `bash /path/vm-wrapper.sh 'sudo X'` style invocation is
+	# treated as ssh-to-remote and the sudo is exempt). Source/redirect
+	# targets are only used to set REMOTE_TRUSTED, so the outer line
+	# that source/redirects them must still be danger-checked
 	# (e.g. `source cloudlab-env.sh && rm -rf /tmp/x` should still ask).
+	# File contents are NOT scanned — danger checks apply only to the
+	# command Claude Code is about to run, not to whatever happens to
+	# live inside a referenced script.
 	local sep=$'\t'
 	local tagged_paths
 	tagged_paths=$(
@@ -112,11 +116,6 @@ detect_trusted_remote_script() {
 			     ! grep -qFx -- "$raw_path" <<<"$seen_sr"; then
 				TRUSTED_PATHS+=("$path")
 			fi
-			# Append file contents so danger_check inspects them
-			# under the same per-line rules. ssh-to-trusted-remote
-			# lines inside the file stay exempt; locally-dangerous
-			# lines (e.g. a `rm -rf` next to the ssh) get caught.
-			TRUSTED_FILE_CONTENT+=$'\n'"$(cat "$path")"
 		fi
 	done <<<"$tagged_paths"
 }
@@ -224,7 +223,7 @@ danger_check() {
 			if (line ~ pat) { found=1; exit }
 		}
 		END {exit(found ? 0 : 1)}
-	' <<<"$command${TRUSTED_FILE_CONTENT:-}"
+	' <<<"$command"
 }
 
 if [[ "$tool_name" == "Bash" ]]; then
