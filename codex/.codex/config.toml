@@ -1,6 +1,7 @@
 model = "gpt-5.5"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 personality = "pragmatic"
+approvals_reviewer = "guardian_subagent"
 
 [tui]
 notifications = false
@@ -52,6 +53,18 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/berkay"]
+trust_level = "trusted"
+
+[projects."/home/berkay/smart/moatlab-paper-template"]
+trust_level = "trusted"
+
+[projects."/home/berkay/lkp-final-prep"]
+trust_level = "trusted"
+
+[projects."/home/berkay/lkp-final-prep/slides-notes"]
+trust_level = "trusted"
+
+[projects."/home/berkay/samsung-meeting"]
 trust_level = "trusted"
 
 [notice]
