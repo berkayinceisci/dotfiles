@@ -1,5 +1,5 @@
 #!/bin/bash
-# dl - Download media from URLs (auto-detects video/image/PDF)
+# dl - Download media from URLs (auto-detects video/image/PDF/text)
 #
 # Usage: dl <url>           Auto-detect and download
 #        dl -o <name> <url> Download video with custom filename
@@ -7,7 +7,7 @@
 set -euo pipefail
 
 print_usage() {
-    echo "Usage: dl <url>           Download (auto-detect video/image/PDF)"
+    echo "Usage: dl <url>           Download (auto-detect video/image/PDF/text)"
     echo "       dl -o <name> <url> Download video with custom filename"
 }
 
@@ -104,6 +104,8 @@ derive_filename() {
         image/svg+xml|svg)    ext="svg" ;;
         image/bmp|bmp)        ext="bmp" ;;
         application/pdf*|pdf) ext="pdf" ;;
+        text/markdown*|text/x-markdown*|md|markdown) ext="md" ;;
+        text/plain*|txt|text) ext="txt" ;;
         *) ext="bin" ;;
     esac
     echo "${filename:-download}.${ext}"
@@ -168,6 +170,10 @@ dispatch() {
         download_direct "$url" "pdf"
         return
     fi
+    if [[ "$url" =~ \.(txt|md|markdown)(\?.*)?$ ]]; then
+        download_direct "$url" "${BASH_REMATCH[1]}"
+        return
+    fi
     if [[ "$url" =~ \.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$ ]]; then
         download_direct "$url" "${BASH_REMATCH[1]}"
         return
@@ -181,7 +187,7 @@ dispatch() {
     local ctype
     ctype=$(head_content_type "$url")
     case "$ctype" in
-        image/*|application/pdf*)
+        image/*|application/pdf*|text/plain*|text/markdown*|text/x-markdown*)
             download_direct "$url" "$ctype"
             return
             ;;
