@@ -101,6 +101,29 @@ else
 	echo "  ⚠ atuin_config.template not found, skipping Atuin config."
 fi
 
+# Decrypt TickTick secrets (consumed at runtime by i3/.config/i3/ticktick_add.sh)
+echo ""
+echo "Setting up TickTick secrets..."
+
+TICKTICK_SECRETS="$DOTFILES_DIR/ticktick.secrets"
+TICKTICK_SECRETS_ENC="$DOTFILES_DIR/ticktick.secrets.age"
+
+if [[ -f "$TICKTICK_SECRETS_ENC" ]]; then
+	if [[ ! -f "$TICKTICK_SECRETS" ]] || [[ "$TICKTICK_SECRETS_ENC" -nt "$TICKTICK_SECRETS" ]]; then
+		if command -v age >/dev/null 2>&1; then
+			echo "  Decrypting ticktick.secrets.age (enter passphrase)..."
+			age -d -o "$TICKTICK_SECRETS" "$TICKTICK_SECRETS_ENC"
+			chmod 600 "$TICKTICK_SECRETS"
+		else
+			echo "  ⚠ age not installed, skipping TickTick secrets."
+		fi
+	else
+		echo "  ✓ ticktick.secrets up to date"
+	fi
+else
+	echo "  ⚠ ticktick.secrets.age not found, skipping (run scripts/ticktick-oauth.sh to bootstrap)."
+fi
+
 # Stow packages
 echo ""
 echo "Stowing dotfiles..."
