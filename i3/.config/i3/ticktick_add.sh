@@ -33,7 +33,20 @@ if [[ -z "$TITLE" ]]; then
 	exit 0
 fi
 
-BODY="$(jq -n --arg title "$TITLE" '{title: $title}')"
+PARSED="$("$HOME/dotfiles/scripts/ticktick-parse.py" "$TITLE")"
+PARSED_TITLE="$(jq -r '.title' <<<"$PARSED")"
+DUE_DATE="$(jq -r '.dueDate // empty' <<<"$PARSED")"
+IS_ALL_DAY="$(jq -r '.isAllDay' <<<"$PARSED")"
+
+if [[ -n "$DUE_DATE" ]]; then
+	BODY="$(jq -n \
+		--arg title "$PARSED_TITLE" \
+		--arg due "$DUE_DATE" \
+		--argjson allday "$IS_ALL_DAY" \
+		'{title: $title, dueDate: $due, isAllDay: $allday}')"
+else
+	BODY="$(jq -n --arg title "$PARSED_TITLE" '{title: $title}')"
+fi
 
 HTTP_OUT="$(mktemp)"
 trap 'rm -f "$HTTP_OUT"' EXIT
@@ -45,7 +58,11 @@ STATUS="$(curl -sS -o "$HTTP_OUT" -w '%{http_code}' \
 	-d "$BODY")"
 
 if [[ "$STATUS" =~ ^2 ]]; then
-	notify "Task added" "$TITLE"
+	if [[ -n "$DUE_DATE" ]]; then
+		notify "Task added" "$PARSED_TITLE — $DUE_DATE"
+	else
+		notify "Task added" "$PARSED_TITLE"
+	fi
 else
 	ERR_MSG="$(jq -r '.error_description // .errorMessage // .message // .' <"$HTTP_OUT" 2>/dev/null || cat "$HTTP_OUT")"
 	notify -u critical "TickTick failed (HTTP $STATUS)" "$ERR_MSG"
