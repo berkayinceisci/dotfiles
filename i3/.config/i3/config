@@ -31,6 +31,9 @@ bindsym Mod1+BackSpace exec zen
 # rofi launcher (drun default; Shift+Right cycles to calc and clipboard)
 bindsym Mod1+space exec --no-startup-id rofi -show drun -theme ~/.config/rofi/config.rasi
 
+# TickTick quick-add task (rofi prompt -> POST to TickTick API)
+bindsym Mod1+t exec --no-startup-id ~/.config/i3/ticktick_add.sh
+
 # greenclip clipboard history daemon
 exec --no-startup-id greenclip daemon
 
