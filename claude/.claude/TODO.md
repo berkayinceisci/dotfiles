@@ -18,3 +18,10 @@
   notifications that waste context window, cost tokens, and block the user
 - Need: a way to suppress/acknowledge notifications for tasks already consumed
   via `TaskOutput`, or a `TaskStop`-like dismiss for completed tasks
+
+## Auto-mode soft_deny migration
+- `autoMode.soft_deny` in `settings.json` is currently just `["$defaults"]`
+- Promote the two finalized rules from `auto-mode/soft_deny.md` (no `git commit`
+  / no `git push` without explicit ask) when ready
+- After promotion, consider retiring `confirm-git.sh` — its coverage is narrower
+  (only plain `git commit`/`git push`, missing `--amend`, `rebase -i`, squash/fixup)
