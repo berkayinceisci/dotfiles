@@ -49,7 +49,7 @@ input=$(cat)
 
 # Parse Claude Code data with jq
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // empty')
-model=$(echo "$input" | jq -r '.model.display_name // empty')
+model=$(echo "$input" | jq -r '.model.display_name // empty' | sed 's/ (1M context)//')
 context_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
 # Get raw token counts for precise context display
 context_used_tokens=$(echo "$input" | jq -r '((.context_window.current_usage.input_tokens // 0) + (.context_window.current_usage.cache_creation_input_tokens // 0) + (.context_window.current_usage.cache_read_input_tokens // 0))')
@@ -191,6 +191,35 @@ format_reset_time() {
 	fi
 }
 
+# Format reset time as absolute local clock time
+# Args: $1 = ISO 8601 reset time, $2 = "short" (HH:MM) or "long" (MonDD HH:MM)
+format_reset_clock() {
+	local reset_time=$1
+	local mode=${2:-short}
+	if [[ -z "$reset_time" ]]; then
+		echo ""
+		return
+	fi
+
+	local fmt
+	if [[ "$mode" == "long" ]]; then
+		fmt="+%b%d %H:%M"
+	else
+		fmt="+%H:%M"
+	fi
+
+	local clock
+	# Try GNU date first, then BSD date (macOS)
+	clock=$(date -d "$reset_time" "$fmt" 2>/dev/null)
+	if [[ -z "$clock" ]]; then
+		# BSD date (macOS): parse ISO 8601 format
+		# Strip fractional seconds and convert +00:00 to +0000
+		local clean_time=$(echo "$reset_time" | sed -E 's/\.[0-9]+//; s/:([0-9]{2})$/\1/')
+		clock=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$clean_time" "$fmt" 2>/dev/null)
+	fi
+	echo "$clock"
+}
+
 # Get usage data
 usage_data=$(get_usage)
 five_hour_raw=$(echo "$usage_data" | cut -d'|' -f1)
@@ -201,6 +230,8 @@ seven_day_resets_raw=$(echo "$usage_data" | cut -d'|' -f4)
 # Format reset times
 five_hour_reset=$(format_reset_time "$five_hour_resets_raw")
 seven_day_reset=$(format_reset_time "$seven_day_resets_raw")
+five_hour_clock=$(format_reset_clock "$five_hour_resets_raw" short)
+seven_day_clock=$(format_reset_clock "$seven_day_resets_raw" long)
 
 # Format percentages (API returns values already as percentages, e.g., 18.0 = 18%)
 five_hour_pct=$(awk "BEGIN {printf \"%.0f\", ${five_hour_raw:-0}}")
@@ -280,12 +311,14 @@ output+=$(capsule " ${context_display} " "$ctx_bg" "$ctx_fg")
 output+=" "
 five_hour_display="5h:${five_hour_pct}%"
 [[ -n "$five_hour_reset" ]] && five_hour_display+=" ${five_hour_reset}"
+[[ -n "$five_hour_clock" ]] && five_hour_display+=" (${five_hour_clock})"
 output+=$(capsule " ${five_hour_display} " "$five_hour_bg" "$five_hour_fg")
 
 # 7-day usage segment (purple, or warning color)
 output+=" "
 seven_day_display="7d:${seven_day_pct}%"
 [[ -n "$seven_day_reset" ]] && seven_day_display+=" ${seven_day_reset}"
+[[ -n "$seven_day_clock" ]] && seven_day_display+=" (${seven_day_clock})"
 output+=$(capsule " ${seven_day_display} " "$seven_day_bg" "$seven_day_fg")
 
 # Cost segment (gray)
