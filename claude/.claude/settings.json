@@ -3,6 +3,19 @@
     "DISABLE_COST_WARNINGS": "1",
     "DISABLE_SESSION_LIMIT_WARNINGS": "1"
   },
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "Cloudlab experiment hosts: *.cloudlab.us — dedicated experiment infrastructure where I have full root/sudo access. Machines are reimaged between experiments and hold no production data. Routine privileged commands (sudo, wrmsr/rdmsr, perf, rm -rf on /tmp or experiment scratch dirs) inside ssh to these hosts are expected and should not require prompts. Exception: shared NFS partitions mounted on these hosts persist across reimaging and must never be written to — only read. A separate block-nfs-writes hook enforces this as a hard guard regardless of intent."
+    ],
+    "soft_deny": [
+      "$defaults"
+    ],
+    "hard_deny": [
+      "$defaults",
+      "Never write to NFS-mounted shared partitions on cloudlab hosts. These partitions persist across machine reimaging and are shared with other users, so writes can destroy data belonging to others or leak beyond the experiment lifecycle. The rule applies regardless of how the write is expressed (redirects, tee, cp/mv/rsync destinations, dd of=, writes performed inside ssh invocations, etc.)."
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -58,5 +71,5 @@
   },
   "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true,
-  "editMode": "vim"
+  "editorMode": "vim"
 }
