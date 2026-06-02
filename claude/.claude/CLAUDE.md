@@ -5,8 +5,8 @@
 ### Subagent Discipline
 
 **Context-aware delegation:**
- - Under ~50k context: prefer inline work for tasks under ~5 tool calls.
- - Over ~50k context: prefer subagents for self-contained tasks, even simple ones — the per-call token tax on large contexts adds up fast.
+- Under ~150k context: prefer inline work for tasks under ~5 tool calls.
+- Over ~150k context: prefer subagents for self-contained tasks, even simple ones — the per-call token tax on large contexts adds up fast.
 
 When using subagents, include output rules: "Final response under 2000 characters. List outcomes, not process."
 Never call TaskOutput twice for the same subagent. If it times out, increase the timeout — don't re-read.
@@ -40,15 +40,70 @@ When a command is blocked by a hook (e.g., "BLOCKED: sudo is not allowed"):
 - Try running the command, the user will be asked to approve if needed by the hook
 - The hook exists for security/safety/correctness reasons - respect it completely
 
+## Execution Model: Control Machine vs Remote (CRITICAL)
+
+Claude Code runs on the **control machine** (the user's local workstation).
+Experiment, hardware, and perf work targets a **remote machine**, referenced
+throughout these instructions as `$REMOTE_HOST` — substitute the actual SSH
+host name (e.g. an entry from `~/.ssh/config`) for the session. The shell
+Claude Code drives is the control machine's shell; any command that must
+execute on the experiment box is wrapped in `ssh $REMOTE_HOST '…'`.
+
+**Default: remote via SSH.** Assume experiment work is remote unless the user
+says otherwise. The control machine is not an experiment host.
+
+**Runs locally on the control machine:**
+- File reads/edits in the project directory (dotfiles, code, analysis/plotting scripts) — synced to the remote before execution
+- Git operations on local clones (commits, diffs, log)
+- Inspecting *small final artifacts* (PDFs, summary CSVs, metric JSON) `scp`'d back from the remote — what Claude reads to analyze results
+- Claude Code itself and all its tool calls (the ssh wrapping lives *inside* the Bash tool call)
+
+**Runs on `$REMOTE_HOST` via `ssh`:**
+- All `sudo`, `wrmsr`, `rdmsr`, `perf`, and other privileged/hardware commands
+- Experiment launches and their background/monitor processes
+- Process inspection on the experiment host: `ps aux`, `pgrep`, `kill`, `pkill`
+- `nproc` when sizing parallelism for remote work — the remote's core count is what matters
+- Log streams for `Monitor` (e.g. `ssh $REMOTE_HOST 'tail -F /tmp/experiment.log | grep --line-buffered …'`) — see "Long-Running Experiments"
+- **Data processing and plot generation against raw experiment data.** Move compute to where the data lives — never pull multi-GB CSVs/perf dumps/trace files back just to plot them. Scripts are edited locally, `scp`/`rsync`'d over, then executed via `ssh $REMOTE_HOST 'python plots/foo.py …'`; only the small artifacts (PDFs, summary tables) come back. Pickle caches (`.cache/`) live with the scripts on the remote.
+
+**Practical patterns:**
+
+```bash
+# Single command on the remote (read-only — does not mutate hardware state)
+ssh $REMOTE_HOST 'sudo rdmsr -p 0 0x1A4'
+
+# Multi-command block — heredoc with single-quoted sentinel to avoid local expansion.
+# Non-destructive write/verify: read the MSR, write back the SAME value, confirm.
+ssh $REMOTE_HOST 'bash -s' <<'EOF'
+set -euo pipefail
+orig=$(sudo rdmsr -p 0 0x1A4)
+sudo wrmsr -a 0x1A4 "0x$orig"
+[[ $(sudo rdmsr -p 0 0x1A4) == "$orig" ]] || { echo "MSR write failed"; exit 1; }
+EOF
+
+# Detached background job on the remote (ssh returns immediately)
+ssh $REMOTE_HOST 'nohup sudo ./experiment.sh > /tmp/experiment.log 2>&1 & echo $!'
+
+# Copy files to / from the remote
+scp ./script.py $REMOTE_HOST:/tmp/
+scp $REMOTE_HOST:/tmp/results.csv ./data/
+```
+
+**Quoting discipline.** Single-quote the remote command so `$vars` expand on the
+remote, not on the control machine. Use double quotes only when you deliberately
+want the control machine to interpolate a value before sending.
+
 ## Sudo Commands
 
 - Run sudo commands directly when needed. Do NOT ask the user to run them manually.
+- Sudo commands that target the experiment host run via `ssh $REMOTE_HOST 'sudo …'`, not on the control machine. See "Execution Model" above.
 - If a hook blocks the command, the user will be prompted to approve — just attempt it.
 
 ## Temporary Scripts / Files
 
 - **NEVER create wrapper scripts in /tmp or scratchpad.** Always modify existing project scripts or create new ones in the project directory.
 - Temporary wrapper scripts lead to orphaned processes and are not version-controlled or battle-tested.
+- This applies equally to `/tmp` on `$REMOTE_HOST`. Do not synthesize scripts inline via `ssh $REMOTE_HOST 'cat > /tmp/…'` — edit a real project script on the control machine, `scp` it over, then invoke it via `ssh`.
 - If a multi-config loop is needed, add it to the project's existing experiment runner script.
 
 ## Dotfiles management
@@ -62,7 +117,7 @@ When a command is blocked by a hook (e.g., "BLOCKED: sudo is not allowed"):
 - Use `pigz` instead of `gzip` for compression. It parallelizes across cores and is much faster on multi-core machines.
   ```bash
   # GOOD: parallel compression
-  tar cf - dir/ | pigz > archive.tar.gz
+  tar cf - dir/ | pigz >archive.tar.gz
 
   # BAD: single-threaded
   tar czf archive.tar.gz dir/
@@ -115,9 +170,26 @@ Primary Objective: Engage in honest, insight-driven dialogue that advances under
 
 ## Hardware Performance Monitoring (CRITICAL)
 
-- When working with perf events and PEBS experiments, always validate event codes against the actual CPU architecture (EMR, SKX, GNR) before running. Never assume event codes are portable across microarchitectures. Double-check MSR values and event selectors against Intel SDM or `perf list`.
+- MSR/perf/PEBS work runs on `$REMOTE_HOST` (see "Execution Model"). Validate event codes against the actual CPU architecture (EMR, SKX, GNR) of **`$REMOTE_HOST`** — never assume portability across microarchitectures. Double-check MSR values and event selectors against Intel SDM or `ssh $REMOTE_HOST 'perf list'`.
+
+## Script Conventions
+
+These apply to any non-trivial script — bash, Python, Rust, anything — not
+just shell.
+
+- **Provide a `-v` / `--verbose` flag.** When a script has branches (platform
+  detection, tool selection, mode auto-detection, fallback paths, retries)
+  `-v` must log to stderr the chosen branch, the exact underlying command
+  about to run, and any relevant env vars. Without this, a silent failure
+  leaves the user unable to tell apart a missing dependency, a wrong
+  environment (e.g. unset `DISPLAY` over ssh), and a real bug.
 
 ## Shell Scripts (CRITICAL)
+
+Shell scripts that touch hardware, sudo, or experiment infrastructure are edited
+locally and run on `$REMOTE_HOST` (see "Execution Model" and "Temporary Scripts /
+Files"). The examples below show *script content*, not commands to paste into
+the control machine's shell.
 
 ```bash
 #!/bin/bash
@@ -133,8 +205,8 @@ wrmsr -a 0x1A4 0xF || true # BAD: hides failures
 # ALWAYS verify hardware operations
 wrmsr -a 0x1A4 0xF
 [[ $(rdmsr -p 0 0x1A4) == "f" ]] || {
-    echo "MSR write failed"
-    exit 1
+  echo "MSR write failed"
+  exit 1
 }
 
 # Use rm -f to avoid interactive prompts
@@ -158,7 +230,7 @@ wrmsr -a 0x1A4 0xF
 
 # QUERIES — use if to absorb expected non-zero exit codes
 if ver="$(pip show pkg 2>/dev/null | awk '/^Version:/ {print $2}')"; then
-    echo "installed: $ver"
+  echo "installed: $ver"
 fi
 
 if dpkg-query -W -f='${Version}' pkg 2>/dev/null; then ...; fi
@@ -189,6 +261,10 @@ for d in */; do if [[ "${d%/}" != *_v1 ]]; then rm -rf "$d"; fi; done
 
 **Problem**: Child processes become orphaned (PPID=1) when parent is killed.
 
+All operations below target `$REMOTE_HOST` (see "Execution Model"); examples
+show the commands in pure form — wrap each in `ssh $REMOTE_HOST '…'` when
+invoking from the control machine.
+
 ### Killing Process Trees
 
 SIGKILL (`kill -9`) does NOT propagate to children. You must explicitly kill children first:
@@ -203,7 +279,7 @@ kill -9 "$parent_pid" 2>/dev/null || true
 wait "$parent_pid" 2>/dev/null || true
 ```
 
-Common example: `wrapper_proc ... -- child_proc &` — killing wrapper leaves child orphaned.
+Common example: `perf record -- ./bench &` or `nohup sudo ./loop-cmd.sh &` — killing the wrapper (perf, nohup, sudo, a launcher script) leaves the actual workload child orphaned under PPID=1.
 
 ### Cleanup Traps in Scripts
 
@@ -212,13 +288,13 @@ Common example: `wrapper_proc ... -- child_proc &` — killing wrapper leaves ch
 BG_PIDS=()
 
 cleanup() {
-    for pid in "${BG_PIDS[@]}"; do
-        if kill -0 "$pid" 2>/dev/null; then
-            pkill -9 -P "$pid" 2>/dev/null || true # children first
-            kill -9 "$pid" 2>/dev/null || true
-        fi
-    done
-    wait 2>/dev/null || true
+  for pid in "${BG_PIDS[@]}"; do
+    if kill -0 "$pid" 2>/dev/null; then
+      pkill -9 -P "$pid" 2>/dev/null || true # children first
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+  done
+  wait 2>/dev/null || true
 }
 
 # IMPORTANT: Only trap INT TERM, NOT EXIT.
@@ -234,12 +310,21 @@ BG_PIDS+=("$!")
 
 **CRITICAL: Before declaring a process dead, verify with `ps` or `kill -0`, not just log output.** Logs may be buffered/stale. Never delete results or restart experiments based on log staleness alone.
 
+This subsection is for confirming **a specific known process** (and its known
+children) is gone — i.e. you have a PID or a process name you launched and want
+to verify is no longer running. For "the machine as a whole is clean of any
+unexpected processes," pattern matching is insufficient; see "Verifying a
+Clean Machine (CRITICAL)" below.
+
 1. Check the actual process: `ps -p <PID> -o pid,stat,etime` or `kill -0 <PID>`
-2. Check the full process tree: `pgrep -af "pattern"` (the process may have forked)
+2. Check for children/forks of that known process: `pgrep -af "<pattern>"` using the binary name or wrapper script you launched as the pattern.
 3. Only after confirming the process is truly gone, take corrective action
 4. **Never `rm -rf` experiment results without first confirming no running process is writing to them**
 
 ### Verifying a Clean Machine (CRITICAL)
+
+"The machine" here means `$REMOTE_HOST` — the experiment host, not the control
+machine. Run each inspection command via `ssh $REMOTE_HOST '…'`.
 
 When asked to confirm all processes are dead or the machine is clean, **NEVER rely
 solely on `pgrep -af` or `grep` with specific patterns.** Pattern-based searches miss
@@ -247,10 +332,12 @@ processes with unexpected names, respawned children, or commands you didn't anti
 
 **Always use `ps aux` (unfiltered) and visually scan the full output.** Specifically:
 
-1. Run `sudo ps aux --sort=-%cpu` to see everything by CPU usage.
+1. Run `ssh $REMOTE_HOST 'sudo ps aux --sort=-%cpu'` to see everything by CPU usage.
 2. Look for ANY user-space process consuming CPU that isn't a known system service
    (sshd, systemd, cron, tmux, zsh, etc.) or the current session (claude, node, nvim).
-3. After killing processes, **re-check with `ps aux` again** — loop-style wrappers
+   Note: `claude` itself lives on the control machine, not `$REMOTE_HOST`, so it should
+   not appear in the remote's `ps aux` output.
+3. After killing processes, **re-check with `ssh $REMOTE_HOST 'ps aux'` again** — loop-style wrappers
    (e.g., `loop-cmd.sh`) respawn children immediately after you kill them. You must
    kill the parent wrapper first, then the children.
 4. Check for `cat ...fifo` or other blocking processes that consume 0% CPU but
@@ -270,22 +357,35 @@ batch processing:
 
 **Instead, use `xargs -P N`** which handles parallelism, error propagation, and process
 lifecycle cleanly.  **Always reserve 2 cores for the user** — use `$(($(nproc) - 2))`
-instead of `$(nproc)` for the parallelism level:
+instead of `$(nproc)` for the parallelism level. Because batch work typically runs on
+`$REMOTE_HOST`, `nproc` must evaluate on the remote, not on the control machine —
+either wrap the whole pipeline in `ssh $REMOTE_HOST '…'` (single-quoted, so `nproc`
+and `$()` expand on the remote) or resolve the core count up front with
+`N=$(ssh $REMOTE_HOST nproc)`:
 
 ```bash
-# GOOD: reliable parallel batch processing, reserving 2 cores
-find results/ -maxdepth 1 -type d -name '*.v1' | sort |
-    xargs -P $(($(nproc) - 2)) -I {} python3 scripts/process.py {} >/tmp/batch.log 2>&1
+# GOOD: reliable parallel batch processing, reserving 2 cores, all on $REMOTE_HOST
+ssh $REMOTE_HOST 'find results/ -maxdepth 1 -type d -name "*.v1" | sort |
+    xargs -P $(($(nproc) - 2)) -I {} python3 scripts/process.py {} >/tmp/batch.log 2>&1'
+
+# ALSO GOOD: resolve remote core count first, then launch
+N=$(ssh $REMOTE_HOST nproc)
+ssh $REMOTE_HOST "find results/ -maxdepth 1 -type d -name '*.v1' | sort |
+    xargs -P $((N - 2)) -I {} python3 scripts/process.py {} >/tmp/batch.log 2>&1"
 
 # BAD: fragile background-job parallelism in bash
 for dir in results/*/; do
-    process "$dir" &
-    ((running++))
-    if [[ $running -ge $N ]]; then
-        wait -n || true
-        ((running--))
-    fi
+  process "$dir" &
+  ((running++))
+  if [[ $running -ge $N ]]; then
+    wait -n || true
+    ((running--))
+  fi
 done
+
+# BAD: `nproc` runs on the control machine, not on $REMOTE_HOST — wrong core count
+find results/ -maxdepth 1 -type d -name '*.v1' | sort |
+  xargs -P $(($(nproc) - 2)) -I {} ssh $REMOTE_HOST python3 scripts/process.py {}
 ```
 
 ### Split cores across concurrent batches
@@ -314,128 +414,121 @@ tail -f /tmp/batch.log | grep "Done:"
 
 ## Long-Running Experiments
 
-**Problem**: Experiments can stall silently. Track progress, not just status.
-
-```bash
-# Monitor progress, alert on stall
-while true; do
-    current=$(wc -l <output.log)
-    [[ $current -eq $last ]] && echo "WARNING: No progress!"
-    last=$current
-    sleep 300
-done
-```
-
-**Pre-launch checklist**: Progress tracking exists, monitor running, expected rate known.
+**Problem**: Experiments can stall silently. Track progress by *streaming*
+events (log lines, counters, terminal markers) — not by polling a status file.
+Pre-launch, confirm the experiment emits progress markers on stdout/stderr,
+that failure signatures (`Traceback`, `OOM`, `Killed`, `FAILED`, `error`,
+`assert`) reach the log, and that the expected per-iteration rate is known so
+stalls are visible.
 
 ### Trial / Validation Runs (CRITICAL)
 
-When running a benchmark or experiment for quick validation (not production data collection),
-use as many cores as the system has (`nproc`) to minimize runtime. Do not use 1 core or a
-small core count for trial runs — it wastes time.
+When running a benchmark or experiment for quick validation (not production
+data collection), use as many cores as the **experiment host** has — resolve
+the count via `ssh $REMOTE_HOST nproc` or wrap the whole launch in ssh (see
+"Batch Parallel Execution" for the remote-`nproc` patterns). Do not use 1 core
+or a small count for trial runs — it wastes time.
 
 - When running long experiment batches, validate the first 1-2 results before launching the full set. Check for zero counters, empty output files, and SIGPIPE issues from piping to head/tail
 
 ### Active Monitoring (CRITICAL)
 
-After launching any experiment or long-running process, you MUST actively monitor
+After launching any experiment or long-running process, you MUST actively watch
 it in the current conversation. NEVER do any of the following:
 - End the conversation by saying "the experiment will take X hours, check back later"
 - Suggest the user check results manually
 - Say "I'll let you know when it's done" and then stop
 
 Instead, you MUST:
-- Stay in the conversation and poll the experiment's progress (through a dedicated file) at reasonable intervals (at most once per minute, using `sleep 100 ; cat /tmp/experiment-status.txt`).
-- Report progress updates to the user as you observe them.
-- If an error or anomaly is detected, IMMEDIATELY stop running further experiments
-  and diagnose/fix the issue before continuing.
-- Only consider the task complete when the experiment has finished successfully and
-  results have been collected/verified.
+- Start a `Monitor` on the experiment's log stream so progress events and failure
+  signatures arrive as notifications in the current conversation.
+- Report progress updates to the user as events arrive.
+- If an error or anomaly is detected (filter matches a failure signature),
+  IMMEDIATELY stop running further experiments and diagnose/fix the issue before
+  continuing.
+- Only consider the task complete when the experiment has finished successfully
+  and results have been collected/verified.
+
+**Stream progress events via `Monitor`; never poll a status file.**
 
 #### Monitoring workflow
 
-Use an external `monitor.sh` script on the experiment machine. It runs
-independently, writes status to a file, and has ~0% CPU/memory overhead.
-Claude Code polls the status file using `sleep 100 ; cat <status_file>`.
-
-**Step 1: Launch experiment and monitor on the experiment machine.**
+**Step 1: Launch the experiment on `$REMOTE_HOST`.** Detach it with `nohup … &`
+so it survives the ssh session closing, and capture its PID back to the control
+machine for later cleanup checks.
 
 ```bash
-# Launch experiment in background, capture PID
-sudo ./<experiment_script> > /tmp/experiment.log 2>&1 &
-EXP_PID=$!
-
-# Start monitor (writes to /tmp/experiment-status.txt every 300s)
-nohup ./monitor.sh /tmp/experiment.log $EXP_PID <total_runs> 300 > /dev/null 2>&1 &
+EXP_PID=$(ssh $REMOTE_HOST 'nohup sudo ./<experiment_script> > /tmp/experiment.log 2>&1 & echo $!')
 ```
 
-If launching via Claude Code's Bash tool, use `run_in_background: true`
-for the experiment and note the output file path. Then start the monitor
-pointing at that output file.
+**Step 2: Start a `Monitor` that tails the remote log and filters for events
+worth acting on.** Use `persistent: true` so the monitor runs for the full
+experiment without the default 5-minute timeout.
 
-**Step 2: Poll the status file periodically.**
+```
+Monitor(
+  description: "experiment.log progress+failures on $REMOTE_HOST",
+  persistent: true,
+  command: "ssh $REMOTE_HOST 'tail -F /tmp/experiment.log | grep --line-buffered -E \"progress=|iter=|run [0-9]+/|Traceback|ERROR|FAILED|Killed|OOM|assert|DONE\"'"
+)
+```
+
+Rules for the filter:
+- **Cover every terminal state, not just the happy path.** Include progress
+  markers AND crash signatures (`Traceback|ERROR|FAILED|Killed|OOM|assert|…`).
+  Silence from a filter that only matches success is indistinguishable from a
+  crashloop. If unsure what the experiment prints on failure, broaden the
+  alternation rather than narrow it.
+- **`grep --line-buffered` is mandatory**, and it must run on the **remote side**
+  of the ssh (inside the single-quoted command), otherwise ssh ships bursts of
+  ~4KB at a time and events arrive minutes late.
+- **ssh keepalives**: set `ServerAliveInterval 30` / `ServerAliveCountMax 3`
+  in `~/.ssh/config` for experiment hosts, otherwise a transient network blip
+  kills the Monitor mid-experiment.
+
+**Step 3: Detect exit.** Prefer having the experiment script print a terminal
+marker (`DONE` / `FAILED` / `ABORTED`) that the Monitor filter catches — that
+is the cleanest signal. As a secondary check, launch a one-shot
+`Bash(run_in_background: true)` on a call that blocks until the PID dies:
 
 ```bash
-# Local (Claude Code on same machine)
-sleep 100
-cat /tmp/experiment-status.txt
-
-# Remote (Claude Code on different machine)
-sleep 100
-ssh exp-machine 'cat /tmp/experiment-status.txt'
+ssh $REMOTE_HOST "tail --pid=$EXP_PID -f /dev/null"
 ```
 
-`sleep 100` is within the Bash tool's default 120s timeout and is reliable.
-The `cat` / `ssh cat` is instant. No persistent connection needed.
+That ssh call exits (and fires a completion notification) exactly when
+`$EXP_PID` dies — no polling, no sleep.
 
-Each check, verify:
-1. **Progress**: run count advancing
-2. **Liveness**: status is ALIVE
-3. **Process tree**: correct process counts
-4. **Results**: results are being collected properly
-4. **Stalls**: stall_checks > 2 means no progress for multiple intervals
+**Step 4: Post-exit verification.** When a terminal marker arrives or the
+PID-wait completes, stop the Monitor with `TaskStop`, then:
+- `ssh $REMOTE_HOST 'ls -la <results_dir>'` — confirm expected result files
+  exist and are non-empty.
+- Confirm no orphaned experiment processes remain on `$REMOTE_HOST` — follow
+  the "Verifying a Clean Machine (CRITICAL)" procedure (`ssh $REMOTE_HOST
+  'sudo ps aux --sort=-%cpu'` + visual scan, not pattern matching with
+  `pgrep`).
+- Run analysis / plotting **on `$REMOTE_HOST` against the raw data**:
+  `scp`/`rsync` any updated scripts to the remote, then
+  `ssh $REMOTE_HOST 'python plots/foo.py …'`. `scp` back only the small
+  generated artifacts (PDFs, summary CSVs, metric JSON) — never the raw data
+  files themselves.
 
-**Step 3: When experiment finishes** (status shows DEAD / completed: true),
-verify all expected result files exist and are non-empty. Check for orphaned
-processes with `pgrep -af`. Report completion.
+#### One-shot snapshot, on demand
 
-#### Why not sleep-based health checks in Bash tool
-
-Embedding long sleeps (>120s) directly in Bash tool calls for health checks
-fails non-deterministically in both foreground and background modes: 0-byte
-output, exit code 1, task killed mid-sleep. `sleep 300` and `sleep 600`
-fail ~30-50% of the time. Background tasks also generate duplicate
-notifications (via `TaskOutput` and task-notification independently) that
-flood the conversation. The external monitor script avoids all these issues
-— Claude Code only uses short `sleep 100` for polling, never for the
-health check logic itself.
-
-### Polling Best Practices (CRITICAL)
-
-- **ALWAYS `sleep` before reading the status file.** When the status file hasn't
-  changed, the Read/Bash tool returns cached results instantly. Without a sleep,
-  this creates a tight loop of hundreds of back-to-back reads per minute — wasting
-  API round-trips and cluttering the conversation. Always include a sleep to
-  enforce a minimum interval between checks:
-  ```bash
-  # GOOD: sleep enforces minimum interval between polls
-  sleep 100
-  cat /tmp/experiment-status.txt
-
-  # BAD: tight loop when file content is unchanged (cached reads return instantly)
-  cat /tmp/experiment-status.txt
-  ```
-- **Do NOT prepend `date;` to status-check commands.** The `date` command generates a unique output every call, which defeats caching and forces a new tool call round-trip even when the status file hasn't changed.
-- **Do NOT poll more than once per minute.** Most experiments take many minutes per run. Polling every few seconds wastes API round-trips and clutters the conversation.
+If the user explicitly asks for a current progress snapshot mid-experiment
+(separate from the live event stream), answer it with a single
+`ssh $REMOTE_HOST 'tail -n 50 /tmp/experiment.log'` — not a poll loop. This
+is a one-off query, not a recurring mechanism.
 
 ### Clean Slate Between Experiments (CRITICAL)
 
 When running multiple experiments in sequence, each experiment MUST start with a
-completely clean process state. **After each experiment finishes**, you MUST:
+completely clean process state on `$REMOTE_HOST`. **After each experiment finishes**,
+you MUST:
 
-1. Check the process list for any orphaned processes from the completed experiment.
-   Use `pgrep -af` with patterns matching the experiment's binaries and background
-   processes. Do NOT rely on the script's own cleanup — independently verify.
+1. Check the process list on `$REMOTE_HOST` for any orphaned processes from the
+   completed experiment — follow the "Verifying a Clean Machine (CRITICAL)"
+   procedure (full `ps aux` scan via ssh, not pattern matching with `pgrep`).
+   Do NOT rely on the script's own cleanup — independently verify.
 2. If orphans are found, abort the experiment immediately.
 3. Inform the user with the problem, the reason of the problem and the solution.
 
@@ -449,10 +542,7 @@ Common orphan sources:
 - One brief sentence summarizing the change
 - Never commit secrets (API keys, passwords, tokens)
 - Check `git diff` before committing
-
-## Git Patches
-
-- When applying patches or fixes, always verify the change actually took effect. `git apply` can silently fail - check the file contents after applying.
+- When applying patches or fixes via `git apply`, always verify the change actually took effect — `git apply` can silently fail; check the file contents afterward
 
 ## Code Style
 
@@ -484,6 +574,11 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 
 - After writing or updating plotting code, **immediately run it** to generate the plots.
   Do NOT ask the user whether to run — just run. The code-write-run cycle should be seamless.
+- **Run plotting where the data lives.** When the raw experiment data is on `$REMOTE_HOST`
+  (the usual case), `scp`/`rsync` the updated script to the remote and execute it via
+  `ssh $REMOTE_HOST 'python plots/foo.py …'`. Do NOT pull multi-GB raw CSV/log/trace files
+  back to the control machine just to plot them — only the small generated PDFs need to
+  come back so Claude can read and analyze them. See "Execution Model" for the rationale.
 - After plots are generated, **immediately analyze them** (read the PDF files, describe
   trends, anomalies, key observations). Do NOT ask the user whether to analyze — just do it.
   **Use PDF versions for analysis, not PNGs** — PNGs consume excessive context.
@@ -501,7 +596,7 @@ static int function_name(int *ptr)  /* brace on next line, pointer: type *var */
 - **Always derive values from data instead of hardcoding.** When a parameter can be computed from the available data (e.g., perf stat interval from timestamp deltas, frequency from cycle counters, duration from output files), derive it rather than assuming a fixed value. Use hardcoded values only as fallbacks when data is unavailable. This applies to labels, titles, computations, and any context where the actual value matters.
 - Use CDF (not CCDF) with linear scale (no log scale on axes) for distribution plots.
 - Side-by-side panels that show the same metric must share axis limits so they are visually comparable.
-- Always save plots in both PNG (dpi=150) and PDF formats. Use separate directories with the format suffix appended to the category name: `{category}-png/` and `{category}-pdf/` (e.g., `plots/latency_analysis-png/{experiment}/file.png` and `plots/latency_analysis-pdf/{experiment}/file.pdf`). The rest of the hierarchy is preserved identically in both.
+- Always save plots in both PNG (dpi=150) and PDF formats. Split the two formats at the top level into sibling roots `plots-pdf/` and `plots-png/`; the `{category}/{experiment}/...` hierarchy underneath is preserved identically in both (e.g., `plots-pdf/latency_analysis/{experiment}/file.pdf` and `plots-png/latency_analysis/{experiment}/file.png`). To sync only the vector artifacts back to the control machine, `rsync`/`scp` the `plots-pdf/` tree.
 - **CDF plot colors**: Use maximally distinguishable colors for CDF curves. When curves represent distinct categories (benchmarks, workloads), use an explicit color list: `['black', 'green', 'blue', 'red', 'magenta', 'tab:orange', 'tab:brown']`. Extend with `'tab:cyan'`, `'tab:olive'`, `'tab:gray'`, `'tab:pink'` if needed. Do not use colormaps (viridis, tab10) for CDFs — they produce visually similar adjacent colors that are hard to distinguish.
 - **Never use `loc="best"` for legend placement.** It is O(n) on data points and can take hours on large datasets (100M+ samples). Always use a fixed location: `loc="upper right"`, `loc="upper left"`, etc.
 
@@ -546,12 +641,16 @@ optimizations proactively:
 
 ### Remote SSH Workflow
 
+Kernel work follows the same remote-default model (see "Execution Model"): the
+build tree and kernel source live on `$REMOTE_HOST`; the control machine drives
+edits and commands via ssh/scp.
+
 ```bash
 # Use Python for complex edits (sed fails with multiline through SSH)
-scp /tmp/fix.py remote:/tmp/ && ssh remote 'python3 /tmp/fix.py file.c'
+scp /tmp/fix.py $REMOTE_HOST:/tmp/ && ssh $REMOTE_HOST 'python3 /tmp/fix.py file.c'
 
 # Incremental compilation
-ssh remote 'make -j$(nproc) mm/file.o'
+ssh $REMOTE_HOST 'make -j$(nproc) mm/file.o'
 
 # Rewrite commits (git rebase -i hangs through SSH)
 git filter-branch -f --msg-filter 'sed "s/old/new/"' HEAD~N..HEAD

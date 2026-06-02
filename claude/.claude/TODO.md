@@ -19,9 +19,19 @@
 - Need: a way to suppress/acknowledge notifications for tasks already consumed
   via `TaskOutput`, or a `TaskStop`-like dismiss for completed tasks
 
-## Auto-mode soft_deny migration
-- `autoMode.soft_deny` in `settings.json` is currently just `["$defaults"]`
-- Promote the two finalized rules from `auto-mode/soft_deny.md` (no `git commit`
-  / no `git push` without explicit ask) when ready
-- After promotion, consider retiring `confirm-git.sh` — its coverage is narrower
-  (only plain `git commit`/`git push`, missing `--amend`, `rebase -i`, squash/fixup)
+## Git commit/push policy
+- **Decision: do NOT migrate git rules into `autoMode.soft_deny`.**
+  Reason: the default autoMode `allow` rule `Git Push to Working Branch`
+  overrides matching `soft_deny`, so a custom `"never push unless asked"`
+  soft_deny would be silently neutralized for working-branch pushes.
+  Expanding `"$defaults"` to remove that allow rule is brittle (defaults
+  change across releases).
+- **Mechanism: keep `confirm-git.sh`.** It returns `permissionDecision:
+  "ask"` at the permission-system level, which runs *before* the autoMode
+  classifier — so the prompt fires regardless of any autoMode allow/deny
+  precedence. autoMode has no "ask" tier; the hook is more expressive here
+  than autoMode for this case.
+- **Future direction**: may relax commit gating while keeping push always
+  asked. Today `confirm-git.sh` matches `(commit|push)`. To allow commits
+  silently, narrow the regex to just `push`. Push should always remain
+  ask-gated regardless of branch.
