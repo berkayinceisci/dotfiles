@@ -60,3 +60,27 @@ open() {
 ssht() {
     ssh -t "$@" "tmux attach"
 }
+
+# Pull the latest environment from the tmux server into the current shell.
+# When tmux's update-environment list refreshes on attach, NEW panes inherit
+# the new values, but EXISTING shells keep whatever they captured at startup.
+# `refresh-env` patches that — call it manually after re-attaching from a
+# fresh X session, or let the precmd hook below run it on every prompt.
+# Handles `tmux show-environment`'s two output shapes: `VAR=value` for set,
+# and `-VAR` for "this variable was unset since the last attach".
+refresh-env() {
+    [[ -z "${TMUX:-}" ]] && return
+    local line
+    while IFS= read -r line; do
+        case "$line" in
+            -*)  unset "${line#-}" ;;
+            *=*) export "$line" ;;
+        esac
+    done < <(tmux show-environment 2>/dev/null)
+}
+
+# Auto-refresh tmux-managed env vars on every prompt so DISPLAY, WAYLAND_DISPLAY,
+# DBUS_SESSION_BUS_ADDRESS, etc. always reflect the most recently attached client.
+# Cost is one (local, sub-ms) tmux roundtrip per prompt.
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd refresh-env
