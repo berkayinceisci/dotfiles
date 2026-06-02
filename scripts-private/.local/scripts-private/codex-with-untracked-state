@@ -1,0 +1,269 @@
+#!/bin/bash
+# Codex wrapper with session logging and untracked runtime state.
+#
+# Usage:
+#   codex-with-untracked-state [codex args...]
+#
+# Mirrors cc-with-session-logging: run the tool, append the newest session to a
+# per-project Markdown log, and update a local symlink.
+#
+# Codex persists project trust decisions and other local state under CODEX_HOME.
+# This wrapper uses an untracked CODEX_HOME so those writes do not dirty dotfiles.
+
+set -euo pipefail
+
+DEFAULT_CODEX_HOME="${HOME}/.codex"
+
+case "$(uname -s)" in
+Darwin)
+	STATE_ROOT="${CODEX_STATE_HOME:-${HOME}/Library/Application Support/Codex}"
+	;;
+*)
+	STATE_ROOT="${CODEX_STATE_HOME:-${XDG_STATE_HOME:-${HOME}/.local/state}/codex}"
+	;;
+esac
+
+LIVE_CODEX_HOME="${STATE_ROOT}/live-home"
+LOG_DIR="${STATE_ROOT}/session-logs"
+mkdir -p "${LIVE_CODEX_HOME}"
+mkdir -p "${LOG_DIR}"
+
+# Resolve symlinks. Codex and Claude both key project/session paths by real cwd.
+REAL_PWD="$(pwd -P)"
+PROJECT_SLUG="${REAL_PWD//\//-}"
+PROJECT_SLUG="${PROJECT_SLUG#-}"
+LOG_NAME="codex-project-${PROJECT_SLUG}.md"
+CLEAN_LOG="${LOG_DIR}/${LOG_NAME}"
+LOCAL_LINK="./cx-session.md"
+SESSION_TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+CODEX_SESSIONS="${LIVE_CODEX_HOME}/sessions"
+
+seed_file() {
+	local name="$1"
+	local src="${DEFAULT_CODEX_HOME}/${name}"
+	local dst="${LIVE_CODEX_HOME}/${name}"
+
+	if [[ -e "${dst}" || -L "${dst}" || ! -e "${src}" ]]; then
+		return
+	fi
+
+	cp "${src}" "${dst}"
+}
+
+link_if_present() {
+	local name="$1"
+	local src="${DEFAULT_CODEX_HOME}/${name}"
+	local dst="${LIVE_CODEX_HOME}/${name}"
+
+	if [[ -e "${dst}" || -L "${dst}" || ! -e "${src}" ]]; then
+		return
+	fi
+
+	ln -s "${src}" "${dst}"
+}
+
+# Copy config once so Codex can mutate it without dirtying dotfiles.
+seed_file "config.toml"
+
+trust_current_project() {
+	local config_file="${LIVE_CODEX_HOME}/config.toml"
+	local header
+
+	if [[ ! -f "${config_file}" ]]; then
+		: >"${config_file}"
+	fi
+
+	header="$(python3 - "${REAL_PWD}" <<'PY'
+import json
+import sys
+
+print(f"[projects.{json.dumps(sys.argv[1])}]")
+PY
+	)"
+
+	if ! grep -Fxq "${header}" "${config_file}"; then
+		{
+			echo ""
+			echo "${header}"
+			echo 'trust_level = "trusted"'
+		} >>"${config_file}"
+	fi
+}
+
+trust_current_project
+
+# Reuse credentials and user-managed extensions when they already exist.
+link_if_present "auth.json"
+link_if_present "AGENTS.md"
+link_if_present "AGENTS.override.md"
+
+for dir in skills plugins rules memories memories_extensions themes; do
+	link_if_present "${dir}"
+done
+
+BEFORE_SESSIONS=""
+if [[ -d "${CODEX_SESSIONS}" ]]; then
+	BEFORE_SESSIONS="$(find "${CODEX_SESSIONS}" -type f -name '*.jsonl' -print 2>/dev/null | sort || true)"
+fi
+
+set +e
+env CODEX_HOME="${LIVE_CODEX_HOME}" codex "$@"
+EXIT_CODE=$?
+set -e
+
+NEW_SESSION=""
+if [[ -d "${CODEX_SESSIONS}" ]]; then
+	while IFS= read -r f; do
+		if [[ -n "${f}" ]] && ! grep -Fxq "${f}" <<<"${BEFORE_SESSIONS}"; then
+			NEW_SESSION="${f}"
+			break
+		fi
+	done < <(python3 - "${CODEX_SESSIONS}" <<'PY'
+import os
+import sys
+
+root = sys.argv[1]
+paths = []
+for dirpath, _, filenames in os.walk(root):
+    for filename in filenames:
+        if filename.endswith(".jsonl"):
+            path = os.path.join(dirpath, filename)
+            try:
+                paths.append((os.path.getmtime(path), path))
+            except OSError:
+                pass
+
+for _, path in sorted(paths, reverse=True):
+    print(path)
+PY
+	)
+
+	if [[ -z "${NEW_SESSION}" ]]; then
+		NEW_SESSION="$(python3 - "${CODEX_SESSIONS}" <<'PY'
+import os
+import sys
+
+root = sys.argv[1]
+newest = None
+for dirpath, _, filenames in os.walk(root):
+    for filename in filenames:
+        if filename.endswith(".jsonl"):
+            path = os.path.join(dirpath, filename)
+            try:
+                item = (os.path.getmtime(path), path)
+            except OSError:
+                continue
+            if newest is None or item > newest:
+                newest = item
+
+if newest is not None:
+    print(newest[1])
+PY
+		)"
+	fi
+fi
+
+convert_session() {
+	local jsonl_file="$1"
+	local output_file="$2"
+	shift 2
+
+	if [[ ! -f "${output_file}" ]]; then
+		{
+			echo "# Codex Session Log"
+			echo ""
+			echo "**Project:** \`${REAL_PWD}\`"
+			echo ""
+			echo "---"
+			echo ""
+		} >"${output_file}"
+	fi
+
+	{
+		echo ""
+		echo "## Session: ${SESSION_TIMESTAMP}"
+		echo ""
+		echo "| Field | Value |"
+		echo "|-------|-------|"
+		echo "| **Time** | ${SESSION_TIMESTAMP} |"
+		echo "| **Args** | \`$*\` |"
+		echo "| **Session File** | \`${jsonl_file}\` |"
+		echo ""
+
+		python3 - "${jsonl_file}" <<'PY'
+import json
+import sys
+
+jsonl_file = sys.argv[1]
+
+def text_from_content(content):
+    parts = []
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    for item in content:
+        if isinstance(item, str):
+            parts.append(item)
+        elif isinstance(item, dict):
+            text = item.get("text") or item.get("input_text") or item.get("output_text")
+            if text:
+                parts.append(text)
+    return "\n\n".join(parts)
+
+for line in open(jsonl_file, "r", encoding="utf-8"):
+    try:
+        entry = json.loads(line)
+        if entry.get("type") != "response_item":
+            continue
+
+        payload = entry.get("payload", {})
+        ptype = payload.get("type")
+
+        if ptype == "message":
+            role = payload.get("role", "")
+            if role not in {"user", "assistant"}:
+                continue
+            text = text_from_content(payload.get("content", []))
+            if text:
+                print(f"## {role.title()}\n\n{text}\n")
+
+        elif ptype == "function_call":
+            name = payload.get("name", "unknown")
+            args = payload.get("arguments", "")
+            print(f"## Assistant (Tool: {name})\n")
+            if name == "exec_command":
+                try:
+                    parsed = json.loads(args)
+                    cmd = parsed.get("cmd", "")
+                    if cmd:
+                        print(f"```bash\n{cmd[:500]}\n```\n")
+                        continue
+                except Exception:
+                    pass
+            print(f"Input: {str(args)[:500]}\n")
+    except json.JSONDecodeError:
+        continue
+    except Exception as exc:
+        print(f"<!-- Error parsing: {exc} -->", file=sys.stderr)
+PY
+		echo ""
+		echo "---"
+		echo ""
+	} >>"${output_file}"
+}
+
+if [[ -n "${NEW_SESSION}" && -f "${NEW_SESSION}" ]]; then
+	convert_session "${NEW_SESSION}" "${CLEAN_LOG}" "$@"
+	ln -sf "${CLEAN_LOG}" "${LOCAL_LINK}"
+
+	echo ""
+	echo "Session appended to: ${CLEAN_LOG}"
+	echo "Local symlink: ${LOCAL_LINK}"
+else
+	echo ""
+	echo "Warning: Could not find session file to export"
+	echo "Session dir: ${CODEX_SESSIONS}"
+fi
+
+exit "${EXIT_CODE}"
