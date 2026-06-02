@@ -1,0 +1,115 @@
+#!/bin/bash
+# clip - cross-platform clipboard helper
+#
+# Usage:
+#   cmd | clip       Copy stdin to the system clipboard
+#   clip             Print clipboard contents (when stdin is a tty)
+#   clip -c          Force copy mode (read stdin)
+#   clip -p          Force paste mode
+#
+# Supports macOS (pbcopy/pbpaste), Linux Wayland (wl-copy/wl-paste),
+# and Linux X11 (xclip, falling back to xsel).
+set -euo pipefail
+
+print_usage() {
+    cat <<'EOF'
+Usage: cmd | clip       Copy stdin to the system clipboard
+       clip             Print clipboard contents (when stdin is a tty)
+       clip -c          Force copy mode (read stdin)
+       clip -p          Force paste mode
+       clip -v          Verbose: log platform, tool, mode, and the underlying
+                        command to stderr before running it
+EOF
+}
+
+verbose=0
+log() { (( verbose )) && printf 'clip: %s\n' "$*" >&2; }
+
+# Need to parse -v before the platform-detection block emits log lines.
+for arg in "$@"; do
+    [[ "$arg" == "-v" || "$arg" == "--verbose" ]] && verbose=1
+done
+
+# Pick the right copy/paste tools for this platform.
+platform="$(uname -s)"
+log "platform: $platform"
+log "DISPLAY=${DISPLAY:-unset}  WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-unset}  XDG_SESSION_TYPE=${XDG_SESSION_TYPE:-unset}"
+case "$platform" in
+    Darwin)
+        copy_cmd=(pbcopy)
+        paste_cmd=(pbpaste)
+        log "tool: pbcopy/pbpaste"
+        ;;
+    Linux)
+        if [[ "${XDG_SESSION_TYPE:-}" == "wayland" || -n "${WAYLAND_DISPLAY:-}" ]] \
+                && command -v wl-copy >/dev/null 2>&1; then
+            copy_cmd=(wl-copy)
+            paste_cmd=(wl-paste)
+            log "tool: wl-copy/wl-paste (Wayland)"
+        elif command -v xclip >/dev/null 2>&1; then
+            copy_cmd=(xclip -selection clipboard -in)
+            paste_cmd=(xclip -selection clipboard -out)
+            log "tool: xclip (X11)"
+        elif command -v xsel >/dev/null 2>&1; then
+            copy_cmd=(xsel --clipboard --input)
+            paste_cmd=(xsel --clipboard --output)
+            log "tool: xsel (X11 fallback)"
+        else
+            echo "clip: no clipboard tool found (install wl-clipboard, xclip, or xsel)" >&2
+            exit 1
+        fi
+        ;;
+    *)
+        echo "clip: unsupported platform $platform" >&2
+        exit 1
+        ;;
+esac
+
+# Parse flags.
+mode=auto
+for arg in "$@"; do
+    case "$arg" in
+        -c|--copy)    mode=copy ;;
+        -p|--paste)   mode=paste ;;
+        -v|--verbose) verbose=1 ;;
+        -h|--help)    print_usage; exit 0 ;;
+        *)
+            echo "clip: unknown option: $arg" >&2
+            print_usage >&2
+            exit 2
+            ;;
+    esac
+done
+
+# Auto-detect mode based on whether stdin carries content. A pipe or a
+# regular file means the caller piped something in (`cmd | clip` or
+# `clip < file`) — copy. A tty, /dev/null, or other device means there's
+# nothing to read — paste. Using `-p || -f` is more robust than `! -t 0`,
+# which treats /dev/null (e.g. in `$(clip)` from a non-tty context) as
+# "non-tty therefore copy" and then blocks waiting for stdin.
+if [[ "$mode" == "auto" ]]; then
+    if [[ -p /dev/stdin || -f /dev/stdin ]]; then
+        mode=copy
+    else
+        mode=paste
+    fi
+fi
+log "mode: $mode"
+
+case "$mode" in
+    copy)
+        # xclip's `-in` daemonizes to hold X11 clipboard ownership but keeps
+        # stdout attached to the parent, which can prevent the calling shell
+        # from observing the pipe close. Redirect the copy tool's stdout to
+        # /dev/null so it detaches cleanly. Stderr stays connected so real
+        # errors (no display, permission issues, etc.) reach the user.
+        # pbcopy / wl-copy exit immediately and don't need this, but the
+        # stdout redirect is harmless for them.
+        log "exec: ${copy_cmd[*]} >/dev/null"
+        "${copy_cmd[@]}" >/dev/null
+        ;;
+    paste)
+        log "exec: ${paste_cmd[*]}"
+        "${paste_cmd[@]}"
+        ;;
+esac
