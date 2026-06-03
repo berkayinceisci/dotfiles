@@ -1,0 +1,63 @@
+#!/bin/bash
+set -euo pipefail
+
+# xdg-open shim — delegate to `gio open`.
+#
+# Why this exists: the xdg-utils generic resolver (the code path taken on
+# non-GNOME/KDE sessions, i.e. i3) has a bug in `xdg-mime query default` —
+# it does `... | cut -d ';' -f 1`, which truncates a MIME default chain
+# like `image/png=gthumb;viewnior;eog;feh;` down to ONLY its first entry.
+# If that first app isn't installed, the rest of the chain is ignored and
+# resolution falls through to the auto-generated mimeinfo.cache, where a
+# browser (e.g. the ungoogled-chromium Flatpak) claims image/png — so PNGs
+# open in the browser. Both the Manjaro and Pop!_OS boxes run i3, so both
+# hit this bug.
+#
+# `gio open` uses GIO's resolver instead, which correctly walks the chain
+# and picks the first *installed* handler — giving the intended per-machine
+# behaviour (gThumb where present, eog otherwise) from the same shared
+# mimeapps.list. ~/.local/scripts is ahead of /usr/bin on PATH, so this
+# shadows the system xdg-open for PATH-based callers (browsers, terminal,
+# the `xopen` helper, file managers that exec xdg-open).
+
+verbose=0
+if [[ "${1:-}" == "-v" || "${1:-}" == "--verbose" ]]; then
+    verbose=1
+    shift
+fi
+
+log() {
+    if [[ $verbose -eq 1 ]]; then
+        echo "xdg-open(shim): $*" >&2
+    fi
+}
+
+if [[ $# -eq 0 ]]; then
+    echo "Usage: xdg-open [-v] <file|url> [file|url ...]" >&2
+    exit 1
+fi
+
+# Locate the real system xdg-open (anything that is not this shim) so we can
+# fall back to it when gio is unavailable.
+real_xdg_open=""
+for d in /usr/bin /bin /usr/local/bin; do
+    if [[ -x "$d/xdg-open" ]]; then
+        real_xdg_open="$d/xdg-open"
+        break
+    fi
+done
+
+if command -v gio >/dev/null 2>&1; then
+    log "using gio; PATH-fronted shim active"
+    log "exec: gio open $*"
+    exec gio open "$@"
+fi
+
+if [[ -n "$real_xdg_open" ]]; then
+    log "gio not found; falling back to system xdg-open"
+    log "exec: $real_xdg_open $*"
+    exec "$real_xdg_open" "$@"
+fi
+
+echo "xdg-open(shim): neither gio nor a system xdg-open found" >&2
+exit 1
