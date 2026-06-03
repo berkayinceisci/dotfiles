@@ -10,7 +10,7 @@ ROFI_THEME="$HOME/.config/rofi/config.rasi"
 notify() { notify-send -a TickTick "$@"; }
 
 if [[ ! -f "$SECRETS" ]]; then
-	notify "TickTick" "No ${SECRETS/#$HOME/\~}. Run scripts/ticktick-oauth.sh."
+	notify "TickTick" "No ${SECRETS/#$HOME/\~}. Run ~/.local/scripts-private/ticktick-oauth.sh."
 	exit 1
 fi
 
@@ -20,7 +20,7 @@ set -a
 set +a
 
 if [[ -z "${TICKTICK_ACCESS_TOKEN:-}" ]]; then
-	notify "TickTick" "TICKTICK_ACCESS_TOKEN missing. Run scripts/ticktick-oauth.sh."
+	notify "TickTick" "TICKTICK_ACCESS_TOKEN missing. Run ~/.local/scripts-private/ticktick-oauth.sh."
 	exit 1
 fi
 
@@ -33,7 +33,7 @@ if [[ -z "$TITLE" ]]; then
 	exit 0
 fi
 
-PARSED="$("$HOME/dotfiles/scripts/ticktick-parse.py" "$TITLE")"
+PARSED="$("$HOME/.local/scripts-private/ticktick-parse.py" "$TITLE")"
 PARSED_TITLE="$(jq -r '.title' <<<"$PARSED")"
 DUE_DATE="$(jq -r '.dueDate // empty' <<<"$PARSED")"
 IS_ALL_DAY="$(jq -r '.isAllDay' <<<"$PARSED")"
