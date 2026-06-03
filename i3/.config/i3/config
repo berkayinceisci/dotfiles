@@ -37,6 +37,11 @@ bindsym Mod1+t exec --no-startup-id ~/.config/i3/ticktick_add.sh
 # greenclip clipboard history daemon
 exec --no-startup-id greenclip daemon
 
+# notification daemon — start dunst explicitly so it owns org.freedesktop.Notifications
+# at login, instead of relying on non-deterministic D-Bus activation (manjaro also ships
+# xfce4-notifyd, which would otherwise race dunst for the bus name)
+exec --no-startup-id dunst
+
 # kill focused window
 bindsym Mod1+Q kill
 

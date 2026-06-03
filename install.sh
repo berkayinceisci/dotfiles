@@ -121,7 +121,7 @@ if [[ -f "$TICKTICK_SECRETS_ENC" ]]; then
 		echo "  ✓ ticktick.secrets up to date"
 	fi
 else
-	echo "  ⚠ ticktick.secrets.age not found, skipping (run scripts/ticktick-oauth.sh to bootstrap)."
+	echo "  ⚠ ticktick.secrets.age not found, skipping (run ~/.local/scripts-private/ticktick-oauth.sh to bootstrap)."
 fi
 
 # Stow packages
