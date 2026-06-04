@@ -87,3 +87,6 @@ fi
 
 source ~/.zsh/functions.zsh
 source ~/.zsh/aliases.zsh
+
+# opencode
+export PATH=/home/berkay/.opencode/bin:$PATH
