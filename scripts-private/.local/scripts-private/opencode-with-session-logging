@@ -1,0 +1,169 @@
+#!/bin/bash
+# Opencode wrapper with session logging
+# Usage: opencode-with-session-logging [opencode args...]
+# Maintains a single persistent log file per project folder
+#
+# Recommended aliases:
+#   alias ocn='opencode-with-session-logging'
+#   alias ocd='opencode-with-session-logging --dangerously-skip-permissions'
+
+set -euo pipefail
+
+# Configuration
+LOG_DIR="${HOME}/.opencode/session-logs"
+mkdir -p "${LOG_DIR}"
+
+# Resolve symlinks - Opencode uses the real path for project directories
+REAL_PWD="$(pwd -P)"
+
+# Generate a consistent log filename based on project path
+PROJECT_SLUG="${REAL_PWD//\//-}"
+PROJECT_SLUG="${PROJECT_SLUG#-}"
+LOG_NAME="oc-project-${PROJECT_SLUG}.md"
+CLEAN_LOG="${LOG_DIR}/${LOG_NAME}"
+LOCAL_LINK="./oc-session.md"
+SESSION_TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+
+# Get the list of sessions before running opencode
+BEFORE_SESSIONS=""
+if command -v opencode >/dev/null 2>&1; then
+    BEFORE_SESSIONS="$(opencode session list 2>/dev/null | tail -n +3 | awk '{print $1}' || true)"
+fi
+
+# Run opencode with all provided arguments
+set +e
+opencode "$@"
+EXIT_CODE=$?
+set -e
+
+# Find the new session created during this run
+NEW_SESSION=""
+if command -v opencode >/dev/null 2>&1; then
+    AFTER_SESSIONS="$(opencode session list 2>/dev/null | tail -n +3 | awk '{print $1}' || true)"
+    
+    # Find the first session in AFTER that's not in BEFORE
+    while IFS= read -r session_id; do
+        if [[ -n "${session_id}" ]] && ! grep -Fxq "${session_id}" <<<"${BEFORE_SESSIONS}"; then
+            NEW_SESSION="${session_id}"
+            break
+        fi
+    done <<<"${AFTER_SESSIONS}"
+    
+    # Fallback: use most recent session if no new one detected
+    if [[ -z "${NEW_SESSION}" ]]; then
+        NEW_SESSION="$(opencode session list 2>/dev/null | tail -n +3 | head -1 | awk '{print $1}' || true)"
+    fi
+fi
+
+# Convert session JSON to readable markdown (appends to existing log)
+convert_session() {
+    local session_id="$1"
+    local output_file="$2"
+    
+    # Create file header if this is a new log file
+    if [[ ! -f "${output_file}" ]]; then
+        {
+            echo "# Opencode Session Log"
+            echo ""
+            echo "**Project:** \`${REAL_PWD}\`"
+            echo ""
+            echo "---"
+            echo ""
+        } > "${output_file}"
+    fi
+    
+    # Export session as JSON and convert to markdown
+    {
+        echo ""
+        echo "## Session: ${SESSION_TIMESTAMP}"
+        echo ""
+        echo "| Field | Value |"
+        echo "|-------|-------|"
+        echo "| **Time** | ${SESSION_TIMESTAMP} |"
+        echo "| **Args** | \`$*\` |"
+        echo "| **Session ID** | \`${session_id}\` |"
+        echo ""
+        
+        # Export and parse session JSON
+        opencode export "${session_id}" 2>/dev/null | python3 -c "
+import json
+import sys
+
+try:
+    data = json.load(sys.stdin)
+    
+    # Handle different export formats
+    messages = data.get('messages', data.get('transcript', []))
+    
+    for msg in messages:
+        role = msg.get('role', '')
+        content = msg.get('content', '')
+        
+        if role == 'user':
+            if isinstance(content, str):
+                print(f'## User\n\n{content}\n')
+            elif isinstance(content, list):
+                for c in content:
+                    if isinstance(c, dict) and c.get('type') == 'text':
+                        print(f'## User\n\n{c.get(\"text\", \"\")}\n')
+                    elif isinstance(c, str):
+                        print(f'## User\n\n{c}\n')
+        
+        elif role == 'assistant':
+            if isinstance(content, str) and content:
+                print(f'## Assistant\n\n{content}\n')
+            elif isinstance(content, list):
+                for c in content:
+                    if isinstance(c, dict):
+                        ctype = c.get('type', '')
+                        if ctype == 'text':
+                            text = c.get('text', '')
+                            if text:
+                                print(f'## Assistant\n\n{text}\n')
+                        elif ctype == 'tool_use':
+                            tool = c.get('name', 'unknown')
+                            inp = c.get('input', {})
+                            print(f'## Assistant (Tool: {tool})\n')
+                            if tool in ['Read', 'Glob', 'Grep']:
+                                path = inp.get('file_path', inp.get('path', inp.get('pattern', '')))
+                                print(f'Reading/searching: \`{path}\`\n')
+                            elif tool == 'Edit':
+                                print(f'Editing: \`{inp.get(\"file_path\", \"\")}\`\n')
+                            elif tool == 'Write':
+                                print(f'Writing: \`{inp.get(\"file_path\", \"\")}\`\n')
+                            elif tool == 'Bash':
+                                cmd = inp.get('command', '')[:200]
+                                print(f'\`\`\`bash\n{cmd}\n\`\`\`\n')
+                            else:
+                                print(f'Input: {str(inp)[:200]}...\n')
+                        elif ctype == 'thinking':
+                            thinking = c.get('thinking', '')
+                            if thinking:
+                                print(f'## Assistant (Thinking)\n\n{thinking}\n')
+    
+except json.JSONDecodeError as e:
+    print(f'<!-- Error parsing JSON: {e} -->', file=sys.stderr)
+except Exception as e:
+    print(f'<!-- Error: {e} -->', file=sys.stderr)
+"
+        echo ""
+        echo "---"
+        echo ""
+    } >> "${output_file}"
+}
+
+if [[ -n "${NEW_SESSION}" ]]; then
+    convert_session "${NEW_SESSION}" "${CLEAN_LOG}"
+    
+    # Create/update symlink in current project folder
+    ln -sf "${CLEAN_LOG}" "${LOCAL_LINK}"
+    
+    echo ""
+    echo "Session appended to: ${CLEAN_LOG}"
+    echo "Local symlink: ${LOCAL_LINK}"
+else
+    echo ""
+    echo "Warning: Could not find session to export"
+fi
+
+exit "${EXIT_CODE}"

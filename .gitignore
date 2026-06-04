@@ -8,6 +8,7 @@ yazi/.config/yazi/plugins/
 yazi/.config/yazi/package.toml
 cc-session.md
 cx-session.md
+oc-session.md
 ssh_config.secrets
 ssh/.ssh/config
 atuin/.config/atuin/config.toml
