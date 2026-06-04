@@ -10,6 +10,7 @@ alias ccn='~/.local/scripts-private/cc-with-session-logging'
 alias ccd='~/.local/scripts-private/cc-with-session-logging --dangerously-skip-permissions'
 alias cxn='~/.local/scripts-private/codex-with-untracked-state'
 alias cxd='~/.local/scripts-private/codex-with-untracked-state --dangerously-bypass-approvals-and-sandbox'
+alias ocn='~/.local/scripts-private/opencode-with-session-logging'
 
 alias dotfiles="cd ~/dotfiles/; nvim .; cd - > /dev/null"
 alias scp="scp -p"
