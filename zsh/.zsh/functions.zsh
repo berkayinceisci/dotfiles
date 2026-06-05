@@ -66,17 +66,29 @@ ssht() {
 # the new values, but EXISTING shells keep whatever they captured at startup.
 # `refresh-env` patches that — call it manually after re-attaching from a
 # fresh X session, or let the precmd hook below run it on every prompt.
-# Handles `tmux show-environment`'s two output shapes: `VAR=value` for set,
-# and `-VAR` for "this variable was unset since the last attach".
+#
+# We merge tmux's global and session environments (read global first, then
+# session, so the per-attach session values win). Two important rules:
+#   - Skip `-VAR` unset markers. A marker only means "the last client to
+#     attach lacked this var" (e.g. a plain `ssh … tmux attach` with no
+#     DISPLAY) — NOT that the var should be empty. Honoring it would wipe a
+#     perfectly good DISPLAY=:1 from the global env on every prompt, which is
+#     exactly the bug this avoids. We never unset, only fill/refresh.
+#   - Only touch the managed list, never blanket-export everything from the
+#     global env (which holds PATH/HOME/… and would clobber shell-local edits).
 refresh-env() {
     [[ -z "${TMUX:-}" ]] && return
-    local line
+    local -a managed=(DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS \
+                      SSH_CONNECTION SSH_CLIENT SSH_TTY LC_OPEN_HOST)
+    local -A _env
+    local line var
     while IFS= read -r line; do
-        case "$line" in
-            -*)  unset "${line#-}" ;;
-            *=*) export "$line" ;;
-        esac
-    done < <(tmux show-environment 2>/dev/null)
+        # `VAR=value` lines only; `-VAR` unset markers don't match and are dropped.
+        [[ "$line" == *=* ]] && _env[${line%%=*}]=${line#*=}
+    done < <(tmux show-environment -g 2>/dev/null; tmux show-environment 2>/dev/null)
+    for var in $managed; do
+        [[ -n "${_env[$var]:-}" ]] && export "$var=${_env[$var]}"
+    done
 }
 
 # Auto-refresh tmux-managed env vars on every prompt so DISPLAY, WAYLAND_DISPLAY,
