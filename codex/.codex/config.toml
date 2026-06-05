@@ -3,6 +3,9 @@ model_reasoning_effort = "high"
 personality = "pragmatic"
 approvals_reviewer = "guardian_subagent"
 
+[features]
+goals = true
+
 [tui]
 notifications = false
 status_line = [
