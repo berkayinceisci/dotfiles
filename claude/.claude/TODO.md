@@ -1,5 +1,11 @@
 # Claude Code TODOs
 
+## CLAUDE.md addendum: import-split still worth it?
+- Monitor workflow has been migrated to core.md (harness-neutral); the Claude
+  addendum is now just Subagent Discipline. If that section also migrates or
+  gets dropped, replace the @import + addendum split with a plain symlink
+  like Codex/OpenCode.
+
 ## Vim Mode Configuration
 - Waiting for .vimrc-like configuration support to remap Ctrl+Backspace to delete previous word
 - Currently Ctrl+W works but conflicts with tmux vim-aware pane switching (bind-key -n C-w)
