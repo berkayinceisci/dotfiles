@@ -233,7 +233,9 @@ for package in */; do
 			"$package"
 		# Ensure shell scripts in the codex package are executable
 		find "$DOTFILES_DIR/codex" -name "*.sh" -exec chmod +x {} \;
-	elif [[ "$package" == "atuin" ]]; then
+	elif [[ "$package" == "atuin" || "$package" == "opencode" ]]; then
+		# --no-folding keeps ~/.config/opencode a real directory so the shared
+		# AGENTS.md symlink (created below) lands there, not inside the repo.
 		stow --no-folding "$package"
 	else
 		stow --ignore='cc-session\.md' --ignore='\.claude' "$package"
@@ -241,6 +243,78 @@ for package in */; do
 done
 
 echo "  ✓ Stowing complete"
+
+# --- Shared agent instructions ---------------------------------------------
+# One canonical, harness-agnostic instruction file lives at ~/.agents/core.md
+# (stowed from the 'agents' package). Each harness consumes it via its own
+# native global-instructions mechanism:
+#   - Claude Code: ~/.claude/CLAUDE.md imports it (@~/.agents/core.md)
+#   - Codex:       ~/.codex/AGENTS.md is a symlink to it (no import syntax)
+#   - OpenCode:    ~/.config/opencode/AGENTS.md is a symlink to it
+# Codex/OpenCode get symlinks here because neither supports an @import. The
+# Claude import is checked into claude/.claude/CLAUDE.md, so it needs no step.
+# Hook scripts in the agents package are shared by Claude Code and Codex
+find "$DOTFILES_DIR/agents" -name "*.sh" -exec chmod +x {} \;
+
+AGENTS_CORE="$HOME/.agents/core.md"
+if [[ -f "$AGENTS_CORE" ]]; then
+	for agents_link in "$HOME/.codex/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"; do
+		mkdir -p "$(dirname "$agents_link")"
+		ln -sf "$AGENTS_CORE" "$agents_link"
+		echo "  ✓ Linked $agents_link -> $AGENTS_CORE"
+	done
+else
+	echo "  ⚠ $AGENTS_CORE missing — is the 'agents' stow package present?"
+fi
+
+# Shared skills (open Agent Skills spec) live in ~/.agents/skills, read
+# natively by Codex and OpenCode. Claude Code only reads ~/.claude/skills, so
+# bridge it with a directory symlink. If ~/.claude/skills is a real directory
+# left over from the old layout (per-skill stow symlinks into the repo), clear
+# out repo-pointing/dangling entries and replace it; leave foreign skills alone.
+AGENTS_SKILLS="$HOME/.agents/skills"
+CLAUDE_SKILLS="$HOME/.claude/skills"
+if [[ -d "$AGENTS_SKILLS" ]]; then
+	if [[ -d "$CLAUDE_SKILLS" && ! -L "$CLAUDE_SKILLS" ]]; then
+		# Remove old stow-managed per-skill dirs (symlinks into the repo or empty dirs)
+		for entry in "$CLAUDE_SKILLS"/*/; do
+			if [[ -d "$entry" ]]; then
+				# Drop symlinks that point into the dotfiles repo (or dangle)
+				find "$entry" -maxdepth 1 -type l | while IFS= read -r lnk; do
+					resolved="$(readlink -f "$lnk" 2>/dev/null || true)"
+					if [[ -z "$resolved" || "$resolved" == "$DOTFILES_DIR"/* ]]; then
+						rm -f "$lnk"
+					fi
+				done
+				rmdir "${entry%/}" 2>/dev/null || true
+			fi
+		done
+		rmdir "$CLAUDE_SKILLS" 2>/dev/null || true
+	fi
+	if [[ -d "$CLAUDE_SKILLS" && ! -L "$CLAUDE_SKILLS" ]]; then
+		echo "  ⚠ $CLAUDE_SKILLS contains skills not managed by dotfiles — move them to $AGENTS_SKILLS and re-run"
+	else
+		ln -sfn "$AGENTS_SKILLS" "$CLAUDE_SKILLS"
+		echo "  ✓ Linked $CLAUDE_SKILLS -> $AGENTS_SKILLS"
+	fi
+fi
+
+# Shared commands/prompts (plain markdown; filename = command name in every
+# harness). Canonical copies live in ~/.agents/commands; symlink each into
+# every harness's command dir. Harness-specific commands can still live as
+# real files alongside the symlinks.
+AGENTS_COMMANDS="$HOME/.agents/commands"
+if [[ -d "$AGENTS_COMMANDS" ]]; then
+	for cmd_dir in "$HOME/.claude/commands" "$HOME/.codex/prompts" "$HOME/.config/opencode/commands"; do
+		mkdir -p "$cmd_dir"
+		for cmd_file in "$AGENTS_COMMANDS"/*.md; do
+			if [[ -f "$cmd_file" ]]; then
+				ln -sf "$cmd_file" "$cmd_dir/$(basename "$cmd_file")"
+			fi
+		done
+	done
+	echo "  ✓ Linked shared commands from $AGENTS_COMMANDS into claude/codex/opencode"
+fi
 
 # Prevent Wine from hijacking common file type associations (Linux with GUI only)
 # winemenubuilder.exe creates XDG .desktop files for Windows file associations,
