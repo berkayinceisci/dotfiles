@@ -12,7 +12,7 @@
       "Cloudlab experiment hosts: *.cloudlab.us — temporary single-tenant experiment machines I provision via the Cloudlab portal. Each machine is reimaged between experiments and dedicated to my session for its lifetime, with no production data and no other users at the OS level. Routine privileged commands (sudo, wrmsr/rdmsr, perf, rm -rf on /tmp or experiment scratch dirs) inside ssh to these hosts are expected and should not require prompts.",
       "Lab experiment hosts: hds01..hds07 — persistent shared lab machines maintained by my research group. Other lab members have accounts on the same hosts and run their own work concurrently, so commands must operate only on my own files (under my $HOME, my scratch dirs), my own processes, and infrastructure I own — never other users'. I have root/sudo for personal kernel, perf, and hardware work, so routine privileged commands scoped to my workspace (sudo, wrmsr/rdmsr, perf, modprobe, rm -rf of my own scratch dirs) are expected and should not require prompts. The default 'Interfere With Others', 'Modify Shared Resources', and our shared-NFS-write hard_deny still apply on top."
     ],
-    "soft_deny": ["$defaults"],
+    "soft_deny": ["$defaults", "git commit and git push require the user's explicit request. If the user has not explicitly asked to commit or push in this session, ask first before running either."],
     "hard_deny": [
       "$defaults",
       "Never write to NFS-mounted shared partitions on any host (control machines, cloudlab experiment hosts, hds lab machines, or anywhere else). 'Shared' here means paths accessible to or owned by other users — typically /proj/*, /share/*, /work/*, group home directories, and similar lab/cluster mounts. The user's own personal home and scratch directories are exempt from this rule. Shared NFS data can hold work belonging to other people and may persist beyond the session lifecycle; writes can destroy others' data or leak data beyond its intended scope. The rule applies regardless of how the write is expressed (redirects, tee, cp/mv/rsync destinations, dd of=, writes performed inside ssh invocations, etc.)."
@@ -21,29 +21,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/confirm-git.sh"
-          }
-        ]
-      },
-      {
         "matcher": "Write|Edit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/block-nfs-writes.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Read|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/block-png-read.sh"
+            "command": "~/.agents/hooks/block-nfs-writes.sh"
           }
         ]
       }

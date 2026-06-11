@@ -20,18 +20,17 @@
   via `TaskOutput`, or a `TaskStop`-like dismiss for completed tasks
 
 ## Git commit/push policy
-- **Decision: do NOT migrate git rules into `autoMode.soft_deny`.**
-  Reason: the default autoMode `allow` rule `Git Push to Working Branch`
-  overrides matching `soft_deny`, so a custom `"never push unless asked"`
-  soft_deny would be silently neutralized for working-branch pushes.
-  Expanding `"$defaults"` to remove that allow rule is brittle (defaults
-  change across releases).
-- **Mechanism: keep `confirm-git.sh`.** It returns `permissionDecision:
-  "ask"` at the permission-system level, which runs *before* the autoMode
-  classifier — so the prompt fires regardless of any autoMode allow/deny
-  precedence. autoMode has no "ask" tier; the hook is more expressive here
-  than autoMode for this case.
-- **Future direction**: may relax commit gating while keeping push always
-  asked. Today `confirm-git.sh` matches `(commit|push)`. To allow commits
-  silently, narrow the regex to just `push`. Push should always remain
-  ask-gated regardless of branch.
+- **Decision (2026-06-11, supersedes the earlier "keep confirm-git.sh"):**
+  `confirm-git.sh` is removed; git gating now relies on auto mode plus a
+  `soft_deny` prose rule ("git commit and git push require the user's
+  explicit request"). Rationale: standardize on auto mode as the single
+  enforcement layer; deterministic hooks only where auto mode can't reach
+  (cross-harness consistency — Codex/OpenCode never had a git gate either).
+- **Known accepted gap:** the default autoMode `allow` rule `Git Push to
+  Working Branch` overrides matching `soft_deny`, so working-branch pushes
+  are effectively ungated (instruction-level norms only). Commits likewise
+  rely on the model honoring the rule, not a guaranteed prompt.
+- **If the gap ever bites:** restore the hook narrowed to `push` only
+  (`git show 1cb02ac:claude/.claude/hooks/confirm-git.sh`, change regex
+  `(commit|push)` → `push`) — `permissionDecision: "ask"` runs before the
+  autoMode classifier, so it prompts regardless of allow-rule precedence.
