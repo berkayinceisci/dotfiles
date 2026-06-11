@@ -3,8 +3,24 @@ model_reasoning_effort = "high"
 personality = "pragmatic"
 approvals_reviewer = "guardian_subagent"
 
+# Shared agent instructions live in ~/.agents/core.md, exposed to Codex via the
+# ~/.codex/AGENTS.md symlink (created by install.sh). The core is ~36 KB, over
+# the 32 KiB default cap, so raise the cap to load it in full with headroom
+# for a project-level AGENTS.md stacked on top.
+project_doc_max_bytes = 131072
+
 [features]
 goals = true
+
+# Block writes to NFS/shared filesystems (local mounts + remote /proj, /share,
+# /work) — same script Claude Code uses from settings.json. Blocks via exit 2.
+[[hooks.PreToolUse]]
+matcher = "^Bash$|^apply_patch$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = 'sh -c "$HOME/.agents/hooks/block-nfs-writes.sh"'
+statusMessage = "Checking for NFS/shared writes"
 
 [tui]
 notifications = false
