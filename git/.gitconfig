@@ -55,8 +55,9 @@
     rebase = true
 
 [merge]
-    # conflictstyle = zdiff3 
-    conflictstyle = diff3 
+    # conflictstyle = zdiff3
+    conflictstyle = diff3
+    autostash = true
 
 [rebase]
     autoSquash = true
