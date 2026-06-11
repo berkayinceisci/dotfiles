@@ -108,20 +108,24 @@ echo "Setting up TickTick secrets..."
 TICKTICK_SECRETS="$DOTFILES_DIR/ticktick.secrets"
 TICKTICK_SECRETS_ENC="$DOTFILES_DIR/ticktick.secrets.age"
 
-if [[ -f "$TICKTICK_SECRETS_ENC" ]]; then
-	if [[ ! -f "$TICKTICK_SECRETS" ]] || [[ "$TICKTICK_SECRETS_ENC" -nt "$TICKTICK_SECRETS" ]]; then
-		if command -v age >/dev/null 2>&1; then
-			echo "  Decrypting ticktick.secrets.age (enter passphrase)..."
-			age -d -o "$TICKTICK_SECRETS" "$TICKTICK_SECRETS_ENC"
-			chmod 600 "$TICKTICK_SECRETS"
+if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
+	if [[ -f "$TICKTICK_SECRETS_ENC" ]]; then
+		if [[ ! -f "$TICKTICK_SECRETS" ]] || [[ "$TICKTICK_SECRETS_ENC" -nt "$TICKTICK_SECRETS" ]]; then
+			if command -v age >/dev/null 2>&1; then
+				echo "  Decrypting ticktick.secrets.age (enter passphrase)..."
+				age -d -o "$TICKTICK_SECRETS" "$TICKTICK_SECRETS_ENC"
+				chmod 600 "$TICKTICK_SECRETS"
+			else
+				echo "  ⚠ age not installed, skipping TickTick secrets."
+			fi
 		else
-			echo "  ⚠ age not installed, skipping TickTick secrets."
+			echo "  ✓ ticktick.secrets up to date"
 		fi
 	else
-		echo "  ✓ ticktick.secrets up to date"
+		echo "  ⚠ ticktick.secrets.age not found, skipping (run ~/.local/scripts-private/ticktick-oauth.sh to bootstrap)."
 	fi
 else
-	echo "  ⚠ ticktick.secrets.age not found, skipping (run ~/.local/scripts-private/ticktick-oauth.sh to bootstrap)."
+	echo "  ⊘ Skipping TickTick secrets (i3/rofi GUI not active)"
 fi
 
 # Stow packages
