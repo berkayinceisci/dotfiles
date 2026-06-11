@@ -13,12 +13,16 @@ M.config = function()
 		callback = function(event)
 			local opts = { buffer = event.buf }
 
-			vim.keymap.set("n", "K", "<CMD>lua vim.lsp.buf.hover()<CR>", opts)
+			vim.keymap.set("n", "K", function()
+				vim.lsp.buf.hover({ border = "single" })
+			end, opts)
 			vim.keymap.set("n", "gd", "<CMD>lua vim.lsp.buf.definition()<CR>", opts)
 			vim.keymap.set("n", "gD", "<CMD>lua vim.lsp.buf.declaration()<CR>", opts)
 			vim.keymap.set("n", "gt", "<CMD>lua vim.lsp.buf.type_definition()<CR>", opts)
 			vim.keymap.set("n", "gi", "<CMD>lua vim.lsp.buf.implementation()<CR>", opts)
-			vim.keymap.set("n", "gs", "<CMD>lua vim.lsp.buf.signature_help()<CR>", opts)
+			vim.keymap.set("n", "gs", function()
+				vim.lsp.buf.signature_help({ border = "single" })
+			end, opts)
 			vim.keymap.set("n", "<F2>", "<CMD>lua vim.lsp.buf.rename()<CR>", opts)
 			-- vim.keymap.set({ 'n', 'x' }, '<F3>', '<CMD>lua vim.lsp.buf.format({async = false})<CR>', opts)
 			vim.keymap.set("n", "<F4>", "<CMD>lua vim.lsp.buf.code_action()<CR>", opts)
@@ -233,14 +237,6 @@ M.config = function()
 
 	-- setup borders
 	local _border = "single"
-
-	vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
-		border = _border,
-	})
-
-	vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
-		border = _border,
-	})
 
 	vim.diagnostic.config({
 		float = { border = _border },
