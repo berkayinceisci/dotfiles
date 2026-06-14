@@ -78,6 +78,11 @@ bindsym Mod4+Shift+4 exec --no-startup-id bash -c 'flameshot gui --raw > "/home/
 bindsym Ctrl+Mod4+Shift+3 exec --no-startup-id flameshot screen --clipboard
 bindsym Ctrl+Mod4+Shift+4 exec --no-startup-id flameshot gui --clipboard
 
+# Screen Recordings (toggle: press to start, press same key again to stop)
+bindsym Mod4+Shift+5 exec --no-startup-id ~/.config/i3/screenrecord.sh region
+bindsym Mod4+Shift+6 exec --no-startup-id ~/.config/i3/screenrecord.sh window
+bindsym Ctrl+Mod4+Shift+5 exec --no-startup-id ~/.config/i3/screenrecord.sh full
+
 # shutdown
 bindsym Mod1+Shift+Escape exec systemctl poweroff -i
 
