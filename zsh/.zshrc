@@ -33,6 +33,12 @@ precmd() {
   # Exit alternate screen buffer only outside tmux (causes redraw issues inside tmux)
   [[ -z "$TMUX" && -z "$TERMIUS" && "$TERM_PROGRAM" != "Apple_Terminal" ]] && printf '\e[?1049l'
   print -Pn "\e]0;%1~\a"
+  # Auto-heal the Claude Code settings.json stow symlink: Claude's atomic write
+  # replaces it with a plain file, silently diverging from the dotfiles repo.
+  # Cheap no-op while the link is intact; captures + re-stows when it is broken.
+  if [[ -f "$HOME/.claude/settings.json" && ! -L "$HOME/.claude/settings.json" ]]; then
+    "$HOME/.claude/hooks/heal-settings-symlink.sh"
+  fi
 }
 
 preexec() {
