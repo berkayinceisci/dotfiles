@@ -59,7 +59,9 @@ if [[ -f "$SSH_TEMPLATE" ]]; then
 		if [[ -f "$SSH_SECRETS_ENC" ]]; then
 			if command -v age >/dev/null 2>&1; then
 				echo "  Decrypting ssh_config.secrets.age (enter passphrase)..."
-				age -d -o "$SSH_SECRETS" "$SSH_SECRETS_ENC"
+				while ! age -d -o "$SSH_SECRETS" "$SSH_SECRETS_ENC"; do
+					echo "  ✗ Incorrect passphrase, please try again..."
+				done
 			else
 				echo "  ⚠ age not installed. Install with: sudo apt install age (or brew install age)"
 				echo "  Skipping SSH config."
@@ -113,7 +115,9 @@ if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 		if [[ ! -f "$TICKTICK_SECRETS" ]] || [[ "$TICKTICK_SECRETS_ENC" -nt "$TICKTICK_SECRETS" ]]; then
 			if command -v age >/dev/null 2>&1; then
 				echo "  Decrypting ticktick.secrets.age (enter passphrase)..."
-				age -d -o "$TICKTICK_SECRETS" "$TICKTICK_SECRETS_ENC"
+				while ! age -d -o "$TICKTICK_SECRETS" "$TICKTICK_SECRETS_ENC"; do
+					echo "  ✗ Incorrect passphrase, please try again..."
+				done
 				chmod 600 "$TICKTICK_SECRETS"
 			else
 				echo "  ⚠ age not installed, skipping TickTick secrets."
@@ -625,7 +629,9 @@ if [[ "$HOST" == "manjaro" ]]; then
 		if [[ -f "$YT_SECRETS_ENC" ]]; then
 			if command -v age >/dev/null 2>&1; then
 				echo "  Decrypting yt-sync-music.secrets.age (enter passphrase)..."
-				age -d -o "$YT_SECRETS" "$YT_SECRETS_ENC"
+				while ! age -d -o "$YT_SECRETS" "$YT_SECRETS_ENC"; do
+					echo "  ✗ Incorrect passphrase, please try again..."
+				done
 				echo "  ✓ yt-sync-music secrets decrypted"
 			else
 				echo "  ⚠ age not installed. Install with: sudo apt install age (or brew install age)"
