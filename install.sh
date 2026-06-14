@@ -8,6 +8,16 @@ set -e
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DOTFILES_DIR"
 
+# Before stowing, capture any Claude Code change that broke the settings.json
+# symlink (its atomic write replaces the symlink with a plain file) back into
+# the repo, so the re-stow below does not clobber an uncaptured change.
+# Best-effort: the claude stow step re-links the file regardless of outcome.
+# See claude/.claude/hooks/heal-settings-symlink.sh.
+if [[ -x "$DOTFILES_DIR/claude/.claude/hooks/heal-settings-symlink.sh" ]]; then
+	DOTFILES_DIR="$DOTFILES_DIR" "$DOTFILES_DIR/claude/.claude/hooks/heal-settings-symlink.sh" ||
+		echo "  ⚠ settings.json heal guard failed; the claude stow step will re-link it"
+fi
+
 HOST=$(hostname 2>/dev/null || cat /etc/hostname)
 
 # Ensure ssh.github.com:443 is in known_hosts (used by NVM and other tools
