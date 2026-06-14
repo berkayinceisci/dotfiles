@@ -269,6 +269,12 @@ bindsym Mod1+r mode "resize"
 bar {
         position bottom
         status_command i3blocks -c ~/.config/i3blocks/config
+        # tray follows the primary external across machines (first available wins)
+        # popos: HDMI-1 | manjaro/ubuntu: HDMI-1-0 or HDMI-1-1 | laptop fallback: eDP-1
+        tray_output HDMI-1
+        tray_output HDMI-1-0
+        tray_output HDMI-1-1
+        tray_output eDP-1
 }
 
 #######################################################################
