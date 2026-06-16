@@ -103,7 +103,7 @@ export const BlockNFSWrites = async ({ $ }) => {
 
   return {
     "tool.execute.before": async (input, output) => {
-      const tool = output.tool
+      const tool = input.tool
       const args = output.args || {}
 
       // Check file write operations
