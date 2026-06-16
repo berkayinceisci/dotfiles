@@ -1,31 +1,25 @@
 #!/bin/bash
-# Codex wrapper with session logging and untracked runtime state.
+# Codex wrapper with session logging.
 #
 # Usage:
 #   codex-with-untracked-state [codex args...]
 #
 # Mirrors cc-with-session-logging: run the tool, append the newest session to a
 # per-project Markdown log, and update a local symlink.
-#
-# Codex persists project trust decisions and other local state under CODEX_HOME.
-# This wrapper uses an untracked CODEX_HOME so those writes do not dirty dotfiles.
 
 set -euo pipefail
 
-DEFAULT_CODEX_HOME="${HOME}/.codex"
-
 case "$(uname -s)" in
 Darwin)
-	STATE_ROOT="${CODEX_STATE_HOME:-${HOME}/Library/Application Support/Codex}"
+	CODEX_DATA_DIR="${HOME}/Library/Application Support/Codex"
 	;;
 *)
-	STATE_ROOT="${CODEX_STATE_HOME:-${XDG_STATE_HOME:-${HOME}/.local/state}/codex}"
+	CODEX_DATA_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/codex"
 	;;
 esac
 
-LIVE_CODEX_HOME="${STATE_ROOT}/live-home"
-LOG_DIR="${STATE_ROOT}/session-logs"
-mkdir -p "${LIVE_CODEX_HOME}"
+DEFAULT_CODEX_HOME="${HOME}/.codex"
+LOG_DIR="${CODEX_DATA_DIR}/session-logs"
 mkdir -p "${LOG_DIR}"
 
 # Resolve symlinks. Codex and Claude both key project/session paths by real cwd.
@@ -36,70 +30,7 @@ LOG_NAME="codex-project-${PROJECT_SLUG}.md"
 CLEAN_LOG="${LOG_DIR}/${LOG_NAME}"
 LOCAL_LINK="./cx-session.md"
 SESSION_TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
-CODEX_SESSIONS="${LIVE_CODEX_HOME}/sessions"
-
-seed_file() {
-	local name="$1"
-	local src="${DEFAULT_CODEX_HOME}/${name}"
-	local dst="${LIVE_CODEX_HOME}/${name}"
-
-	if [[ -e "${dst}" || -L "${dst}" || ! -e "${src}" ]]; then
-		return
-	fi
-
-	cp "${src}" "${dst}"
-}
-
-link_if_present() {
-	local name="$1"
-	local src="${DEFAULT_CODEX_HOME}/${name}"
-	local dst="${LIVE_CODEX_HOME}/${name}"
-
-	if [[ -e "${dst}" || -L "${dst}" || ! -e "${src}" ]]; then
-		return
-	fi
-
-	ln -s "${src}" "${dst}"
-}
-
-# Copy config once so Codex can mutate it without dirtying dotfiles.
-seed_file "config.toml"
-
-trust_current_project() {
-	local config_file="${LIVE_CODEX_HOME}/config.toml"
-	local header
-
-	if [[ ! -f "${config_file}" ]]; then
-		: >"${config_file}"
-	fi
-
-	header="$(python3 - "${REAL_PWD}" <<'PY'
-import json
-import sys
-
-print(f"[projects.{json.dumps(sys.argv[1])}]")
-PY
-	)"
-
-	if ! grep -Fxq "${header}" "${config_file}"; then
-		{
-			echo ""
-			echo "${header}"
-			echo 'trust_level = "trusted"'
-		} >>"${config_file}"
-	fi
-}
-
-trust_current_project
-
-# Reuse credentials and user-managed extensions when they already exist.
-link_if_present "auth.json"
-link_if_present "AGENTS.md"
-link_if_present "AGENTS.override.md"
-
-for dir in skills plugins rules memories memories_extensions themes; do
-	link_if_present "${dir}"
-done
+CODEX_SESSIONS="${DEFAULT_CODEX_HOME}/sessions"
 
 BEFORE_SESSIONS=""
 if [[ -d "${CODEX_SESSIONS}" ]]; then
@@ -107,7 +38,7 @@ if [[ -d "${CODEX_SESSIONS}" ]]; then
 fi
 
 set +e
-env CODEX_HOME="${LIVE_CODEX_HOME}" codex "$@"
+env -u CODEX_HOME codex "$@"
 EXIT_CODE=$?
 set -e
 
