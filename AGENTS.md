@@ -9,6 +9,8 @@
 
 - SSH config (`~/.ssh/config`) is generated from `~/dotfiles/ssh_config.template` via `envsubst` in `install.sh`. Never edit `~/dotfiles/ssh/.ssh/config` directly — edit the template ask user to re-run `install.sh`.
 
+- **Prefer declarative tracked config over imperative `install.sh` steps.** Before reaching for `install.sh` to run a `git config` / `defaults write` / etc. command, check whether the underlying config file is *itself* a tracked dotfile (e.g. `~/.gitconfig` → `git/.gitconfig`, stowed). If it is, express the change *declaratively in that file* — it then travels via stow with no imperative step. Concretely: a `git config filter.X.clean …` command does **not** belong in `install.sh` here, because `~/.gitconfig` is stowed — add a `[filter "X"]` block to `git/.gitconfig` instead. `install.sh` is only for state that *cannot* be a tracked file: generated/templated files (ssh config via `envsubst`), or genuinely machine-local/per-clone state. Putting reproducible declarative config behind an imperative `install.sh` command is a mistake — it adds a re-run dependency and hides the config from the file where one would look for it.
+
 ### Apps that rewrite their own stowed config (symlink breakage)
 
 - Some apps save their config programmatically, and whether that breaks the stow symlink depends on *how* they write: apps that **edit in place** or **resolve the symlink first** (`git config`, `xdg-mime`/`gio` on `mimeapps.list`, `codex mcp add`) write *through* the link — the change lands in the repo and shows in `git status`, harmless. Apps that **`rename()` over the literal path** replace the symlink with a standalone regular file → silent divergence (the change goes to a detached home file, never the repo).

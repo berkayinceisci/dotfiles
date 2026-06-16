@@ -67,3 +67,11 @@
 [rerere]
     enabled = true
     autoupdate = true
+
+# jq-sort filter: normalizes key order of tool-rewritten JSON so cosmetic
+# reordering produces no git diff. Used by Claude Code's settings.json, which
+# is rewritten in Claude's own key order on every save. Gated by .gitattributes
+# in the dotfiles repo (filter=jqsort); a defined-but-unused no-op everywhere else
+[filter "jqsort"]
+    clean = "jq -S . 2>/dev/null || cat"
+    smudge = cat
