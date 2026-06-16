@@ -24,6 +24,12 @@
   ```
   The filter strips `[projects...]` and `[hooks.state...]` before Git stores or
   compares `config.toml`; Codex can still keep those sections in the live file.
+- **Known limitation:** this can still produce a confusing empty diff: `git
+  status` may show `codex/.codex/config.toml` as modified because the live file
+  contains stripped runtime sections, while `git diff` prints nothing because
+  the clean filter removes those sections for comparison. `git update-index
+  --skip-worktree codex/.codex/config.toml` hides the noise, but also hides real
+  edits until `--no-skip-worktree` is used, so it is not a great default.
 - **Upstream tracking:**
   - #14601 (open) — asks Codex to stop appending project trust metadata to
     `~/.codex/config.toml` and move it to a dedicated project-state file.
