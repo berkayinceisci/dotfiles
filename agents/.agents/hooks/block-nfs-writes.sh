@@ -59,11 +59,16 @@ is_blocked_path() {
 	# Strip scp/rsync "host:" remote specifier so host:/proj/... checks as /proj/...
 	path="${path#*:}"
 	local mount prefix
-	for mount in "${NFS_MOUNTS[@]}"; do
-		if [[ "$path" == "$mount" || "$path" == "$mount"/* ]]; then
-			return 0
-		fi
-	done
+	# Guard the array expansion: macOS ships bash 3.2, where "${arr[@]}" on an
+	# empty array under `set -u` errors as "unbound variable" (fixed in 4.4).
+	# NFS_MOUNTS is empty on macOS (no /proc/mounts), so loop only when non-empty.
+	if [[ ${#NFS_MOUNTS[@]} -gt 0 ]]; then
+		for mount in "${NFS_MOUNTS[@]}"; do
+			if [[ "$path" == "$mount" || "$path" == "$mount"/* ]]; then
+				return 0
+			fi
+		done
+	fi
 	for prefix in "${REMOTE_PREFIXES[@]}"; do
 		if [[ "$path" == "$prefix" || "$path" == "$prefix"/* ]]; then
 			return 0
