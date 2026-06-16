@@ -19,7 +19,7 @@
     ]
   },
   "editorMode": "vim",
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
