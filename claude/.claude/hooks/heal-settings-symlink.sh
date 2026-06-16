@@ -5,9 +5,8 @@
 # which replaces the stow symlink at ~/.claude/settings.json with a plain
 # regular file -- silently diverging the live config from the dotfiles repo.
 # This script detects that case, folds the live change back into the repo
-# source (normalized with `jq -S` so the git diff shows only the semantic
-# change, not Claude's cosmetic key reordering), and re-stows so the path
-# becomes the tracked symlink again.
+# source (captured verbatim -- see the VERBATIM note below for why no
+# reformatting), and re-stows so the path becomes the tracked symlink again.
 #
 # It is intentionally lifecycle-independent: invoked from the zsh `precmd`
 # (runs before every shell prompt; a near-instant no-op while the link is

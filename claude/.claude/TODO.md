@@ -43,6 +43,21 @@
   Claude's own bytes makes both paths byte-identical, so the diff is just the
   changed value. Tradeoff: the baseline now tracks Claude's serialization, so a
   future CC version that changes key order would cause a one-time reorder diff.
+- **Reorder churn now neutralized at the git layer (the real fix):** a git
+  **clean filter** sorts keys before git stores/diffs the file — `[filter
+  "jqsort"]` in `git/.gitconfig` (`clean = jq -S . 2>/dev/null || cat`,
+  `smudge = cat`), gated by `claude/.claude/settings.json filter=jqsort` in the
+  repo's `.gitattributes`. This supersedes the verbatim-vs-`jq -S` reasoning
+  above as the *churn* defense: it runs at the git boundary, so it catches
+  **both** write paths (write-through and break+heal) uniformly, whereas a
+  heal-internal sort only ever sees the break path. So the heal still captures
+  **verbatim** (don't add `jq -S` to it — normalization belongs in the filter,
+  not the heal), and the two compose: heal = bytes reach the repo; jqsort = git
+  ignores their order. Filter definition lives in the tracked `git/.gitconfig`
+  (travels via stow), not an `install.sh` `git config` step. One-time cost: the
+  first commit after adding the filter renormalizes the existing unsorted
+  baseline (a single ~all-lines reorder diff vs the old `HEAD`); every commit
+  after is clean. Addresses the #61465 churn locally.
 - **Upstream tracking (consider commenting, not a new issue — would dup):**
   - #67208 (open, bug, has repro) — *root cause*: settings writer mis-resolves
     relative symlinked settings.json (manual readlink + logical-dirname join
