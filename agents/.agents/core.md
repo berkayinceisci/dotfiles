@@ -87,10 +87,11 @@ sudo wrmsr -a 0x1A4 "0x$orig"
 [[ $(sudo rdmsr -p 0 0x1A4) == "$orig" ]] || { echo "MSR write failed"; exit 1; }
 EOF
 
-# Detached long-running job on the remote — run inside a tmux session (NOT nohup)
-# so the user can attach and watch live; tee keeps the log tailable/monitorable.
-# ssh returns immediately; the session closes itself when the command exits.
-ssh $REMOTE_HOST 'tmux new-session -d -s exp "sudo ./experiment.sh 2>&1 | tee /tmp/experiment.log"'
+# Detached long-running job on the remote — launch inside tmux (NOT nohup) so the
+# user can attach and watch live; tee keeps the log tailable. Give each run a
+# UNIQUE session name + log path. ssh returns immediately; the pane persists.
+# See "Long-Running Experiments" for the invariants the launch must satisfy.
+ssh $REMOTE_HOST 'session=exp-$(date +%s); tmux new-session -d -s "$session" "sudo ./experiment.sh 2>&1 | tee /tmp/$session.log"'
 
 # Copy files to / from the remote
 scp ./script.py $REMOTE_HOST:/tmp/
@@ -486,17 +487,67 @@ Instead, you MUST:
 
 **Step 1: Launch the experiment on `$REMOTE_HOST` inside a detached tmux
 session** (never `nohup`) — it survives the SSH session closing, the user can
-attach to watch output live, and the pane remains available after the experiment
-finishes for post-mortem inspection.
+attach to watch live, and the pane stays around for post-mortem inspection.
+There is no single blessed launch command: shells, tmux versions, and how the
+experiment script handles `sudo`/stdout vary per host, so **build the launch to
+fit the host** rather than pasting a fixed incantation. Whatever you construct,
+make it satisfy these invariants:
 
-Pipe through `tee` so the log stays tailable for monitoring and is preserved
-outside tmux. Give the session a descriptive name. Keep the tmux pane open after
-the command exits so the user can inspect the final output, exit code, and any
-errors.
+- **Unique per-run names.** Derive the tmux session name and log path from an
+  experiment id + timestamp — never a fixed `exp` / `/tmp/experiment.log`.
+  Sequential runs (see "Clean Slate Between Experiments") and concurrent ones
+  must not collide; and because the pane is kept alive (below), reusing a name
+  fails with `duplicate session`.
+- **`tee` to a log file** so the run is tailable for monitoring (Step 2) and
+  preserved outside tmux.
+- **A terminal marker carrying the exit code must reach the log file**, not just
+  the pane — a `tail -F` monitor only sees the log, and a marker `echo`'d after a
+  tee'd pipeline lands only in the pane unless you append it to the log. Emit
+  **exactly `DONE` or `FAILED <code>`** so the Step 2 filter (which greps
+  `DONE|FAILED`) matches. Recovering the real exit code through a pipe needs
+  `${PIPESTATUS[0]}` (the workload's status, not tee's), or background the
+  workload and `wait` on its pid. See the pane-program example below.
+- **Keep the pane alive after exit** (e.g. a trailing `exec bash`) so the final
+  output and status survive for inspection.
+- **Capture the workload pid only if** you want a pid-death check (Step 3) or
+  clean teardown. A sudo'd workload's tree may be root-owned, so teardown may
+  need sudo — and killing direct children may not reach a deeper fork tree (see
+  the teardown note in Step 3).
+
+Concretely, the **program run inside the tmux pane** should look like this — plain
+shell, satisfying every *inside-the-pane* invariant above. The detached-tmux launch
+is separate: choose `$SESSION` and `$LOG` *before* creating the tmux session (so the
+pane name and log path are fixed), then have the pane program write to that `$LOG`
+— do not recompute them inside the pane, or the regenerated timestamp will diverge
+from the live session name. Ensure `$LOG` actually reaches the pane: export it into
+the pane environment, or expand it into the tmux command when constructing the
+launch — a fresh pane shell won't inherit a non-exported local variable, and an
+empty `$LOG` makes the pane `tee ""` and silently breaks Step 2's monitoring.
+Assumes a `${PIPESTATUS}`-capable shell, i.e. `bash`:
 
 ```bash
-ssh "$REMOTE_HOST" 'tmux new-session -d -s exp "bash -lc '\''set -o pipefail; sudo ./<experiment_script> 2>&1 | tee /tmp/experiment.log; status=${PIPESTATUS[0]}; echo; echo \"[experiment exited with status $status]\"; exec bash'\''"'
+sudo ./experiment.sh 2>&1 | tee "$LOG"
+ec=${PIPESTATUS[0]}                  # the workload's status, not tee's
+
+if [[ $ec -eq 0 ]]; then
+  marker="DONE"
+else
+  marker="FAILED $ec"
+fi
+
+echo "$marker" | tee -a "$LOG"       # marker lands in the log, where Step 2 greps
+exec bash                            # keep the pane alive for post-mortem
 ```
+
+Run that program in a detached tmux session. **Build it on the remote side** —
+e.g. `ssh "$REMOTE_HOST" 'bash -s' <<'EOF' … EOF`, constructing the
+`tmux new-session -d -s "$session" …` launch there — rather than nesting it inside
+`ssh "… tmux … \"…\" …"`. The nested-quote form is exactly where these commands
+turn fragile, so let that wrapping be written to fit the host, not copied verbatim.
+
+Note the session name and log path you chose; the steps below refer to them as
+`$SESSION` and `$LOG` (and, only if you chose to capture it, the workload pid as
+`$PID`).
 
 **Step 2: Watch the log.** If your harness provides a persistent log-monitor
 tool, point it at a remote tail pipeline filtered to events worth acting on
@@ -505,11 +556,14 @@ Otherwise, use blocking waits — each call blocks until the next significant
 event, so the agent stays engaged without sleep-polling:
 
 ```bash
-# Persistent log monitor: stream every significant event as it happens
-ssh $REMOTE_HOST 'tail -F /tmp/experiment.log | grep --line-buffered -E "progress=|iter=|run [0-9]+/|Traceback|ERROR|FAILED|Killed|OOM|assert|DONE"'
+# Persistent log monitor: stream every significant event as it happens.
+# $LOG is the log path you chose in Step 1; DONE/FAILED are the terminal markers.
+ssh $REMOTE_HOST "tail -F $LOG | grep --line-buffered -E 'progress=|iter=|run [0-9]+/|Traceback|ERROR|FAILED|Killed|OOM|assert|DONE'"
 
-# Blocking wait: block until the NEXT significant event, then re-issue
-ssh $REMOTE_HOST 'tail -F /tmp/experiment.log | grep --line-buffered -m1 -E "run [0-9]+0/|Traceback|ERROR|FAILED|Killed|OOM|DONE"'
+# Blocking wait: block until the NEXT significant event, then re-issue.
+# 'run [0-9]+0/' fires only every 10th run (a coarse heartbeat, fewer wakeups
+# than the stream above); widen to 'run [0-9]+/' to wake on every run.
+ssh $REMOTE_HOST "tail -F $LOG | grep --line-buffered -m1 -E 'run [0-9]+0/|Traceback|ERROR|FAILED|Killed|OOM|DONE'"
 ```
 
 Rules for the filter:
@@ -519,25 +573,44 @@ Rules for the filter:
   crashloop. If unsure what the experiment prints on failure, broaden the
   alternation rather than narrow it.
 - **`grep --line-buffered` is mandatory**, and it must run on the **remote side**
-  of the ssh (inside the single-quoted command), otherwise ssh ships bursts of
-  ~4KB at a time and events arrive minutes late.
+  of the ssh command, otherwise the filter may become block-buffered (stdio's
+  default when stdout is a pipe, not a tty) and events can arrive late.
 - **ssh keepalives**: set `ServerAliveInterval 30` / `ServerAliveCountMax 3`
   in `~/.ssh/config` for experiment hosts, otherwise a transient network blip
   kills the watcher mid-experiment.
 
-**Step 3: Detect exit.** Prefer having the experiment script print a terminal
-marker (`DONE` / `FAILED` / `ABORTED`) that the log filter catches — that is
-the cleanest signal. As a secondary check, issue a call that blocks until the
-PID dies (run it as a background task if your harness supports those):
+**Step 3: Detect exit.** The terminal marker (`DONE` / `FAILED <code>`) caught by
+the Step 2 filter is the **required** completion signal — it carries the exit
+code and needs no pid. Pid-death detection is an **optional** secondary check,
+available only if you chose to capture `$PID` in Step 1; if you did, block until
+it dies:
 
 ```bash
-ssh $REMOTE_HOST "tail --pid=$EXP_PID -f /dev/null"
+ssh $REMOTE_HOST "tail --pid=$PID -f /dev/null"
 ```
 
-That ssh call exits exactly when `$EXP_PID` dies — no polling, no sleep.
+That ssh call exits exactly when `$PID` dies — no polling, no sleep. (For a
+sudo'd run, `$PID` is sudo's pid; sudo exits when its child does, so this still
+fires correctly.)
 
-**Step 4: Post-exit verification.** When a terminal marker arrives or the
-PID-wait completes, stop the log watcher, then:
+To tear a run down early: **if `$PID` was captured**, a basic first attempt is
+(children first, then the leader):
+
+```bash
+ssh $REMOTE_HOST "sudo pkill -9 -P $PID; sudo kill -9 $PID"
+ssh $REMOTE_HOST "tmux kill-session -t $SESSION"   # then drop the now-idle pane
+```
+
+**If no `$PID` was captured**, attach to the session (`tmux attach -t $SESSION`) or
+inspect the remote process list first — do not guess a process pattern to kill.
+
+`pkill -P` only reaps **direct** children — a deeper fork tree can survive it.
+Killing the whole process group is more thorough (`sudo kill -9 -- -<pgid>`),
+but the real backstop is the full `ps aux` scan in Step 4 / "Verifying a Clean
+Machine" — always confirm the tree is gone, don't assume the `pkill` cleared it.
+
+**Step 4: Post-exit verification.** When the terminal marker arrives (or when an
+optional PID-wait also confirms exit), stop the log watcher, then:
 - `ssh $REMOTE_HOST 'ls -la <results_dir>'` — confirm expected result files
   exist and are non-empty.
 - Confirm no orphaned experiment processes remain on `$REMOTE_HOST` — follow
@@ -554,7 +627,7 @@ PID-wait completes, stop the log watcher, then:
 
 If the user explicitly asks for a current progress snapshot mid-experiment
 (separate from the live event stream), answer it with a single
-`ssh $REMOTE_HOST 'tail -n 50 /tmp/experiment.log'` — not a poll loop. This
+`ssh $REMOTE_HOST "tail -n 50 $LOG"` — not a poll loop. This
 is a one-off query, not a recurring mechanism.
 
 ### Clean Slate Between Experiments (CRITICAL)
@@ -567,8 +640,9 @@ you MUST:
    completed experiment — follow the "Verifying a Clean Machine (CRITICAL)"
    procedure (full `ps aux` scan via ssh, not pattern matching with `pgrep`).
    Do NOT rely on the script's own cleanup — independently verify.
-2. If orphans are found, abort the experiment immediately.
-3. Inform the user with the problem, the reason of the problem and the solution.
+2. If orphans are found, do NOT start the next experiment.
+3. Inform the user: what is still running, why it is unsafe to continue, and how
+   to clean it up.
 
 Common orphan sources:
 - Child processes surviving after parent is killed (SIGKILL doesn't propagate)
