@@ -1,7 +1,15 @@
 model = "gpt-5.5"
 model_reasoning_effort = "high"
 personality = "pragmatic"
-approvals_reviewer = "guardian_subagent"
+
+# Auto-review: route sandbox-boundary approval prompts to a reviewer subagent
+# instead of pausing for me. The reviewer engages ONLY when approvals are
+# interactive (approval_policy = on-request or granular), so set it explicitly
+# rather than relying on the undocumented default. sandbox_mode is explicit too,
+# else non-git directories silently fall back to read-only.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+approvals_reviewer = "auto_review"
 
 # Shared agent instructions live in ~/.agents/core.md, exposed to Codex via the
 # ~/.codex/AGENTS.md symlink (created by install.sh). The core is ~36 KB, over
