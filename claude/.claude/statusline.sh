@@ -3,7 +3,11 @@
 # Custom Claude Code Statusline
 # Capsule-style display showing: directory, git branch, model, context %, tokens, 5h/7d usage, session cost
 
-CACHE_FILE="/tmp/claude-usage-cache"
+# Honor CLAUDE_CONFIG_DIR so a secondary account (e.g. the business profile run
+# with CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab) reads its own credentials and
+# keeps a separate usage cache instead of clobbering the personal account's.
+CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+CACHE_FILE="/tmp/claude-usage-cache-${CLAUDE_CONFIG_DIR##*/}"
 CACHE_TTL=120 # seconds
 
 # Powerline characters for capsule edges (require Nerd Font)
@@ -102,8 +106,8 @@ get_usage() {
 		# macOS - use Keychain
 		creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
 	else
-		# Linux - read from credentials file
-		local creds_file="$HOME/.claude/.credentials.json"
+		# Linux - read from credentials file (honor CLAUDE_CONFIG_DIR set above)
+		local creds_file="$CLAUDE_CONFIG_DIR/.credentials.json"
 		if [[ -f "$creds_file" ]]; then
 			creds=$(cat "$creds_file")
 		fi

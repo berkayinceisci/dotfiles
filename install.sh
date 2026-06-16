@@ -247,6 +247,21 @@ for package in */; do
 			"$package"
 		# Ensure shell scripts in the codex package are executable
 		find "$DOTFILES_DIR/codex" -name "*.sh" -exec chmod +x {} \;
+	elif [[ "$package" == "claude-moatlab" ]]; then
+		# Secondary Claude account (business). CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab
+		# isolates ALL config, not just credentials, so this package shares the
+		# account-independent pieces into ~/.claude-moatlab: an INDEPENDENT
+		# settings.json copy, plus CLAUDE.md/skills as committed symlinks into the
+		# claude/agents packages. Credentials/projects/history stay separate.
+		# mkdir first + --no-folding so stow links files individually instead of
+		# folding the whole dir into one symlink (which would divert the
+		# account-local credentials/projects into the repo).
+		mkdir -p "$HOME/.claude-moatlab"
+		stow --no-folding "$package"
+		# Plugins (~/.claude-moatlab/plugins) are left per-account on purpose: the
+		# business profile downloads its own marketplace/repos cache (machine-local,
+		# untracked), so it is not shared from ~/.claude. Sharing would require
+		# rm -rf'ing a Claude-managed dir here, which we avoid.
 	elif [[ "$package" == "atuin" || "$package" == "opencode" ]]; then
 		# --no-folding keeps ~/.config/opencode a real directory so the shared
 		# AGENTS.md symlink (created below) lands there, not inside the repo.
