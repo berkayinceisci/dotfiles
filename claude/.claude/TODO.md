@@ -58,6 +58,26 @@
   first commit after adding the filter renormalizes the existing unsorted
   baseline (a single ~all-lines reorder diff vs the old `HEAD`); every commit
   after is clean. Addresses the #61465 churn locally.
+- **Known limitation — `jqsort` cleans `git diff`, NOT `git status` (2026-06-15):**
+  the clean filter runs at the git boundary (diff/add/commit), but the
+  working-tree bytes are never rewritten (`smudge = cat`). So after Claude
+  writes *through* the symlink with its native bytes (keys reordered, non-ASCII
+  escaped as `\uXXXX`), `git status` shows `settings.json` as ` M` even though
+  `git diff` is **empty** and a commit would be a no-op — git flags it because
+  the on-disk bytes differ from the `jq -S` blob in the index, while the filter
+  makes them *compare* equal. Verified: `jq -S working` is byte-identical to the
+  HEAD blob; the only raw diff is `—` vs literal `—`. **Harmless** — nothing
+  to commit; `git add` clears it (stages an identical-to-HEAD blob). This is
+  inherent to clean filters and cannot be fixed at the git-attributes layer.
+- **Rejected fix for the residual ` M` (2026-06-15):** make the heal hook also
+  canonicalize the file *on disk* to the exact `jq -S` form (so worktree bytes ==
+  index blob → `git status` clean too), triggered from `precmd` gated on a
+  stamp-file `[[ sj -nt stamp ]]` test (subprocess-free in steady state, shared
+  across shells). Prototyped and verified working (cosmetic writes end clean;
+  real changes stay visible as unstaged; idempotent). **Not adopted** — judged
+  too much machinery (on-disk rewrite + stamp file + precmd gate) for a purely
+  cosmetic status flag that has no diff and commits nothing. If the ` M` noise
+  ever actually bites, this is the known-good approach to revive.
 - **Upstream tracking (consider commenting, not a new issue — would dup):**
   - #67208 (open, bug, has repro) — *root cause*: settings writer mis-resolves
     relative symlinked settings.json (manual readlink + logical-dirname join
