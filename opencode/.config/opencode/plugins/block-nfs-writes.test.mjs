@@ -34,7 +34,7 @@ const cases = [
 let fail = 0
 for (const [expect, tool, args] of cases) {
   let got = 'allow', msg = ''
-  try { await hook({}, { tool, args }) } catch (e) { got = 'block'; msg = e.message }
+  try { await hook({ tool }, { args }) } catch (e) { got = 'block'; msg = e.message }
   const ok = got === expect
   if (!ok) fail++
   console.log(`${ok ? 'PASS' : 'FAIL'} [${expect}] ${tool}: ${JSON.stringify(args).slice(0, 80)} ${ok ? '' : '-> got ' + got + ' ' + msg}`)
