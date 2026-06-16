@@ -8,6 +8,10 @@ alias glow="glow -p"
 alias tldr='tldr -c'
 alias ccn='~/.local/scripts-private/cc-with-session-logging'
 alias ccd='~/.local/scripts-private/cc-with-session-logging --dangerously-skip-permissions'
+# Business (moatlab) account: separate CLAUDE_CONFIG_DIR isolates creds/projects/settings.
+# Point straight at the script — an alias after an env-var assignment is not expanded by zsh.
+alias ccnm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab ~/.local/scripts-private/cc-with-session-logging'
+alias ccdm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab ~/.local/scripts-private/cc-with-session-logging --dangerously-skip-permissions'
 alias cxn='~/.local/scripts-private/codex-with-untracked-state'
 alias cxd='~/.local/scripts-private/codex-with-untracked-state --dangerously-bypass-approvals-and-sandbox'
 alias ocn='~/.local/scripts-private/opencode-with-session-logging'
