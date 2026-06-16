@@ -5,6 +5,7 @@
 # not. Independent of how the bytes reached the repo file (write-through or the
 # heal hook), since it runs at the git boundary, not the write boundary.
 claude/.claude/settings.json filter=jqsort
+claude-moatlab/.claude-moatlab/settings.json filter=jqsort
 
 # Codex writes local runtime trust/cache state into config.toml. Keep the live
 # file usable, but prevent path-local [projects...] and [hooks.state...] sections
