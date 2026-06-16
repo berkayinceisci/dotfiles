@@ -1,0 +1,67 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "Cloudlab experiment hosts: *.cloudlab.us — temporary single-tenant experiment machines I provision via the Cloudlab portal. Each machine is reimaged between experiments and dedicated to my session for its lifetime, with no production data and no other users at the OS level. Routine privileged commands (sudo, wrmsr/rdmsr, perf, rm -rf on /tmp or experiment scratch dirs) inside ssh to these hosts are expected and should not require prompts.",
+      "Lab experiment hosts: hds01..hds07 — persistent shared lab machines maintained by my research group. Other lab members have accounts on the same hosts and run their own work concurrently, so commands must operate only on my own files (under my $HOME, my scratch dirs), my own processes, and infrastructure I own — never other users'. I have root/sudo for personal kernel, perf, and hardware work, so routine privileged commands scoped to my workspace (sudo, wrmsr/rdmsr, perf, modprobe, rm -rf of my own scratch dirs) are expected and should not require prompts. The default 'Interfere With Others', 'Modify Shared Resources', and our shared-NFS-write hard_deny still apply on top."
+    ],
+    "hard_deny": [
+      "$defaults",
+      "Never write to NFS-mounted shared partitions on any host (control machines, cloudlab experiment hosts, hds lab machines, or anywhere else). 'Shared' here means paths accessible to or owned by other users — typically /proj/*, /share/*, /work/*, group home directories, and similar lab/cluster mounts. The user's own personal home and scratch directories are exempt from this rule. Shared NFS data can hold work belonging to other people and may persist beyond the session lifecycle; writes can destroy others' data or leak data beyond its intended scope. The rule applies regardless of how the write is expressed (redirects, tee, cp/mv/rsync destinations, dd of=, writes performed inside ssh invocations, etc.)."
+    ],
+    "soft_deny": [
+      "$defaults",
+      "git commit and git push require the user's explicit request. If the user has not explicitly asked to commit or push in this session, ask first before running either."
+    ]
+  },
+  "editorMode": "vim",
+  "effortLevel": "high",
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true
+  },
+  "env": {
+    "DISABLE_COST_WARNINGS": "1",
+    "DISABLE_SESSION_LIMIT_WARNINGS": "1"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "filepath=\"$CLAUDE_FILE_PATH\"; case \"$filepath\" in *.sh) command -v shellcheck >/dev/null && shellcheck \"$filepath\" 2>&1 | head -20 ;; *.py) python3 -m py_compile \"$filepath\" 2>&1 ;; *.zshrc) zsh -n \"$filepath\" 2>&1 | head -5 ;; *.bashrc) bash -n \"$filepath\" 2>&1 | head -5 ;; esac",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "~/.agents/hooks/block-nfs-writes.sh",
+            "type": "command"
+          }
+        ],
+        "matcher": "Write|Edit|Bash"
+      }
+    ]
+  },
+  "model": "opus",
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "statusLine": {
+    "command": "~/.claude/statusline.sh",
+    "type": "command"
+  }
+}

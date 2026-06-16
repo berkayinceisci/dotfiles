@@ -10,8 +10,12 @@
 set -euo pipefail
 
 # Configuration
-LOG_DIR="${HOME}/.claude/my-session-logs"
-CLAUDE_PROJECTS="${HOME}/.claude/projects"
+# Honor CLAUDE_CONFIG_DIR so per-account profiles (e.g. a business account run
+# with CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab) log to their own dirs instead of
+# the personal ~/.claude. Falls back to ~/.claude when unset.
+CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}"
+LOG_DIR="${CLAUDE_CONFIG_DIR}/my-session-logs"
+CLAUDE_PROJECTS="${CLAUDE_CONFIG_DIR}/projects"
 mkdir -p "${LOG_DIR}"
 
 # Resolve symlinks - Claude Code uses the real path for project directories
