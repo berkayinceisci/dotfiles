@@ -1,0 +1,7 @@
+# Normalize Claude Code's settings.json key order: Claude rewrites the file in
+# its own key order on every save, producing noisy reorder-only diffs. The
+# "jqsort" filter (defined in git/.gitconfig) runs `jq -S` so git only ever
+# sees/stores the sorted form — semantic changes show, cosmetic reordering does
+# not. Independent of how the bytes reached the repo file (write-through or the
+# heal hook), since it runs at the git boundary, not the write boundary.
+claude/.claude/settings.json filter=jqsort
