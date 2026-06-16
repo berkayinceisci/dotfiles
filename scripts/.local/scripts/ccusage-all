@@ -1,13 +1,27 @@
 #!/bin/bash
 set -euo pipefail
 
-# Show Claude Code total cost across all machines.
-# Reads local data + remote data pushed by ccusage-push.
-# Pulls data from server machines (MoatLab/GNR) on demand with caching.
+# Show Claude Code cost for a single month across my machines.
+# Machines: popos (local) + macos and manjaro (pushed via ccusage-push).
+#
+# Usage:
+#   ccusage-all            # current month (YYYY-MM)
+#   ccusage-all 2026-05    # a specific past month
 
-# If not on popos, delegate to popos via SSH
+# If not on popos, delegate to popos via SSH (forwarding the month arg).
 if [[ "$(hostname)" != "popos" ]]; then
-    exec ssh -o ConnectTimeout=5 popos '~/.local/scripts/ccusage-all'
+    exec ssh -o ConnectTimeout=5 popos "~/.local/scripts/ccusage-all $*"
+fi
+
+# Machine whose pushed data we aggregate (under ~/.claude/remote/<label>).
+# Local popos data is always included separately.
+PUSHED_MACHINES=("macos" "manjaro")
+
+# Month to report, default current month. Validate YYYY-MM.
+MONTH="${1:-$(date +%Y-%m)}"
+if [[ ! "$MONTH" =~ ^[0-9]{4}-[0-9]{2}$ ]]; then
+    echo "Invalid month: '$MONTH' (expected YYYY-MM)" >&2
+    exit 1
 fi
 
 # Ensure PATH includes nvm and local scripts (needed for non-interactive SSH)
@@ -20,45 +34,13 @@ command -v ccusage >/dev/null || { echo "ccusage not found"; exit 1; }
 command -v jq >/dev/null || { echo "jq not found"; exit 1; }
 
 REMOTE_DIR="$HOME/.claude/remote"
-PULL_CACHE_DIR="$HOME/.claude/remote-pull"
 WORK_DIR=$(mktemp -d)
 
-SSH_TIMEOUT=5
-SSH_CONFIG="$HOME/.ssh/config"
-
-# Parse server machines from SSH config (MoatLab + GNR sections).
-get_pull_machines() {
-    [[ -f "$SSH_CONFIG" ]] || return
-
-    local in_section=false
-
-    while IFS= read -r line; do
-        # Section headers start with "# "
-        if [[ "$line" =~ ^#\  ]]; then
-            if [[ "$line" == "# MoatLab" ]] || [[ "$line" == "# GNR" ]]; then
-                in_section=true
-            else
-                in_section=false
-            fi
-            continue
-        fi
-
-        [[ "$in_section" == true ]] || continue
-
-        if [[ "$line" =~ ^Host[[:space:]]+([^*]+)$ ]]; then
-            echo "${BASH_REMATCH[1]// /}"
-        fi
-    done < "$SSH_CONFIG"
-}
-
-mapfile -t PULL_MACHINES < <(get_pull_machines)
-
-# Compute cost from a projects dir and write result to a file.
+# Compute cost from a projects dir for $MONTH and write result to a file.
 # Each call gets its own fake home to allow parallel execution.
 compute_cost() {
     local label="$1"
     local projects_dir="$2"
-    local suffix="${3:-}"
     local out_file="$WORK_DIR/cost-$label"
 
     if [[ ! -d "$projects_dir" ]] || [[ -z "$(ls -A "$projects_dir" 2>/dev/null)" ]]; then
@@ -71,54 +53,16 @@ compute_cost() {
 
     local cost
     cost=$(HOME="$fake_home" ccusage monthly --json 2>/dev/null \
-        | jq '[.monthly[].totalCost] | add // 0') || return
+        | jq --arg m "$MONTH" \
+            '[.monthly[] | select(.month == $m) | .totalCost] | add // 0') || return
     echo "$cost" > "$out_file"
-    printf "%-30s \$%.2f%s\n" "$label" "$cost" "$suffix"
+    printf "%-30s \$%.2f\n" "$label" "$cost"
 }
-
-# Pull usage data from a server machine into the cache.
-# Writes "ok" or "fail" to the status file.
-pull_machine() {
-    local host="$1"
-    local cache_dir="$PULL_CACHE_DIR/$host/projects"
-    local status_file="$WORK_DIR/pull-$host"
-
-    if timeout "$SSH_TIMEOUT" ssh -o ConnectTimeout="$SSH_TIMEOUT" -o BatchMode=yes "$host" \
-        'test -d ~/.claude/projects' 2>/dev/null &&
-       mkdir -p "$cache_dir" &&
-       timeout "$SSH_TIMEOUT" rsync -az -e "ssh -o ConnectTimeout=$SSH_TIMEOUT -o BatchMode=yes" \
-        "$host:~/.claude/projects/" "$cache_dir/" 2>/dev/null; then
-        echo "ok" > "$status_file"
-    else
-        echo "fail" > "$status_file"
-    fi
-}
-
-# Pull all server machines in parallel (start early, overlap with ccusage calls)
-for host in "${PULL_MACHINES[@]}"; do
-    pull_machine "$host" &
-done
 
 # Compute costs for local + pushed machines in parallel
 compute_cost "$(hostname)" "$HOME/.claude/projects" &
-if [[ -d "$REMOTE_DIR" ]]; then
-    for machine_dir in "$REMOTE_DIR"/*/; do
-        [[ -d "$machine_dir" ]] || continue
-        compute_cost "$(basename "$machine_dir")" "$machine_dir/projects" &
-    done
-fi
-
-# Wait for everything (pulls + local/pushed cost computations)
-wait
-
-# Compute costs for pulled machines in parallel
-for host in "${PULL_MACHINES[@]}"; do
-    if [[ -f "$WORK_DIR/pull-$host" ]] && [[ "$(< "$WORK_DIR/pull-$host")" == "ok" ]]; then
-        compute_cost "$host" "$PULL_CACHE_DIR/$host/projects" &
-    elif [[ -d "$PULL_CACHE_DIR/$host/projects" ]] && \
-         [[ -n "$(ls -A "$PULL_CACHE_DIR/$host/projects" 2>/dev/null)" ]]; then
-        compute_cost "$host" "$PULL_CACHE_DIR/$host/projects" " ⚠" &
-    fi
+for label in "${PUSHED_MACHINES[@]}"; do
+    compute_cost "$label" "$REMOTE_DIR/$label/projects" &
 done
 wait
 
@@ -132,4 +76,4 @@ done
 rm -rf "$WORK_DIR"
 
 echo "---"
-printf "%-30s \$%.2f\n" "Total" "$GRAND_TOTAL"
+printf "%-30s \$%.2f\n" "Total ($MONTH)" "$GRAND_TOTAL"
