@@ -15,7 +15,7 @@ fi
 
 SECRETS_FILE="$HOME/dotfiles/yt-sync-music.secrets"
 if [[ ! -f "$SECRETS_FILE" ]]; then
-    echo "ERROR: $SECRETS_FILE not found. Run ~/dotfiles/install.sh to decrypt."
+    echo "ERROR: $SECRETS_FILE not found. Run ~/dotfiles/bootstrap.sh to decrypt."
     exit 1
 fi
 source "$SECRETS_FILE"

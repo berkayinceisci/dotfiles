@@ -12,7 +12,7 @@ sandbox_mode = "workspace-write"
 approvals_reviewer = "auto_review"
 
 # Shared agent instructions live in ~/.agents/core.md, exposed to Codex via the
-# ~/.codex/AGENTS.md symlink (created by install.sh). The core is ~36 KB, over
+# ~/.codex/AGENTS.md symlink (created by bootstrap.sh). The core is ~36 KB, over
 # the 32 KiB default cap, so raise the cap to load it in full with headroom
 # for a project-level AGENTS.md stacked on top.
 project_doc_max_bytes = 131072
