@@ -16,7 +16,7 @@
 #
 # It is intentionally lifecycle-independent: invoked from the zsh `precmd`
 # (runs before every shell prompt; a near-instant no-op while the links are
-# intact) and from the top of install.sh (so a re-stow never clobbers an
+# intact) and from the top of bootstrap.sh (so a re-stow never clobbers an
 # uncaptured change). Safe to run anytime; idempotent. Cross-platform
 # (Linux + macOS): relies only on jq/stow/git from PATH and GNU-free shell.
 
@@ -68,7 +68,7 @@ heal_one() {
 	cp -f "$live" "$src"
 
 	# Restore the stow symlink. Remove the captured regular file first so stow
-	# re-links it (the stow args mirror what install.sh uses for the package).
+	# re-links it (the stow args mirror what bootstrap.sh uses for the package).
 	rm -f "$live"
 	(
 		cd "$DOTFILES_DIR" && stow "$@"

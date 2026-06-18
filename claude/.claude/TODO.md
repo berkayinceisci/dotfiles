@@ -32,7 +32,7 @@
   isolated symlink tests. No generalized healer needed — Claude-specific.
 - **Mitigation in place:** `claude/.claude/hooks/heal-settings-symlink.sh`,
   invoked from the zsh `precmd` (every prompt; cheap no-op while link intact)
-  and from the top of `install.sh`. On breakage it captures the live file
+  and from the top of `bootstrap.sh`. On breakage it captures the live file
   **verbatim** into the repo source and re-stows to restore the link, leaving
   the change in the git working tree for review.
 - **Why verbatim, not `jq -S`:** an earlier version sorted keys with `jq -S`
@@ -54,7 +54,7 @@
   **verbatim** (don't add `jq -S` to it — normalization belongs in the filter,
   not the heal), and the two compose: heal = bytes reach the repo; jqsort = git
   ignores their order. Filter definition lives in the tracked `git/.gitconfig`
-  (travels via stow), not an `install.sh` `git config` step. One-time cost: the
+  (travels via stow), not an `bootstrap.sh` `git config` step. One-time cost: the
   first commit after adding the filter renormalizes the existing unsorted
   baseline (a single ~all-lines reorder diff vs the old `HEAD`); every commit
   after is clean. Addresses the #61465 churn locally.

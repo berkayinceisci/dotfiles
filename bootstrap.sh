@@ -305,7 +305,7 @@ fi
 # — for OpenCode that double-registers every skill. Claude Code is the only
 # harness that does not read ~/.agents/skills (it reads only ~/.claude/skills),
 # so it alone is bridged, with a whole-dir symlink: this auto-exposes any new
-# skill with no install.sh re-run, and ~/.claude/skills is Claude-owned (built-in
+# skill with no bootstrap.sh re-run, and ~/.claude/skills is Claude-owned (built-in
 # skills are internal, plugin skills live under the plugin dir) so nothing is
 # clobbered. If ~/.claude/skills is a real directory left over from the old
 # layout (per-skill stow symlinks into the repo), clear out repo-pointing/
