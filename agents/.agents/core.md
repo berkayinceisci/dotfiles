@@ -8,7 +8,7 @@
        ~/.config/opencode/AGENTS.md   symlink -> this file
      Shared skills (open Agent Skills spec) live in ~/.agents/skills/, read
      natively by Codex and OpenCode; Claude Code reads it via the
-     ~/.claude/skills symlink (created by install.sh). Task-scoped procedures
+     ~/.claude/skills symlink (created by bootstrap.sh). Task-scoped procedures
      (e.g. linux-kernel-dev) belong there, not in this always-loaded file. -->
 
 ## Context Efficiency
