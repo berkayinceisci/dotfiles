@@ -6,13 +6,15 @@
       "context": "Scroll",
       "bindings": {
         "ctrl+end": null,
-        "ctrl+y": "scroll:bottom"
+        "ctrl+y": "scroll:bottom",
+        "ctrl+k": "scroll:top"
       }
     },
     {
       "context": "Transcript",
       "bindings": {
-        "ctrl+y": "scroll:bottom"
+        "ctrl+y": "scroll:bottom",
+        "ctrl+k": "scroll:top"
       }
     }
   ]
