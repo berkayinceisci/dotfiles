@@ -1,4 +1,6 @@
 .DS_Store
 settings.local.json
 cc-session.md
+cx-session.md
+oc-session.md
 __pycache__
