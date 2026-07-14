@@ -86,6 +86,14 @@ wezterm.on("window-config-reloaded", function(window, pane)
 	adjust_font_for_display(window)
 end)
 
+-- Pin zsh as the shell on Linux so a distro upgrade resetting the passwd
+-- login shell to /bin/bash does not silently drop us back into bash. macOS
+-- already defaults to zsh (/bin/zsh), and /usr/bin/zsh is Linux-only, so
+-- guard this to Linux targets.
+if string.find(wezterm.target_triple, "linux") then
+	config.default_prog = { "/usr/bin/zsh", "-l" }
+end
+
 config.font = wezterm.font_with_fallback({
 	"JetBrainsMono Nerd Font",
 	"Hack Nerd Font Mono",
