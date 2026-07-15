@@ -4,9 +4,15 @@
 # finalizes the mp4.
 #
 # Backend preference (the keybindings/UX are identical regardless of which runs):
-#   1. gpu-screen-recorder native binary  (Manjaro: pacman; hardware-encoded)
-#   2. gpu-screen-recorder Flatpak        (Pop!_OS: com.dec05eba.gpu_screen_recorder)
-#   3. ffmpeg + slop                      (universal fallback, software-encoded)
+#   1. gpu-screen-recorder native binary  — used on BOTH machines (Manjaro: pacman;
+#      popos: built from source via ~/installation gui_apps.sh). Hardware-encoded, all modes.
+#   2. ffmpeg + slop                      — universal last-resort fallback, used only if
+#      no native gpu-screen-recorder is on PATH. Software-encoded.
+#
+# NB: the gpu-screen-recorder Flatpak is intentionally NOT used. Its KMS capture
+# (region/full) needs polkit privilege escalation, and the i3 session has no polkit
+# agent, so those modes fail under it. Both machines therefore run the native binary;
+# ffmpeg only kicks in on a host that has neither native gsr nor the flatpak.
 #
 # Both backends capture desktop audio (default sink monitor) and write mp4 to
 # ~/Videos. gpu-screen-recorder uses GPU encoding where available and falls back
@@ -31,16 +37,35 @@ notify() { command -v notify-send >/dev/null 2>&1 && notify-send "$@"; }
 # --- toggle off: stop an in-progress recording ------------------------------
 if [[ -f "$PIDFILE" ]]; then
     pid="$(cat "$PIDFILE")"
+    out="$(cat "${PIDFILE}.out" 2>/dev/null)" || out=""
     if kill -0 "$pid" 2>/dev/null; then
         # SIGINT lets both ffmpeg and gpu-screen-recorder finalize the mp4.
+        # For both remaining backends $pid IS the recorder, so signalling it stops it.
         kill -INT "$pid" 2>/dev/null || true
         for _ in $(seq 1 50); do
             kill -0 "$pid" 2>/dev/null || break
             sleep 0.1
         done
     fi
-    rm -f "$PIDFILE"
-    notify -t 4000 "Screen recording stopped" "Saved to $OUTDIR"
+    rm -f "$PIDFILE" "${PIDFILE}.out"
+
+    # A recording stopped before the encoder wrote any frames (e.g. a quick
+    # double-press of the toggle) leaves a 0-byte or header-only mp4 — duration
+    # 0 or none, no decodable stream — which the file manager then misdetects
+    # and opens as an empty *text* file. Validate with ffprobe and discard any
+    # such dud so it never lands in ~/Videos. (Skipped if ffprobe is absent, so
+    # a missing tool can never delete a good recording.)
+    if [[ -n "$out" ]] && command -v ffprobe >/dev/null 2>&1; then
+        dur="$(ffprobe -v error -show_entries format=duration \
+            -of default=nw=1:nk=1 "$out" 2>/dev/null)"
+        if [[ -z "$dur" ]] || ! awk -v d="$dur" 'BEGIN { exit !(d + 0 > 0) }'; then
+            rm -f "$out"
+            notify -u critical -t 5000 "Screen recording failed" \
+                "No frames captured (stopped too soon?) — empty file discarded"
+            exit 0
+        fi
+    fi
+    notify -t 4000 "Screen recording stopped" "Saved ${out:+${out##*/} to }$OUTDIR"
     exit 0
 fi
 
@@ -50,12 +75,10 @@ out="$OUTDIR/$(date +%Y-%m-%d_%H-%M-%S).mp4"
 # --- resolve the gpu-screen-recorder command (as an array; may be empty) -----
 GSR=()
 if command -v gpu-screen-recorder >/dev/null 2>&1; then
+    # Native gpu-screen-recorder (both Manjaro and popos — see header note). The
+    # Flatpak is deliberately not a fallback here; on any host WITHOUT a native
+    # gsr on PATH, GSR stays empty and the ffmpeg path below runs for every mode.
     GSR=(gpu-screen-recorder)
-elif command -v flatpak >/dev/null 2>&1 &&
-    flatpak info com.dec05eba.gpu_screen_recorder >/dev/null 2>&1; then
-    # Flatpak path (e.g. Pop!_OS). Untested from the dev machine; if it misbehaves
-    # the ffmpeg fallback still records, so failures here are non-fatal.
-    GSR=(flatpak run --command=gpu-screen-recorder com.dec05eba.gpu_screen_recorder)
 fi
 
 # --- primary monitor (name + geometry) for full-screen capture --------------
@@ -137,4 +160,7 @@ else
 fi
 
 echo $! >"$PIDFILE"
+# Record the output path so the toggle-off path can validate it and discard a
+# dud if the recording was stopped before any frame was written.
+printf '%s\n' "$out" >"${PIDFILE}.out"
 notify -t 2000 "Screen recording started" "${mode} ${W}x${H} via ${backend}"
