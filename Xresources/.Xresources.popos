@@ -1,0 +1,5 @@
+! Host overlay for popos (mini PC, dual 4K: HDMI-1 landscape + HDMI-2 portrait).
+! Loaded by i3/.config/i3/xsettings.sh after the base ~/.Xresources.
+! 144 = 150% scaling; panels are ~140-160 physical DPI. Cursor 36 matches 150%.
+Xft.dpi: 144
+Xcursor.size: 36
