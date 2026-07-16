@@ -28,6 +28,7 @@
     "pyright-lsp@claude-plugins-official": true
   },
   "env": {
+    "CLAUDE_CODE_SCROLL_SPEED": "5",
     "DISABLE_COST_WARNINGS": "1",
     "DISABLE_SESSION_LIMIT_WARNINGS": "1"
   },
@@ -60,8 +61,10 @@
     "defaultMode": "auto"
   },
   "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
   "statusLine": {
     "command": "~/.claude/statusline.sh",
     "type": "command"
-  }
+  },
+  "tui": "fullscreen"
 }
