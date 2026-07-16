@@ -22,7 +22,7 @@ bindsym Mod4+Shift+h split h
 # split in vertical orientation
 bindsym Mod4+Shift+v split v
 
-# start a terminal (opens in file viewer's directory if one is focused)
+# start a terminal (inherits cwd from a focused file viewer or wezterm shell/tmux pane)
 bindsym Mod1+Return exec --no-startup-id ~/.config/i3/terminal_open.sh
 
 # start zen browser
