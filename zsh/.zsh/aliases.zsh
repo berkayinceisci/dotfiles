@@ -6,12 +6,15 @@ alias lgit="lazygit --use-config-dir ~/.config/lazygit/"
 alias ldoc="lazydocker"
 alias glow="glow -p"
 alias tldr='tldr -c'
-alias ccn='~/.local/scripts-private/cc-with-session-logging'
-alias ccd='~/.local/scripts-private/cc-with-session-logging --dangerously-skip-permissions'
+# Session logging is a Claude Code `Stop` hook now (~/.agents/hooks/log-session.sh),
+# not a launch wrapper — it runs no matter how claude starts (incl. the tmux
+# resurrect plugin's bare `claude --resume`), so these call the claude binary directly.
+alias ccn='claude'
+alias ccd='claude --dangerously-skip-permissions'
 # Business (moatlab) account: separate CLAUDE_CONFIG_DIR isolates creds/projects/settings.
-# Point straight at the script — an alias after an env-var assignment is not expanded by zsh.
-alias ccnm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab ~/.local/scripts-private/cc-with-session-logging'
-alias ccdm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab ~/.local/scripts-private/cc-with-session-logging --dangerously-skip-permissions'
+# `claude` is a real command (not an alias), so it IS reached after the env-var assignment.
+alias ccnm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
+alias ccdm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude --dangerously-skip-permissions'
 alias cxn='~/.local/scripts-private/codex-with-untracked-state'
 alias cxd='~/.local/scripts-private/codex-with-untracked-state --dangerously-bypass-approvals-and-sandbox'
 alias ocn='~/.local/scripts-private/opencode-with-session-logging'
