@@ -202,6 +202,13 @@ config.keys = {
 	{ key = "j", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "k", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "l", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },
+	-- Force Ctrl+[ to emit a bare ESC (0x1b). Apps like Claude Code turn on enhanced
+	-- key reporting, under which wezterm would otherwise re-encode Ctrl+[ as a CSI
+	-- sequence that CC's vim mode doesn't treat as Escape (so Ctrl+[ stops entering
+	-- normal mode). SendString emits the literal byte, bypassing that encoding, while
+	-- leaving Shift+Enter and other enhanced keys intact. Standard ASCII; a no-op
+	-- elsewhere (Ctrl+[ has always meant ESC). See claude/.claude/TODO.md.
+	{ key = "[", mods = "CTRL", action = act.SendString("\x1b") },
 	{ key = "LeftArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "RightArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "UpArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
