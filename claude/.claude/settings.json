@@ -54,6 +54,38 @@
         ],
         "matcher": "Write|Edit|Bash"
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "bash '/home/berkay/.config/tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-cleanup.sh'",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash '/home/berkay/.config/tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-track.sh'",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "~/.agents/hooks/log-session.sh",
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "model": "opus",
