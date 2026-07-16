@@ -58,7 +58,9 @@ local function get_font_size(screen_height)
 	end
 
 	if screen_height >= 2160 then
-		return 16.0 -- 4K
+		-- 14.4 = one DecreaseFontSize step (10%) below the old 16.0: at 16.0
+		-- lazygit panes are too narrow and commit messages wrap oddly.
+		return 14.4 -- 4K
 	elseif screen_height >= 1440 then
 		return 12.0 -- 1440p
 	else
