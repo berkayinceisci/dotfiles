@@ -1,2 +1,5 @@
-Xft.dpi: 144
-Xcursor.size: 36
+! Universal X resources (all machines). Keep host-independent settings ONLY.
+! Display-dependent knobs (Xft.dpi, Xcursor.size) live in per-host overlays
+! named .Xresources.$(hostname) (e.g. .Xresources.popos), merged after this
+! file by i3/.config/i3/xsettings.sh — same per-host pattern as
+! i3/.config/i3/display_setup.sh.
