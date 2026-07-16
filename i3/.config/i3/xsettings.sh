@@ -9,8 +9,22 @@
 # (.Xresources.$(hostname)) merged after the universal base — same per-host
 # pattern as display_setup.sh — so one machine's DPI never leaks onto another.
 if command -v xrdb >/dev/null; then
+    db_before=$(xrdb -query 2>/dev/null | sort)
     [ -r "$HOME/.Xresources" ] && xrdb -merge "$HOME/.Xresources"
     [ -r "$HOME/.Xresources.$(hostname)" ] && xrdb -merge "$HOME/.Xresources.$(hostname)"
+    db_after=$(xrdb -query 2>/dev/null | sort)
+    # If the merge changed the resource DB at all, this session started before
+    # ~/.Xresources was loaded (the cosmic-greeter path above) and anything
+    # already running may have latched stale values. Nudge such consumers here.
+    # Today that is only i3: it reads Xft.dpi ONCE at its own startup to size
+    # pango fonts (window titles + i3bar), so it locked in the 96-DPI fallback
+    # and the bar renders tiny on HiDPI panels; `restart` makes i3/i3bar
+    # re-read the DB in place. No loop: plain `exec` lines (which run this
+    # script) do not re-run on `restart`, and on hosts where the display
+    # manager already loaded .Xresources the merge is a no-op, so no restart.
+    if [ "$db_before" != "$db_after" ] && command -v i3-msg >/dev/null; then
+        i3-msg restart >/dev/null 2>&1
+    fi
 fi
 
 # Keep GTK's cursor-size in sync with Xcursor.size so the pointer is the SAME
