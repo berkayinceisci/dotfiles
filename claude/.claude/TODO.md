@@ -11,6 +11,25 @@
 - Currently Ctrl+W works but conflicts with tmux vim-aware pane switching (bind-key -n C-w)
 - Feature request to be submitted via /feedback
 
+### Ctrl+[ stopped entering normal mode (regression, 2026-07-15, v2.1.211)
+- **Symptom:** `ctrl+[` no longer switches insert→normal mode. Plain `Escape`
+  still works.
+- **Not our config:** the terminal sends a bare `ESC` (0x1b) for `ctrl+[`
+  (wezterm `enable_kitty_keyboard = false`; tmux has no `extended-keys`), and
+  since `Escape` works the byte reaches Claude Code fine — it's a CC vim
+  input-handler regression, not a keyboard-protocol issue. Reported broken
+  ~v2.1.1; no changelog entry claims a fix.
+- **Not restorable via config:** `keybindings.json` can't remap vim keys (docs:
+  "Vim keys aren't remappable through the keybindings file" — it only controls
+  UI actions). `vimInsertModeRemaps` (v2.1.208+, the vim-remap knob) only
+  accepts **two-character** insert-mode sequences, so it can't map a modified
+  single key like `ctrl+[`.
+- **Workaround:** use plain `Escape`, or add a two-char alias in
+  `settings.json`: `"vimInsertModeRemaps": { "jk": "<Esc>" }` (a *different*
+  keystroke, not a restoration of `ctrl+[`).
+- **Upstream:** related remapping request https://github.com/anthropics/claude-code/issues/53039
+  — file a specific `ctrl+[` regression issue against latest if it persists.
+
 ## Status Line
 - Check if Claude Code allows disabling/styling the builtin git changes line
 
