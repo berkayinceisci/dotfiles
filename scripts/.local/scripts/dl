@@ -50,9 +50,10 @@ download_platform_image() {
     yt-dlp --print after_move:filepath "$url"
 }
 
-# Twitter/X image posts: yt-dlp's twitter extractor rejects image-only tweets,
-# so use fxtwitter's public JSON API to extract photo URLs, then curl each one
-download_twitter_images() {
+# Twitter/X media posts: yt-dlp's twitter extractor now fails on many tweets
+# (X requires auth), so use fxtwitter's public JSON API to extract media URLs
+# (both photos and videos), then curl each one
+download_twitter_media() {
     local url="$1"
     local api_url
     api_url=$(echo "$url" | sed -E 's#^https?://(www\.|mobile\.)?(twitter\.com|x\.com)/#https://api.fxtwitter.com/#')
@@ -62,8 +63,11 @@ download_twitter_images() {
 import sys, json
 try:
     d = json.load(sys.stdin)
-    for p in d.get("tweet", {}).get("media", {}).get("photos", []) or []:
+    media = d.get("tweet", {}).get("media", {}) or {}
+    for p in media.get("photos", []) or []:
         print(p["url"])
+    for v in media.get("videos", []) or []:
+        print(v["url"])
 except Exception:
     sys.exit(1)
 ') || {
@@ -72,7 +76,7 @@ except Exception:
     }
 
     if [[ -z "$media_urls" ]]; then
-        echo "Error: no images found in tweet" >&2
+        echo "Error: no media found in tweet" >&2
         return 1
     fi
 
@@ -150,8 +154,8 @@ download_platform() {
 
     if [[ $has_no_video -eq 1 ]]; then
         if [[ "$url" =~ (twitter\.com|x\.com)/ ]]; then
-            echo "-> No video in tweet, fetching image(s) via fxtwitter API..." >&2
-            download_twitter_images "$url"
+            echo "-> yt-dlp found no video, fetching media via fxtwitter API..." >&2
+            download_twitter_media "$url"
         else
             echo "-> No video in post, downloading as image..." >&2
             download_platform_image "$url"
