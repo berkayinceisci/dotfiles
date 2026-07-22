@@ -1,0 +1,9 @@
+! Host overlay for manjaro (laptop; Intel+NVIDIA hybrid). Primary display is
+! the external Dell S2725QS 27in, driven at 2560x1440 (2K) for GPU performance;
+! at that resolution the panel is ~109 DPI. Xft.dpi 120 (125%) keeps the i3bar
+! and window-title fonts comfortably readable -- at the plain 96 fallback they
+! render too small. Kept per-host (NOT in the shared i3 config font line) so
+! popos, which runs 144, is unaffected. Loaded by i3/.config/i3/xsettings.sh
+! after the base ~/.Xresources. Cursor 30 matches 125%.
+Xft.dpi: 120
+Xcursor.size: 30
