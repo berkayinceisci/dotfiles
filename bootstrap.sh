@@ -385,7 +385,13 @@ if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 		case "$DM" in
 		"lightdm")
 			echo "  Detected: LightDM"
-			sudo cp "$DISPLAY_SETUP_SRC" /etc/lightdm/display_setup.sh
+			# Symlink (not copy) so edits to the repo script are picked up at
+			# the greeter automatically, with no re-copy / bootstrap re-run.
+			# Safe because /home is on the root filesystem here (readable by
+			# root at greeter time). If a future lightdm host ever has an
+			# encrypted/separate /home that is unavailable pre-login, switch
+			# this back to a plain `cp`.
+			sudo ln -sf "$DISPLAY_SETUP_SRC" /etc/lightdm/display_setup.sh
 			sudo chmod +x /etc/lightdm/display_setup.sh
 
 			# Add display-setup-script to lightdm.conf if not present
