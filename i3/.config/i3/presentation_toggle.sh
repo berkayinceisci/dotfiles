@@ -1,10 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-# Toggle display for presentations.
-# popos: Toggle HDMI-2 between vertical (rotated right) and horizontal (normal)
-#         for screen sharing presentations over Zoom.
-# manjaro: Toggle laptop screen (eDP-1) on/off when external monitor is connected.
+# Toggle display for presentations. Two computers share this repo:
+#   manjaro - laptop (Intel + NVIDIA hybrid). Internal panel eDP-1 plus one
+#             external monitor (DELL S2725QS) wired to the NVIDIA GPU
+#             (HDMI-1-0 / HDMI-1-1). Toggle: laptop screen (eDP-1) on/off
+#             while the external stays on.
+#   popos   - mini PC, no internal screen. Two external 4K monitors on
+#             HDMI-1 (horizontal) and HDMI-2 (vertical). Toggle: rotate
+#             HDMI-2 between vertical (daily) and horizontal (Zoom sharing).
 
 HOST=$(hostname)
 
