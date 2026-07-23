@@ -9,8 +9,19 @@ alias tldr='tldr -c'
 # Session logging is a Claude Code `Stop` hook now (~/.agents/hooks/log-session.sh),
 # not a launch wrapper — it runs no matter how claude starts (incl. the tmux
 # resurrect plugin's bare `claude --resume`), so these call the claude binary directly.
-alias ccn='claude'
-alias ccd='claude --dangerously-skip-permissions'
+# Personal account. `env -u` REMOVES CLAUDE_CONFIG_DIR rather than leaving it to
+# chance: bare `claude` silently picks up an inherited CLAUDE_CONFIG_DIR, and the
+# tmux server's global environment is inherited from whatever started it -- so a
+# server first spawned from inside a moatlab session (e.g. an agent running
+# `tmux new-session` when no server was up) makes every pane's `ccn` open the
+# business account.
+# Do NOT "fix" this by pinning CLAUDE_CONFIG_DIR=$HOME/.claude instead: the
+# default profile's config/state file is the home-root ~/.claude.json, but
+# setting the var moves that lookup to $CLAUDE_CONFIG_DIR/.claude.json
+# (~/.claude/.claude.json), which is empty -> claude sees a fresh install and
+# prompts for login. Only the *absence* of the var reproduces default behavior.
+alias ccn='env -u CLAUDE_CONFIG_DIR claude'
+alias ccd='env -u CLAUDE_CONFIG_DIR claude --dangerously-skip-permissions'
 # Business (moatlab) account: separate CLAUDE_CONFIG_DIR isolates creds/projects/settings.
 # `claude` is a real command (not an alias), so it IS reached after the env-var assignment.
 alias ccnm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
