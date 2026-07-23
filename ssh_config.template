@@ -24,7 +24,7 @@ Host ubuntu
 
 Host macos
     HostName ${MACOS_HOST}
-    User inceisciberkay
+    User berkay
     HostKeyAlias macos
 
 Host popos
