@@ -535,26 +535,13 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
 	echo ""
 	echo "Installing system-level configurations..."
 
-	# Enable Playwright plugin for Claude Code (GUI only)
-	CLAUDE_SETTINGS="$HOME/.claude/settings.json"
-	CLAUDE_SETTINGS_SRC="$DOTFILES_DIR/claude/.claude/settings.json"
-	if [[ -f "$CLAUDE_SETTINGS_SRC" ]]; then
-		echo "Enabling Claude Code Playwright plugin..."
-		# Replace stow symlink with a copy so we can modify it
-		rm -f "$CLAUDE_SETTINGS"
-		cp "$CLAUDE_SETTINGS_SRC" "$CLAUDE_SETTINGS"
-		python3 -c "
-import json, sys
-p = sys.argv[1]
-with open(p) as f:
-    s = json.load(f)
-s.setdefault('enabledPlugins', {})['playwright@claude-plugins-official'] = True
-with open(p, 'w') as f:
-    json.dump(s, f, indent=2)
-    f.write('\n')
-" "$CLAUDE_SETTINGS"
-		echo "  ✓ Playwright plugin enabled in $CLAUDE_SETTINGS"
-	fi
+	# NOTE: a block here used to force enabledPlugins.playwright = true by
+	# replacing the stow symlink with a modified copy. It was removed: the plugin
+	# is now deliberately disabled in settings.json (its hardcoded server has no
+	# --browser flag, so it resolves the 'chrome' channel), and the MCP server is
+	# registered explicitly at the end of this script instead. Detaching the
+	# symlink here also fed the wrong value back into the repo via
+	# heal-settings-symlink.sh on the next shell prompt.
 
 	# Install Zen Browser policies
 	if [ -f "$DOTFILES_DIR/zen/policies.json" ]; then
@@ -687,6 +674,56 @@ if [[ "$HOST" == "manjaro" ]]; then
 	fi
 else
 	echo "  ⊘ Skipping yt-sync-music (not manjaro)"
+fi
+
+# Register the Claude Code Playwright MCP server (bundled browser, not a channel)
+echo ""
+echo "Setting up Claude Code Playwright MCP..."
+
+# The stock playwright plugin is disabled in settings.json: its server definition
+# has no --browser flag, so it resolves Playwright's 'chrome' channel (a fixed path
+# needing a separately installed Chrome, which would also show up in rofi) instead
+# of Playwright's own managed download. MCP servers can only be defined in
+# ~/.claude.json, which is machine-local state and deliberately not stowed --
+# so registering them belongs here rather than in settings.json.
+register_playwright_mcp() {
+	if claude mcp get playwright >/dev/null 2>&1; then
+		echo "  ✓ playwright MCP already registered ($1)"
+	else
+		claude mcp add playwright -s user -- \
+			npx -y @playwright/mcp@latest --browser chromium >/dev/null
+		echo "  ✓ playwright MCP registered ($1)"
+	fi
+}
+
+if command -v claude >/dev/null 2>&1; then
+	# Subshells keep CLAUDE_CONFIG_DIR from leaking between the two. It must be
+	# UNSET for the default dir -- pointing it at ~/.claude makes Claude Code
+	# create a stray ~/.claude/.claude.json instead of using ~/.claude.json.
+	(
+		unset CLAUDE_CONFIG_DIR
+		register_playwright_mcp default
+	)
+	if [[ -d "$HOME/.claude-moatlab" ]]; then
+		(
+			export CLAUDE_CONFIG_DIR="$HOME/.claude-moatlab"
+			register_playwright_mcp moatlab
+		)
+	fi
+
+	# The MCP launches the bundled browser but never downloads it, and the build
+	# has to match the playwright version @playwright/mcp pins -- otherwise it
+	# fails with "Executable doesn't exist". playwright install is idempotent.
+	PW_VER=$(npm view @playwright/mcp@latest dependencies.playwright 2>/dev/null || true)
+	if [[ -z "$PW_VER" ]]; then
+		echo "  ⚠ could not resolve the pinned playwright version; skipping browser install"
+	elif npx -y "playwright@$PW_VER" install chromium >/dev/null 2>&1; then
+		echo "  ✓ bundled chromium ready (playwright $PW_VER)"
+	else
+		echo "  ⚠ browser install failed; run: npx playwright@$PW_VER install chromium"
+	fi
+else
+	echo "  ⊘ Skipping Claude Playwright MCP (claude not installed)"
 fi
 
 echo ""
