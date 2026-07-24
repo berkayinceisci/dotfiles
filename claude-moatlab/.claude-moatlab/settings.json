@@ -83,12 +83,16 @@
           {
             "command": "~/.agents/hooks/log-session.sh",
             "type": "command"
+          },
+          {
+            "command": "~/.agents/hooks/tmux-bell-on-stop.sh",
+            "type": "command"
           }
         ]
       }
     ]
   },
-  "model": "opus",
+  "model": "opus[1m]",
   "permissions": {
     "defaultMode": "auto"
   },
