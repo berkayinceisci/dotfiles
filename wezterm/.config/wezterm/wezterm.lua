@@ -109,6 +109,13 @@ config.font = wezterm.font_with_fallback({
 config.color_scheme = "Grandshell (terminal.sexy)"
 -- config.color_scheme = "jubi"
 
+-- The tmux status bar is the only bell consumer we want. Claude Code's Stop
+-- hook (~/.agents/hooks/tmux-bell-on-stop.sh) writes a BEL to its pane so the
+-- window highlights when a response finishes; tmux runs with visual-bell off,
+-- so that BEL is forwarded here as well. With several agent panes running, the
+-- terminal's own beep is pure noise -- silence it and keep the highlight.
+config.audible_bell = "Disabled"
+
 config.window_padding = {
 	left = 10,
 	right = 10,
