@@ -686,14 +686,24 @@ echo "Setting up Claude Code Playwright MCP..."
 # of Playwright's own managed download. MCP servers can only be defined in
 # ~/.claude.json, which is machine-local state and deliberately not stowed --
 # so registering them belongs here rather than in settings.json.
+# Headed on desktops, so the browser is watchable and any page it opens stays up
+# to look at later; headless only where there is no display (the ssh servers),
+# since headed Chrome needs one. macOS sets no DISPLAY but is always a GUI
+# machine -- same gate this script uses for other GUI-only steps.
+PW_ARGS=(npx -y @playwright/mcp@latest --browser chromium)
+PW_MODE=headed
+if [[ "$OS" != "macos" ]] && [[ -z "${DISPLAY:-}" ]]; then
+	PW_ARGS+=(--headless)
+	PW_MODE=headless
+fi
+
+# Remove-then-add rather than skip-if-already-present, so a machine registered
+# with different flags (headed before a display went away, or vice versa)
+# actually converges instead of keeping the stale entry forever.
 register_playwright_mcp() {
-	if claude mcp get playwright >/dev/null 2>&1; then
-		echo "  ✓ playwright MCP already registered ($1)"
-	else
-		claude mcp add playwright -s user -- \
-			npx -y @playwright/mcp@latest --browser chromium >/dev/null
-		echo "  ✓ playwright MCP registered ($1)"
-	fi
+	claude mcp remove playwright -s user >/dev/null 2>&1 || true
+	claude mcp add playwright -s user -- "${PW_ARGS[@]}" >/dev/null
+	echo "  ✓ playwright MCP registered ($1, $PW_MODE)"
 }
 
 if command -v claude >/dev/null 2>&1; then
