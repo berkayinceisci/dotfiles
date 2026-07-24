@@ -128,6 +128,23 @@ Lab experiment hosts: `hds01`..`hds07` — persistent shared lab machines mainta
 - This applies equally to `/tmp` on `$REMOTE_HOST`. Do not synthesize scripts inline via `ssh $REMOTE_HOST 'cat > /tmp/…'` — edit a real project script on the control machine, `scp` it over, then invoke it via `ssh`.
 - If a multi-config loop is needed, add it to the project's existing experiment runner script.
 
+## Browser Automation
+
+- **Close the browser when you are done with it — default to closing.** The
+  Playwright MCP runs headed on desktops, so an open page leaves a real window on
+  the user's screen and a live browser process. Closing is part of finishing the
+  task, not optional cleanup.
+- **The only exception is a page the user is meant to look at** — a chart, a
+  rendered report, a page they asked you to open. Leave that one up, and say so, so
+  it reads as deliberate rather than forgotten.
+- The test is not "was I finished", it is "is this page the deliverable?" Any page
+  opened as an instrument — checking a render, testing a click, reading docs,
+  scraping a value — is yours to clean up; the result belongs in your reply as
+  text, not left on screen.
+- Do not close a page the user is still looking at just because a later step
+  finished. When in doubt about a page produced for them, leave it and say it is
+  there.
+
 ## Compression
 
 - Use `pigz` instead of `gzip` for compression. It parallelizes across cores and is much faster on multi-core machines.
