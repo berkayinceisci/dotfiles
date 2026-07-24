@@ -76,6 +76,16 @@
     clean = "jq -S . 2>/dev/null || cat"
     smudge = cat
 
+# claude-settings filter: jqsort PLUS normalization of the machine-specific
+# absolute paths that the tmux-assistant-resurrect plugin writes into the
+# SessionStart/SessionEnd hooks of claude/.claude/settings.json on every tmux
+# config load. Keeps that shared, stowed file machine-agnostic; the live file
+# keeps whatever path is correct for the local host. Personal profile only --
+# the plugin never touches claude-moatlab, which stays on plain jqsort.
+[filter "claude-settings"]
+    clean = ~/.local/scripts-private/claude-settings-clean-filter
+    smudge = cat
+
 # codex-runtime filter: keeps Codex's stowed config declarative by stripping
 # local runtime sections before Git stores/compares codex/.codex/config.toml.
 # Codex may still keep those sections in the live worktree file.

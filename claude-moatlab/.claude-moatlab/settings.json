@@ -59,7 +59,7 @@
       {
         "hooks": [
           {
-            "command": "bash '/home/berkay/.config/tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-cleanup.sh'",
+            "command": "hook=\"$HOME/.config/tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-cleanup.sh\"; if [ -f \"$hook\" ]; then bash \"$hook\"; fi",
             "type": "command"
           }
         ],
@@ -70,7 +70,7 @@
       {
         "hooks": [
           {
-            "command": "bash '/home/berkay/.config/tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-track.sh'",
+            "command": "hook=\"$HOME/.config/tmux/plugins/tmux-assistant-resurrect/hooks/claude-session-track.sh\"; if [ -f \"$hook\" ]; then bash \"$hook\"; elif [ -n \"$TMUX\" ]; then echo \"tmux-assistant-resurrect not installed - claude pane restore is disabled; install it with tmux prefix+I\" >&2; exit 1; fi",
             "type": "command"
           }
         ],

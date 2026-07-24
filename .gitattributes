@@ -4,7 +4,13 @@
 # sees/stores the sorted form — semantic changes show, cosmetic reordering does
 # not. Independent of how the bytes reached the repo file (write-through or the
 # heal hook), since it runs at the git boundary, not the write boundary.
-claude/.claude/settings.json filter=jqsort
+# The personal profile needs more than sorting: tmux-assistant-resurrect owns
+# its SessionStart/SessionEnd hooks and rewrites them to a $HOME-absolute path
+# on every tmux config load, which differs per machine for one shared file. The
+# "claude-settings" filter is jqsort plus normalization of those two commands
+# back to the $HOME-relative guarded form. The moatlab profile is never touched
+# by the plugin, so plain jqsort is enough there.
+claude/.claude/settings.json filter=claude-settings
 claude-moatlab/.claude-moatlab/settings.json filter=jqsort
 
 # Codex writes local runtime trust/cache state into config.toml. Keep the live
