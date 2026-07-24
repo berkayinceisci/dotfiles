@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Git `clean` filter for the personal Claude Code settings.json.
+#
+# WHY: the tmux-assistant-resurrect plugin owns the SessionStart/SessionEnd
+# hooks in ~/.claude/settings.json. Its `install_claude_hooks` runs on EVERY
+# tmux config load (tmux-assistant-resurrect.tmux:120 -- server start,
+# prefix+I, source-file) and rewrites the hook command to an absolute path
+# built from its own location, deleting any variant it does not recognise:
+#
+#   bash '/Users/berkay/.config/tmux/plugins/.../hooks/claude-session-track.sh'
+#
+# That path is machine-specific ($HOME differs across macOS and Linux) while
+# settings.json is a stowed file shared by every machine, so the tracked copy
+# would ping-pong between /Users/berkay and /home/berkay on every commit, and
+# whichever host had not yet reloaded tmux would run a hook pointing at a
+# nonexistent path ("SessionStart hook error: No such file or directory").
+#
+# So: let the plugin write whatever it wants to the live file (it is correct
+# for THAT machine), and normalise the two commands back to the canonical
+# $HOME-relative, existence-guarded form at the git boundary. The repo stays
+# machine-agnostic; a fresh clone/stow lands a settings.json that works on any
+# host until the local tmux rewrites it again.
+#
+# Keep CANONICAL_TRACK/CANONICAL_CLEANUP in sync with the hand-written hooks in
+# claude-moatlab/.claude-moatlab/settings.json -- that profile is NOT plugin-
+# managed (the plugin only ever touches $HOME/.claude/settings.json), so its
+# copy is the human-edited reference for this form.
+#
+# Reads settings.json on stdin, writes the normalised form on stdout. Must
+# ALWAYS emit valid content: a filter that fails silently would truncate the
+# blob git stores, so every error path falls back to echoing stdin unchanged.
+
+set -uo pipefail
+
+verbose=0
+if [[ ${1:-} == "-v" || ${1:-} == "--verbose" ]]; then
+	verbose=1
+fi
+
+log() {
+	if [[ $verbose -eq 1 ]]; then
+		echo "claude-settings-clean-filter: $*" >&2
+	fi
+}
+
+# The canonical hook commands. SessionStart warns when the plugin is missing
+# but only inside tmux (outside it there is nothing to restore, so it stays
+# quiet); SessionEnd never warns -- one reminder per session is enough.
+PLUGIN_DIR='$HOME/.config/tmux/plugins/tmux-assistant-resurrect/hooks'
+CANONICAL_TRACK="hook=\"$PLUGIN_DIR/claude-session-track.sh\"; if [ -f \"\$hook\" ]; then bash \"\$hook\"; elif [ -n \"\$TMUX\" ]; then echo \"tmux-assistant-resurrect not installed - claude pane restore is disabled; install it with tmux prefix+I\" >&2; exit 1; fi"
+CANONICAL_CLEANUP="hook=\"$PLUGIN_DIR/claude-session-cleanup.sh\"; if [ -f \"\$hook\" ]; then bash \"\$hook\"; fi"
+
+input="$(cat)"
+
+# jq absent (minimal container, fresh machine before bootstrap): store as-is
+# rather than losing the file.
+if ! command -v jq >/dev/null 2>&1; then
+	log "jq not found — passing input through unchanged"
+	printf '%s' "$input"
+	exit 0
+fi
+
+# `-S` sorts keys, matching the generic jqsort filter this replaces: Claude
+# rewrites settings.json in its own key order on every save, so sorting keeps
+# cosmetic reordering out of the diff.
+if ! output="$(printf '%s' "$input" | jq -S \
+	--arg track "$CANONICAL_TRACK" \
+	--arg cleanup "$CANONICAL_CLEANUP" '
+	def canonicalise($event; $needle; $canonical):
+		if (.hooks? // {} | has($event)) and ((.hooks[$event] | type) == "array")
+		then .hooks[$event] |= map(
+			.hooks = ((.hooks // []) | map(
+				if ((.command // "") | contains($needle))
+				then .command = $canonical
+				else . end
+			))
+		)
+		else . end;
+	canonicalise("SessionStart"; "claude-session-track"; $track)
+	| canonicalise("SessionEnd"; "claude-session-cleanup"; $cleanup)
+')"; then
+	log "jq failed (invalid JSON?) — passing input through unchanged"
+	printf '%s' "$input"
+	exit 0
+fi
+
+if [[ $verbose -eq 1 ]]; then
+	if [[ "$input" == *"$CANONICAL_TRACK"* ]]; then
+		log "SessionStart hook already canonical"
+	else
+		log "SessionStart hook normalised to \$HOME-relative guarded form"
+	fi
+fi
+
+# Command substitution stripped jq's trailing newline; restore exactly one so
+# the stored blob is byte-identical to plain `jq -S .` output.
+printf '%s\n' "$output"
