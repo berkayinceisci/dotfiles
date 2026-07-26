@@ -10,6 +10,39 @@ CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CACHE_FILE="/tmp/claude-usage-cache-${CLAUDE_CONFIG_DIR##*/}"
 CACHE_TTL=120 # seconds
 
+# A cached reading may be shown after a failed fetch only while it is this
+# young; past that the display says "?" rather than asserting a number that is
+# no longer known to be true.
+MAX_STALE_AGE=600 # seconds
+# A cached *failure* is retried much sooner than a cached reading, so a
+# transient error does not pin the display to "?" for the full CACHE_TTL.
+FAIL_TTL=20 # seconds
+# Encoding of "no usage data available" in the cache file / get_usage output.
+UNKNOWN="|||"
+
+# Claude Code refreshes the OAuth token shortly AFTER process start (observed
+# ~200ms) but spawns this statusline immediately, so the first render of a
+# session that sat idle past the token lifetime would otherwise read an already
+# expired token, get a 401, and fall back to the previous session's numbers.
+# Wait out that window instead.
+CREDS_RETRIES=15
+CREDS_POLL_SECS=0.1
+
+VERBOSE=0
+for arg in "$@"; do
+	case "$arg" in
+	-v | --verbose) VERBOSE=1 ;;
+	esac
+done
+
+# Log a branch decision to stderr under -v (never to stdout: that is the bar)
+log() {
+	if ((VERBOSE)); then
+		echo "statusline: $*" >&2
+	fi
+	return 0
+}
+
 # Powerline characters for capsule edges (require Nerd Font)
 # U+E0B6 = left rounded, U+E0B4 = right rounded
 LEFT_CAP=$(printf '\xee\x82\xb6')
@@ -84,42 +117,165 @@ if [[ -n "$cwd" && -n "$branch" ]]; then
 	fi
 fi
 
+# Parse an ISO 8601 timestamp into epoch seconds; empty output if unparseable
+to_epoch() {
+	local ts=$1
+	if [[ -z "$ts" ]]; then
+		echo ""
+		return 1
+	fi
+
+	local epoch
+	# Try GNU date first, then BSD date (macOS)
+	epoch=$(date -d "$ts" +%s 2>/dev/null)
+	if [[ -z "$epoch" ]]; then
+		# BSD date (macOS): parse ISO 8601 format
+		# Strip fractional seconds and convert +00:00 to +0000
+		local clean_ts=$(echo "$ts" | sed -E 's/\.[0-9]+//; s/:([0-9]{2})$/\1/')
+		epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$clean_ts" +%s 2>/dev/null)
+	fi
+	if [[ -z "$epoch" ]]; then
+		return 1
+	fi
+	echo "$epoch"
+}
+
+# Read the raw credentials blob from the platform's store
+read_creds() {
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		# macOS - use Keychain
+		security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null
+	else
+		# Linux - read from credentials file (honor CLAUDE_CONFIG_DIR set above)
+		local creds_file="$CLAUDE_CONFIG_DIR/.credentials.json"
+		if [[ -f "$creds_file" ]]; then
+			cat "$creds_file"
+		fi
+	fi
+}
+
+# Read credentials, waiting briefly for Claude Code to replace an expired token
+# (see CREDS_RETRIES above). Always echoes whatever was last read so a wrong
+# expiresAt or a skewed clock cannot permanently suppress the fetch; returns
+# non-zero when the token it echoes is still expired.
+get_fresh_creds() {
+	local attempt=0 creds expires_at now_ms
+	while :; do
+		creds=$(read_creds)
+		if [[ -z "$creds" ]]; then
+			echo ""
+			return 1
+		fi
+
+		expires_at=$(echo "$creds" | jq -r '.claudeAiOauth.expiresAt // empty' 2>/dev/null)
+		# No expiry recorded means there is nothing to wait for
+		if [[ ! "$expires_at" =~ ^[0-9]+$ ]]; then
+			echo "$creds"
+			return 0
+		fi
+		now_ms=$(($(date +%s) * 1000))
+		if ((expires_at > now_ms)); then
+			log "token valid for $(((expires_at - now_ms) / 1000))s"
+			echo "$creds"
+			return 0
+		fi
+
+		if ((attempt >= CREDS_RETRIES)); then
+			echo "$creds"
+			return 1
+		fi
+		attempt=$((attempt + 1))
+		log "token expired, waiting for refresh (attempt $attempt/$CREDS_RETRIES)"
+		sleep "$CREDS_POLL_SECS"
+	done
+}
+
+# True when a cached entry's 5h window has not yet rolled over. Once it has, the
+# cached percentage is guaranteed wrong — this is the case that used to show
+# yesterday's 99% on the first launch of a new day.
+entry_window_current() {
+	local five_resets=$(echo "$1" | cut -d'|' -f3)
+	if [[ -z "$five_resets" ]]; then
+		return 0
+	fi
+
+	local reset_epoch
+	reset_epoch=$(to_epoch "$five_resets") || return 0
+	if (($(date +%s) >= reset_epoch)); then
+		return 1
+	fi
+	return 0
+}
+
+write_cache() {
+	{
+		echo "$1"
+		echo "$2"
+	} >"$CACHE_FILE" 2>/dev/null
+}
+
+# Best available answer after a failed fetch: a recent, still-valid cached
+# reading if there is one, otherwise UNKNOWN. UNKNOWN is written back to the
+# cache so the next few renders skip the retry (and its wait) entirely.
+serve_stale_or_unknown() {
+	local now=$1 cache_time=$2 entry=$3
+	local age=$((now - cache_time))
+
+	if [[ -n "$entry" && "$entry" != "$UNKNOWN" ]] && ((age < MAX_STALE_AGE)) && entry_window_current "$entry"; then
+		log "serving stale cache (age ${age}s)"
+		echo "$entry"
+		return
+	fi
+
+	log "no usable data (cache age ${age}s); reporting unknown"
+	write_cache "$now" "$UNKNOWN"
+	echo "$UNKNOWN"
+}
+
 # Function to get Pro usage with caching
 get_usage() {
 	local now=$(date +%s)
 	local cache_time=0
+	local cached_entry=""
 
 	# Check if cache exists and is fresh
 	if [[ -f "$CACHE_FILE" ]]; then
 		cache_time=$(head -1 "$CACHE_FILE" 2>/dev/null || echo 0)
-		if ((now - cache_time < CACHE_TTL)); then
+		if [[ ! "$cache_time" =~ ^[0-9]+$ ]]; then
+			cache_time=0
+		fi
+		cached_entry=$(tail -n +2 "$CACHE_FILE" 2>/dev/null)
+
+		local ttl=$CACHE_TTL
+		if [[ "$cached_entry" == "$UNKNOWN" ]]; then
+			ttl=$FAIL_TTL
+		fi
+		# A fresh cache is still only usable while its window holds, so a reset
+		# that lands mid-TTL is not papered over by the previous window's number
+		if ((now - cache_time < ttl)) && entry_window_current "$cached_entry"; then
 			# Cache is fresh, use it
-			tail -n +2 "$CACHE_FILE"
+			log "cache hit (age $((now - cache_time))s, ttl ${ttl}s)"
+			echo "$cached_entry"
 			return
 		fi
 	fi
 
 	# Cache is stale or doesn't exist, fetch new data
-	# Get credentials based on platform
-	local creds=""
-	if [[ "$OSTYPE" == "darwin"* ]]; then
-		# macOS - use Keychain
-		creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
-	else
-		# Linux - read from credentials file (honor CLAUDE_CONFIG_DIR set above)
-		local creds_file="$CLAUDE_CONFIG_DIR/.credentials.json"
-		if [[ -f "$creds_file" ]]; then
-			creds=$(cat "$creds_file")
-		fi
-	fi
+	local creds expired=0
+	creds=$(get_fresh_creds) || expired=1
 	if [[ -z "$creds" ]]; then
-		echo "|||"
+		log "no credentials available"
+		serve_stale_or_unknown "$now" "$cache_time" "$cached_entry"
 		return
+	fi
+	if ((expired)); then
+		log "token still expired after waiting; trying the API anyway"
 	fi
 
 	local token=$(echo "$creds" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
 	if [[ -z "$token" ]]; then
-		echo "|||"
+		log "credentials contain no access token"
+		serve_stale_or_unknown "$now" "$cache_time" "$cached_entry"
 		return
 	fi
 
@@ -129,13 +285,11 @@ get_usage() {
 		-H "anthropic-beta: oauth-2025-04-20" \
 		"https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
 
-	# On empty or error response, return stale cache if available
+	# On empty or error response, fall back — but never to a reading that is too
+	# old or whose window has already reset
 	if [[ -z "$response" ]] || echo "$response" | jq -e '.error' >/dev/null 2>&1; then
-		if [[ -f "$CACHE_FILE" ]]; then
-			tail -n +2 "$CACHE_FILE"
-		else
-			echo "|||"
-		fi
+		log "usage API returned no usable response"
+		serve_stale_or_unknown "$now" "$cache_time" "$cached_entry"
 		return
 	fi
 
@@ -145,10 +299,8 @@ get_usage() {
 	local seven_day_resets=$(echo "$response" | jq -r '.seven_day.resets_at // empty' 2>/dev/null)
 
 	# Write to cache
-	{
-		echo "$now"
-		echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
-	} >"$CACHE_FILE" 2>/dev/null
+	log "fetched fresh usage (5h=${five_hour}%, 7d=${seven_day}%)"
+	write_cache "$now" "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
 
 	echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
 }
@@ -163,14 +315,7 @@ format_reset_time() {
 
 	local now=$(date +%s)
 	local reset_epoch
-	# Try GNU date first, then BSD date (macOS)
-	reset_epoch=$(date -d "$reset_time" +%s 2>/dev/null)
-	if [[ -z "$reset_epoch" ]]; then
-		# BSD date (macOS): parse ISO 8601 format
-		# Strip fractional seconds and convert +00:00 to +0000
-		local clean_time=$(echo "$reset_time" | sed -E 's/\.[0-9]+//; s/:([0-9]{2})$/\1/')
-		reset_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$clean_time" +%s 2>/dev/null)
-	fi
+	reset_epoch=$(to_epoch "$reset_time")
 	if [[ -z "$reset_epoch" ]]; then
 		echo ""
 		return
@@ -238,8 +383,18 @@ five_hour_clock=$(format_reset_clock "$five_hour_resets_raw" short)
 seven_day_clock=$(format_reset_clock "$seven_day_resets_raw" long)
 
 # Format percentages (API returns values already as percentages, e.g., 18.0 = 18%)
-five_hour_pct=$(awk "BEGIN {printf \"%.0f\", ${five_hour_raw:-0}}")
-seven_day_pct=$(awk "BEGIN {printf \"%.0f\", ${seven_day_raw:-0}}")
+# A missing value means the reading is unknown, not zero — say so rather than
+# reporting a number the fetch never actually produced
+format_pct() {
+	if [[ ! "$1" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+		echo "?"
+		return
+	fi
+	awk "BEGIN {printf \"%.0f\", $1}"
+}
+
+five_hour_pct=$(format_pct "$five_hour_raw")
+seven_day_pct=$(format_pct "$seven_day_raw")
 context_pct_fmt=$(awk "BEGIN {printf \"%.0f\", ${context_pct:-0}}")
 
 # Format cost
@@ -250,6 +405,11 @@ get_usage_colors() {
 	local pct=$1
 	local default_bg=$2
 	local default_fg=$3
+	# Unknown ("?") reads as absent data, not as a low number
+	if [[ ! "$pct" =~ ^[0-9]+$ ]]; then
+		echo "${BG_GRAY}|${FG_GRAY}"
+		return
+	fi
 	if ((pct >= 80)); then
 		echo "${BG_RED}|${FG_RED}"
 	elif ((pct >= 60)); then
@@ -313,14 +473,22 @@ output+=$(capsule " ${context_display} " "$ctx_bg" "$ctx_fg")
 
 # 5-hour usage segment (pink, or warning color)
 output+=" "
-five_hour_display="5h:${five_hour_pct}%"
+if [[ "$five_hour_pct" == "?" ]]; then
+	five_hour_display="5h:?"
+else
+	five_hour_display="5h:${five_hour_pct}%"
+fi
 [[ -n "$five_hour_reset" ]] && five_hour_display+=" ${five_hour_reset}"
 [[ -n "$five_hour_clock" ]] && five_hour_display+=" (${five_hour_clock})"
 output+=$(capsule " ${five_hour_display} " "$five_hour_bg" "$five_hour_fg")
 
 # 7-day usage segment (purple, or warning color)
 output+=" "
-seven_day_display="7d:${seven_day_pct}%"
+if [[ "$seven_day_pct" == "?" ]]; then
+	seven_day_display="7d:?"
+else
+	seven_day_display="7d:${seven_day_pct}%"
+fi
 [[ -n "$seven_day_reset" ]] && seven_day_display+=" ${seven_day_reset}"
 [[ -n "$seven_day_clock" ]] && seven_day_display+=" (${seven_day_clock})"
 output+=$(capsule " ${seven_day_display} " "$seven_day_bg" "$seven_day_fg")
