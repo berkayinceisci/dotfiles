@@ -676,6 +676,67 @@ else
 	echo "  ⊘ Skipping yt-sync-music (not manjaro)"
 fi
 
+# Share Claude Code sessions between the ccn and ccnm accounts
+echo ""
+echo "Setting up cross-account Claude session sharing..."
+
+# Session transcripts are plain JSONL under <CONFIG>/projects/<slug>/ and carry
+# no account or org identity, so a session started under ccn can be resumed
+# under ccnm and vice versa -- which is how work survives one account hitting
+# its rate limit. Both `--resume <id>` and `--continue` locate the transcript by
+# scanning <CONFIG>/projects (by session id and by mtime respectively), so the
+# ONLY requirement is that both profiles see the same project tree.
+# CLAUDE_CONFIG_DIR cannot express this: it relocates the entire profile,
+# credentials included, and Claude Code has no separate knob for the projects
+# root (it is hardcoded to <config dir>/projects). Hence a symlink.
+#
+# ~/.claude/projects is the single canonical store and ~/.claude-moatlab/projects
+# is a symlink into it, so EVERY project is shared -- including the per-project
+# auto-memory under <slug>/memory. Only credentials, settings and plugins stay
+# per-account. (This deliberately overrides the account isolation the
+# claude-moatlab stow package sets up for the rest of the profile.)
+#
+# my-session-logs is shared for the same reason, and must be shared TOGETHER with
+# projects: log-session.py derives its output dir from realpath(transcript_path),
+# so once projects/ is shared every log -- whichever account produced it -- is
+# written under ~/.claude/my-session-logs. Leaving the moatlab copy unshared
+# would strand its history, since the in-repo cc-sessions symlink can only point
+# at one tree at a time (log-session.py:183 repoints it per session).
+#
+# Not stowable: the links point runtime-dir -> runtime-dir, never into the repo,
+# and committing an absolute symlink would hardcode /home/berkay and break
+# macOS, where $HOME is /Users/berkay.
+link_shared_claude_dir() {
+	local name="$1" primary="$HOME/.claude/$1" secondary="$HOME/.claude-moatlab/$1"
+
+	mkdir -p "$primary"
+	# A populated real directory on the moatlab side must not be linked over: the
+	# link HIDES that content rather than merging it, and consolidating two trees
+	# is a one-time manual job (files move, but anything present on both sides --
+	# memory/MEMORY.md indexes, same-named archive logs -- needs merging by hand).
+	if [[ -d "$secondary" && ! -L "$secondary" ]] &&
+		[[ -n "$(find "$secondary" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+		echo "  ⚠ $secondary has its own content; not linked"
+		echo "    merge it into $primary by hand, then re-run"
+		return 0
+	fi
+	if [[ -d "$secondary" && ! -L "$secondary" ]]; then
+		rmdir "$secondary"
+	fi
+	# -n is required: without it, ln -sf on an existing directory symlink creates
+	# the new link INSIDE the target instead of replacing it.
+	ln -sfn "$primary" "$secondary"
+	echo "  ✓ Shared: ~/.claude-moatlab/$name -> ~/.claude/$name"
+}
+
+if [[ ! -d "$HOME/.claude-moatlab" ]]; then
+	echo "  ⊘ Skipping (no ~/.claude-moatlab on this machine)"
+else
+	for shared_dir in projects my-session-logs; do
+		link_shared_claude_dir "$shared_dir"
+	done
+fi
+
 # Register the Claude Code Playwright MCP server (bundled browser, not a channel)
 echo ""
 echo "Setting up Claude Code Playwright MCP..."
