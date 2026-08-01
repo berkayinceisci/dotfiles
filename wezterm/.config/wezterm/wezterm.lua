@@ -218,6 +218,36 @@ config.keys = {
 	-- leaving Shift+Enter and other enhanced keys intact. Standard ASCII; a no-op
 	-- elsewhere (Ctrl+[ has always meant ESC). See claude/.claude/TODO.md.
 	{ key = "[", mods = "CTRL", action = act.SendString("\x1b") },
+	-- Force Ctrl+Backspace to emit ESC DEL (Alt+Backspace), for the same reason as
+	-- Ctrl+[ above -- and note it stays Ctrl+Backspace on the keyboard, only the bytes
+	-- change, so i3's Mod1+BackSpace binding is not involved.
+	--
+	-- Pinning at all is what fixes the encoding: under enhanced key reporting wezterm
+	-- reports Ctrl+Backspace modifier-explicitly, and nvim receives the internal form
+	-- `80 fc 04 08` (CTRL applied to 0x08), which NO keycode notation spells -- not
+	-- <C-h> (plain `08`), not <C-BS> (`80 fc 04 80 6b 62`, the kitty encoding, and
+	-- enable_kitty_keyboard is false here). Every mapping silently stops matching.
+	-- SendString bypasses the encoder, so the bytes are whatever we say, regardless of
+	-- what the program negotiated -- including over ssh, where a remote nvim would
+	-- otherwise turn enhanced reporting back on.
+	--
+	-- ESC DEL rather than the legacy ^H because ^H only fixes *delivery*, not meaning:
+	-- lazygit (gocui/tcell) and Claude Code both fold a bare ^H into a one-char
+	-- backspace and keep word-delete on another key, so they still need per-app
+	-- translation. Alt+Backspace is the de-facto word-delete instead: zsh's emacs
+	-- keymap binds `^[^?` to backward-kill-word by DEFAULT, lazygit's editor has the
+	-- ModAlt case (pkg/gui/editors.go), and Claude Code honours it -- all three with no
+	-- translation anywhere, in or out of tmux, and on remote machines whose dotfiles
+	-- have not been bootstrapped yet. nvim insert mode is the one exception, mapped as
+	-- <M-BS> in nvim/lua/config/keymaps.lua.
+	--
+	-- This makes the ^H handling elsewhere (that keymaps.lua fallback, zsh's
+	-- `bindkey '^H'`, tmux's `bind-key -n C-h` gate) redundant on the wezterm path,
+	-- but they are kept: they still cover terminals that do no pinning. Caveat: ESC DEL
+	-- is two bytes where ^H was one, so a reader with escape-time 0 that happens to see
+	-- them in separate reads could take it for a lone Escape; they are written together
+	-- so this should not arise, but a single byte was structurally immune.
+	{ key = "Backspace", mods = "CTRL", action = act.SendString("\x1b\x7f") },
 	{ key = "LeftArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "RightArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "UpArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },

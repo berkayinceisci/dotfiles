@@ -6,29 +6,56 @@
   gets dropped, replace the @import + addendum split with a plain symlink
   like Codex/OpenCode.
 
-## Vim Mode Configuration
-- Waiting for .vimrc-like configuration support to remap Ctrl+Backspace to delete previous word
-- Currently Ctrl+W works but conflicts with tmux vim-aware pane switching (bind-key -n C-w)
-- Feature request to be submitted via /feedback
+## Ctrl+Backspace word-delete (RESOLVED 2026-07-31)
+- WezTerm maps the physical Ctrl+Backspace key to ESC DEL (Alt+Backspace) in
+  `wezterm/.config/wezterm/wezterm.lua`. Claude Code handles that sequence as
+  word-delete natively, both directly and through tmux, so this no longer
+  depends on .vimrc-like remapping support or the conflicting Ctrl+W binding.
 
-### Ctrl+[ stopped entering normal mode (regression, 2026-07-15, v2.1.211)
-- **Symptom:** `ctrl+[` no longer switches insert→normal mode. Plain `Escape`
-  still works.
-- **Not our config:** the terminal sends a bare `ESC` (0x1b) for `ctrl+[`
-  (wezterm `enable_kitty_keyboard = false`; tmux has no `extended-keys`), and
-  since `Escape` works the byte reaches Claude Code fine — it's a CC vim
-  input-handler regression, not a keyboard-protocol issue. Reported broken
-  ~v2.1.1; no changelog entry claims a fix.
-- **Not restorable via config:** `keybindings.json` can't remap vim keys (docs:
-  "Vim keys aren't remappable through the keybindings file" — it only controls
-  UI actions). `vimInsertModeRemaps` (v2.1.208+, the vim-remap knob) only
-  accepts **two-character** insert-mode sequences, so it can't map a modified
-  single key like `ctrl+[`.
-- **Workaround:** use plain `Escape`, or add a two-char alias in
-  `settings.json`: `"vimInsertModeRemaps": { "jk": "<Esc>" }` (a *different*
-  keystroke, not a restoration of `ctrl+[`).
-- **Upstream:** related remapping request https://github.com/anthropics/claude-code/issues/53039
-  — file a specific `ctrl+[` regression issue against latest if it persists.
+### Ctrl+[ doesn't enter vim normal mode on local claude — CC enhanced-key encoding + wezterm env-detection (RESOLVED 2026-07-15, v2.1.211)
+- **Symptom:** on this Linux box, local Claude Code vim mode `ctrl+[` doesn't
+  switch insert→normal. Plain `Escape` works. It works on the MacBook AND over
+  SSH from this same wezterm into another host (Manjaro) — **only *local* claude
+  on this machine breaks**, which is the key clue: same terminal, different
+  process environment.
+- **Root cause (confirmed by bisection, all in local wezterm):**
+  - `command cat -v` + `ctrl+[` → bare `ESC` (0x1b). Baseline byte is correct:
+    US layout active, `[`=0x5b, Ctrl→0x1b. Layout is NOT the cause (an earlier
+    Turkish-layout guess was WRONG — `us,tr` exists but US was active).
+  - `nvim` insert-mode `ctrl+[` → returns to normal fine. wezterm delivers Esc
+    to TUIs correctly, so wezterm is NOT the cause.
+  - Claude Code **detects wezterm from env vars** (`TERM_PROGRAM=WezTerm`, plus
+    `WEZTERM_*`) and turns on enhanced key reporting. Under that mode wezterm
+    re-encodes `ctrl+[` as a CSI sequence (`modifyOtherKeys`/CSI-u, e.g.
+    `CSI 27;5;91~` or `CSI 91;5u`). nvim decodes that back to Esc; **CC's vim
+    mode only recognizes a literal `ESC`**, so it misses it.
+  - **`ssh` forwards only `TERM`, not `TERM_PROGRAM`/`WEZTERM_*`.** So every
+    ssh'd claude sees a "plain" terminal, never enables enhanced mode, gets a
+    bare Esc → works. That is the entire local-vs-remote asymmetry.
+  - **Proven:** `env -u TERM_PROGRAM -u TERM_PROGRAM_VERSION -u WEZTERM_… claude`
+    makes local `ctrl+[` work. Narrowed to `TERM_PROGRAM` as the trigger var.
+- **Key trade-off (why the env-strip is NOT the fix):** the enhanced keyboard
+  mode CC turns on for wezterm is two-sided — it's what makes **Shift+Enter**
+  (newline) distinguishable AND what re-encodes `ctrl+[`. Enhanced on → Shift+Enter
+  works, `ctrl+[` broken; enhanced off (env-strip) → `ctrl+[` works, Shift+Enter
+  breaks. Confirmed empirically (a stripped session lost Shift+Enter). So the
+  env-strip alias just trades one for the other — it was reverted.
+- **FIX (confirmed working 2026-07-15, keeps BOTH):** force `ctrl+[` to emit a
+  bare ESC at the wezterm layer, before the enhanced-encoding step —
+  `{ key = "[", mods = "CTRL", action = act.SendString("\x1b") }` in
+  `wezterm/.config/wezterm/wezterm.lua`. wezterm key assignments run ahead of key
+  encoding, so CC receives a literal ESC (vim escape works) while Shift+Enter and
+  the other enhanced keys stay on. Standard ASCII, no-op in other apps.
+  Cross-platform for free — wezterm.lua is stowed on the Mac too. Verified: ctrl+[
+  AND Shift+Enter both work.
+- **Fallback (unused):** `"vimInsertModeRemaps": { "jk": "<Esc>" }` in
+  settings.json (v2.1.208+) — keeps enhanced mode, escapes via `jk` instead of
+  `ctrl+[`.
+- **Upstream (the real fix):** CC vim mode should map enhanced-mode Ctrl+`[`
+  (`CSI 27;5;91~` / `CSI 91;5u`) to Esc like nvim does. Related:
+  https://github.com/anthropics/claude-code/issues/53039 — broader insert-exit
+  remapping request, now closed as not planned. A specific
+  `ctrl+[`-under-modifyOtherKeys bug could still be filed.
 
 ## Status Line
 - Check if Claude Code allows disabling/styling the builtin git changes line

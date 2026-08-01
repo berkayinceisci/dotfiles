@@ -1,6 +1,12 @@
 local keymap = vim.keymap
 
-keymap.set("i", "<C-H>", "<C-w>") -- C-Backspace
+-- C-Backspace = delete previous word. Two spellings because the byte depends on
+-- the terminal: wezterm pins Ctrl+Backspace to ESC DEL (see wezterm.lua), which
+-- nvim names <M-BS> and which every other consumer understands natively; <C-H>
+-- is the legacy ^H, still what arrives from terminals that do no such pinning
+-- (ssh'ing in from elsewhere, say), so it stays as a fallback.
+keymap.set("i", "<M-BS>", "<C-w>") -- C-Backspace (wezterm's ESC DEL)
+keymap.set("i", "<C-H>", "<C-w>") -- C-Backspace (legacy ^H)
 
 keymap.set("n", "<C-w>%", "<C-w>v") -- split window vertically
 keymap.set("n", '<C-w>"', "<C-w>s") -- split window horizontally
