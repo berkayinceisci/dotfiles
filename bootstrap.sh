@@ -150,7 +150,7 @@ echo "Stowing dotfiles..."
 LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura" "mimeapps" "applications")
 
 # macOS-specific packages to skip on Linux
-MACOS_ONLY_PACKAGES=("swiftbar")
+MACOS_ONLY_PACKAGES=("swiftbar" "duti")
 
 # Packages to skip on headless cloudlab machines
 CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps" "applications")
@@ -573,6 +573,17 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
 		defaults write -app Skim SKTeXEditorCommand -string "$HOME/.local/scripts/nvr-skim-inverse"
 		defaults write -app Skim SKTeXEditorArguments -string '"%line" "%file"'
 		echo "  ✓ Skim configured"
+
+		# Apply default-app associations via duti (macOS LaunchServices state
+		# cannot be a tracked file; the declarative list lives in the duti stow
+		# package -- macOS counterpart of the Linux-only mimeapps package)
+		if command -v duti >/dev/null 2>&1; then
+			echo "Applying default application associations (duti)..."
+			duti "$HOME/.config/duti/default"
+			echo "  ✓ Default app associations applied"
+		else
+			echo "  ⚠ duti not installed. Install with: brew install duti"
+		fi
 
 		# Check if SwiftBar is installed and set plugin directory
 		if [ -d "/Applications/SwiftBar.app" ]; then

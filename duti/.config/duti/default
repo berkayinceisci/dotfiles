@@ -1,0 +1,16 @@
+# Default application associations for macOS (LaunchServices), applied by
+# bootstrap.sh via `duti` (macOS counterpart of the Linux-only mimeapps
+# package). Format: <bundle_id> <extension|UTI> <role (use "all"; "viewer" is silently ignored on modern macOS)>
+
+# Video -> VLC (mirrors the video/* entries in mimeapps/.config/mimeapps.list)
+org.videolan.vlc .mp4 all
+org.videolan.vlc .mkv all
+org.videolan.vlc .webm all
+org.videolan.vlc .avi all
+org.videolan.vlc .mov all
+org.videolan.vlc .mpg all
+org.videolan.vlc .mpeg all
+org.videolan.vlc .flv all
+org.videolan.vlc .wmv all
+org.videolan.vlc .3gp all
+org.videolan.vlc .ogv all
