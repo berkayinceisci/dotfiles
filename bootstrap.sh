@@ -147,13 +147,13 @@ echo ""
 echo "Stowing dotfiles..."
 
 # Linux-specific packages to skip on macOS
-LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura" "mimeapps" "applications")
+LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura" "mimeapps" "applications" "vlc")
 
 # macOS-specific packages to skip on Linux
 MACOS_ONLY_PACKAGES=("swiftbar" "duti")
 
 # Packages to skip on headless cloudlab machines
-CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps" "applications")
+CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps" "applications" "vlc")
 
 for package in */; do
 	package="${package%/}" # Remove trailing slash
@@ -265,6 +265,12 @@ for package in */; do
 	elif [[ "$package" == "atuin" || "$package" == "opencode" ]]; then
 		# --no-folding keeps ~/.config/opencode a real directory so the shared
 		# AGENTS.md symlink (created below) lands there, not inside the repo.
+		stow --no-folding "$package"
+	elif [[ "$package" == "vlc" ]]; then
+		# --no-folding keeps ~/.config/vlc a real directory. Only vlcrc is
+		# tracked; VLC also writes vlc-qt-interface.conf (window geometry,
+		# recent files) into that dir, and folding it into a single directory
+		# symlink would divert that churn into the repo.
 		stow --no-folding "$package"
 	else
 		stow --ignore='cc-session\.md' --ignore='\.claude' "$package"
