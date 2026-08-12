@@ -1,0 +1,60 @@
+###############################################################################
+# vlc version 3.0.22 Vetinari
+#
+# Minimal vlcrc: only settings that differ from VLC's defaults. VLC fills in
+# everything else, so there is no need to track its full 5000-line generated
+# file. Editing preferences in the VLC GUI rewrites this file in place and
+# replaces the stow symlink -- re-run bootstrap.sh to restore it.
+#
+# Linux-only package: macOS VLC reads
+# ~/Library/Preferences/org.videolan.vlc/vlcrc instead.
+###############################################################################
+
+[core] # core program
+# Repeat the current item
+loop=1
+# Allow metadata network access
+metadata-network-access=1
+
+[avcodec] # FFmpeg audio/video decoder
+# Hardware decoding (VA-API) is DISABLED deliberately.
+#
+# VLC 3 + the Intel iHD VA-API driver corrupt H.264 streams whose width is not
+# a multiple of 16: playback is a black screen with working audio. The decoder
+# errors on every frame with "Failed to end picture decode issue: 23".
+# Measured on Tiger Lake (i5-11260H), horizontal crop = coded width - width:
+#
+#   crop 0 (720, 1088, 1920) .... OK      crop 8  (1080, 1000, 552) ... BROKEN
+#   crop 2 (1006) ............... OK      crop 12 (1012) ............. BROKEN
+#   crop 4 (540, 1004) .......... OK      crop 14 (1010) ............. BROKEN
+#   crop 6 (1002) ............... BROKEN (partial)
+#
+# 1080-wide portrait video (phone / Twitter / TikTok downloads) is the common
+# case, since 1080 is not a multiple of 16. The bug is H.264-specific -- VP9 at
+# the same 8px crop decodes fine -- but VLC has no per-codec toggle, so this
+# gives up working HEVC/VP9/AV1 acceleration too.
+#
+# Cost of software decode, CPU-seconds per ~22s of playback:
+#   1088x1920 H.264 .... 0.65 -> 4.3   (~0.2 core)
+#   4K H.264 @25Mbps ... 0.84 -> 16.6  (~0.75 core)
+#   4K HEVC @15Mbps .... 0.85 -> 35.3  (~1.4 cores)
+# No dropped frames in any case. GPU rendering is unaffected -- VLC still uses
+# the OpenGL vout; only decode moves to the CPU.
+#
+# No-op on machines whose VLC has no working VA-API decoder module anyway
+# (e.g. the Pop!_OS box, where hw=any and hw=none measure identically).
+avcodec-hw=none
+
+[subsdec] # Text subtitle decoder
+# Turkish subtitles are commonly encoded as Windows-1254, not UTF-8
+subsdec-encoding=Windows-1254
+
+[freetype] # Text renderer
+freetype-font=Noto Sans
+
+[qt] # Qt interface
+# Do not ask about network access on first run
+qt-privacy-ask=0
+
+[skins2] # Skinnable Interface
+skins2-last=/usr/share/vlc/skins2/default.vlt
