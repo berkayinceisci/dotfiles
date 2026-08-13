@@ -9,23 +9,47 @@ alias tldr='tldr -c'
 # Session logging is a Claude Code `Stop` hook now (~/.agents/hooks/log-session.sh),
 # not a launch wrapper — it runs no matter how claude starts (incl. the tmux
 # resurrect plugin's bare `claude --resume`), so these call the claude binary directly.
+#
+# Naming: cc + [d = --dangerously-skip-permissions] + [p = personal | m = moatlab]
+# + [account number; omitted for moatlab = let cc-pick-account choose]. There is
+# deliberately NO letter for the permission mode: auto mode comes from
+# settings.json ("permissions": {"defaultMode": "auto"}), never from the alias,
+# and as of 2026-08-14 it is Claude Code's own default for Pro/Max/Team anyway.
+# The old `n` in ccn/ccnm encoded neither -- it documented a setting that lives
+# somewhere else -- so it was dropped; `d` stays because it IS a real flag here.
+#
 # Personal account. `env -u` REMOVES CLAUDE_CONFIG_DIR rather than leaving it to
 # chance: bare `claude` silently picks up an inherited CLAUDE_CONFIG_DIR, and the
 # tmux server's global environment is inherited from whatever started it -- so a
 # server first spawned from inside a moatlab session (e.g. an agent running
-# `tmux new-session` when no server was up) makes every pane's `ccn` open the
+# `tmux new-session` when no server was up) makes every pane's `ccp` open the
 # business account.
 # Do NOT "fix" this by pinning CLAUDE_CONFIG_DIR=$HOME/.claude instead: the
 # default profile's config/state file is the home-root ~/.claude.json, but
 # setting the var moves that lookup to $CLAUDE_CONFIG_DIR/.claude.json
 # (~/.claude/.claude.json), which is empty -> claude sees a fresh install and
 # prompts for login. Only the *absence* of the var reproduces default behavior.
-alias ccn='env -u CLAUDE_CONFIG_DIR claude'
-alias ccd='env -u CLAUDE_CONFIG_DIR claude --dangerously-skip-permissions'
-# Business (moatlab) account: separate CLAUDE_CONFIG_DIR isolates creds/projects/settings.
+alias ccp='env -u CLAUDE_CONFIG_DIR claude'
+alias ccdp='env -u CLAUDE_CONFIG_DIR claude --dangerously-skip-permissions'
+# Business (moatlab) accounts: separate CLAUDE_CONFIG_DIR isolates creds/settings.
 # `claude` is a real command (not an alias), so it IS reached after the env-var assignment.
-alias ccnm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
-alias ccdm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude --dangerously-skip-permissions'
+# The two moatlab accounts are interchangeable CAPACITY, not separate identities:
+# bootstrap.sh symlinks every profile's projects/ + my-session-logs/ into ~/.claude,
+# so a session started under one is resumable under the other -- which is how work
+# survives a rate limit. Pick by hand with ccm1/ccm2, or let ccm pick for you.
+alias ccm1='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
+alias ccdm1='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude --dangerously-skip-permissions'
+alias ccm2='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab2 claude'
+alias ccdm2='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab2 claude --dangerously-skip-permissions'
+# Auto-select the moatlab account with the most 5h/7d headroom -- the default way
+# in, hence the shortest name. Args pass through, and because projects/ is shared
+# `ccm --resume <id>` finds the session whichever account wins. Never routes to
+# the personal account -- that is a separate identity, not spare quota.
+# Picker flags must precede claude's, so `ccm -n` prints the account it would
+# pick, but `ccdm -v` sends -v to CLAUDE (parsing already stopped at
+# --dangerously-skip-permissions); to debug that case run `cc-pick-account -v -n`.
+alias ccm='cc-pick-account'
+alias ccdm='cc-pick-account --dangerously-skip-permissions'
 alias cxn='~/.local/scripts-private/codex-with-untracked-state'
 alias cxd='~/.local/scripts-private/codex-with-untracked-state --dangerously-bypass-approvals-and-sandbox'
 alias ocn='~/.local/scripts-private/opencode-with-session-logging'
