@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+# Launch Claude Code under whichever BUSINESS (moatlab) account has the most
+# quota headroom left.
+#
+# The moatlab accounts are interchangeable capacity, not separate identities:
+# bootstrap.sh symlinks every profile's projects/ and my-session-logs/ into
+# ~/.claude, so a session started under one account can be resumed under
+# another. The only thing that actually differs between them is how much of the
+# 5h / 7d rate-limit window each has burned -- which is exactly what this picks.
+#
+# The PERSONAL account (~/.claude, the `ccp` alias) is deliberately NOT a
+# candidate. It is a different identity, not spare capacity; auto-routing
+# business work onto it would be a policy decision, not a scheduling one.
+#
+# Selection: for each candidate, the binding constraint is max(5h%, 7d%) --
+# either window being exhausted blocks you equally. Lowest binding constraint
+# wins; ties go to the first profile, so the default stays stable.
+#
+# Usage: cc-pick-account [-v|--verbose] [-n|--dry-run] [--] [claude args...]
+#   -v  log each profile's 5h/7d numbers and the launch command to stderr
+#   -n  print the account that would be chosen and exit without launching
+#   --  stop parsing picker flags; pass everything after it to claude verbatim
+#
+# Leading flags are consumed by the picker; the first unrecognized argument
+# ends flag parsing, so `cc-pick-account --dangerously-skip-permissions` and
+# `cc-pick-account --resume <id>` pass through as-is. Use `--` when an argument
+# would otherwise collide (e.g. `cc-pick-account -- --verbose` gives claude its
+# own --verbose rather than the picker's).
+
+set -euo pipefail
+
+VERBOSE=0
+DRY_RUN=0
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-v | --verbose)
+		VERBOSE=1
+		shift
+		;;
+	-n | --dry-run)
+		DRY_RUN=1
+		shift
+		;;
+	--)
+		shift
+		break
+		;;
+	*)
+		break
+		;;
+	esac
+done
+
+log() {
+	if [[ $VERBOSE -eq 1 ]]; then
+		echo "cc-pick-account: $*" >&2
+	fi
+}
+
+# Same cache the statusline writes (statusline.sh: /tmp/claude-usage-cache-<dir>
+# holding "<epoch>\n<5h>|<7d>|<5h-reset>|<7d-reset>"). Read-only here: the
+# statusline stays the single writer so there is no second definition of the
+# format's freshness semantics.
+CACHE_TTL=120     # seconds; matches statusline.sh CACHE_TTL
+UNKNOWN="|||"     # statusline.sh's "no data" sentinel
+CURL_TIMEOUT=4    # per-profile API budget; all profiles are queried in parallel
+
+# --- candidate discovery ----------------------------------------------------
+# ~/.claude-moatlab, ~/.claude-moatlab2, ... -- the same set bootstrap.sh
+# manages as CLAUDE_SECONDARY_PACKAGES, discovered by glob so a newly added
+# profile needs no edit here.
+CANDIDATES=()
+for dir in "$HOME"/.claude-moatlab*/; do
+	if [[ -d "$dir" ]]; then
+		CANDIDATES+=("${dir%/}")
+	fi
+done
+
+if [[ ${#CANDIDATES[@]} -eq 0 ]]; then
+	echo "cc-pick-account: no ~/.claude-moatlab* profile found; run bootstrap.sh" >&2
+	exit 1
+fi
+
+# --- usage lookup -----------------------------------------------------------
+# Reads a still-fresh statusline cache entry for a profile, else empty.
+# Freshness needs BOTH the TTL and the 5h reset time: an entry from before a
+# window rollover is not merely old, it describes a window that no longer
+# exists.
+read_cache() {
+	local cfg="$1" cache_file entry cache_time now five_reset reset_epoch
+	cache_file="/tmp/claude-usage-cache-${cfg##*/}"
+	if [[ ! -f "$cache_file" ]]; then
+		return 1
+	fi
+
+	cache_time=$(head -1 "$cache_file" 2>/dev/null || echo 0)
+	if [[ ! "$cache_time" =~ ^[0-9]+$ ]]; then
+		return 1
+	fi
+	entry=$(tail -n +2 "$cache_file" 2>/dev/null)
+	if [[ -z "$entry" || "$entry" == "$UNKNOWN" ]]; then
+		return 1
+	fi
+
+	now=$(date +%s)
+	if ((now - cache_time >= CACHE_TTL)); then
+		return 1
+	fi
+
+	# Drop an entry whose 5h window has already rolled over
+	five_reset=$(echo "$entry" | cut -d'|' -f3)
+	if [[ -n "$five_reset" ]]; then
+		if reset_epoch=$(date -d "$five_reset" +%s 2>/dev/null); then
+			if ((now >= reset_epoch)); then
+				return 1
+			fi
+		fi
+	fi
+
+	echo "$entry" | cut -d'|' -f1,2
+}
+
+# Queries the usage API for one profile. Linux only: on macOS the OAuth
+# credentials live in a SINGLE Keychain entry ("Claude Code-credentials")
+# shared by every profile, so there is no per-profile token to authenticate
+# with -- see statusline.sh read_creds(). macOS therefore relies on the
+# per-profile cache files alone, which is why this returns empty there.
+fetch_usage() {
+	local cfg="$1" creds_file token response five seven
+
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		return 1
+	fi
+
+	creds_file="$cfg/.credentials.json"
+	if [[ ! -f "$creds_file" ]]; then
+		return 1
+	fi
+	if ! token=$(jq -r '.claudeAiOauth.accessToken // empty' "$creds_file" 2>/dev/null); then
+		return 1
+	fi
+	if [[ -z "$token" ]]; then
+		return 1
+	fi
+
+	response=$(curl -s --max-time "$CURL_TIMEOUT" \
+		-H "Authorization: Bearer $token" \
+		-H "anthropic-beta: oauth-2025-04-20" \
+		"https://api.anthropic.com/api/oauth/usage" 2>/dev/null) || return 1
+
+	if [[ -z "$response" ]]; then
+		return 1
+	fi
+	if jq -e '.error' >/dev/null 2>&1 <<<"$response"; then
+		return 1
+	fi
+
+	five=$(jq -r '.five_hour.utilization // empty' <<<"$response" 2>/dev/null)
+	seven=$(jq -r '.seven_day.utilization // empty' <<<"$response" 2>/dev/null)
+	if [[ -z "$five" || -z "$seven" ]]; then
+		return 1
+	fi
+	echo "$five|$seven"
+}
+
+# Cache first (free), API second. Writes "<cfg>|<five>|<seven>" to $2.
+resolve_usage() {
+	local cfg="$1" out="$2" usage
+	if usage=$(read_cache "$cfg"); then
+		echo "$cfg|$usage|cache" >"$out"
+		return 0
+	fi
+	if usage=$(fetch_usage "$cfg"); then
+		echo "$cfg|$usage|api" >"$out"
+		return 0
+	fi
+	echo "$cfg|||unknown" >"$out"
+}
+
+if ! command -v jq >/dev/null 2>&1; then
+	log "jq not found; cannot read usage, falling back to ${CANDIDATES[0]}"
+	CHOSEN="${CANDIDATES[0]}"
+else
+	# Query every profile concurrently so the launch latency is one API round
+	# trip, not one per account.
+	WORKDIR=$(mktemp -d)
+	trap 'rm -rf "$WORKDIR"' EXIT
+
+	idx=0
+	for cfg in "${CANDIDATES[@]}"; do
+		resolve_usage "$cfg" "$WORKDIR/$idx" &
+		idx=$((idx + 1))
+	done
+	wait
+
+	# Lowest max(5h, 7d) wins. awk does the comparison because the values are
+	# floats ("88.0") and bash arithmetic is integer-only. Unknown profiles get
+	# a binding constraint above any real percentage so they only win when
+	# nothing else is known.
+	CHOSEN=""
+	best=""
+	for result_file in "$WORKDIR"/*; do
+		# A job that died before writing leaves an empty file; `read` then fails
+		# on EOF, which `set -e` would turn into an aborted launch. Skip instead.
+		if ! IFS='|' read -r cfg five seven source <"$result_file"; then
+			continue
+		fi
+		if [[ -z "$cfg" ]]; then
+			continue
+		fi
+		if [[ -n "$five" && -n "$seven" ]]; then
+			binding=$(awk -v a="$five" -v b="$seven" 'BEGIN {print (a > b) ? a : b}')
+			log "$(basename "$cfg"): 5h=${five}% 7d=${seven}% binding=${binding}% ($source)"
+		else
+			binding=999
+			log "$(basename "$cfg"): no usage data ($source)"
+		fi
+		if [[ -z "$best" ]] || awk -v x="$binding" -v y="$best" 'BEGIN {exit !(x < y)}'; then
+			best="$binding"
+			CHOSEN="$cfg"
+		fi
+	done
+
+	if [[ -z "$CHOSEN" ]]; then
+		CHOSEN="${CANDIDATES[0]}"
+	fi
+fi
+
+if [[ $DRY_RUN -eq 1 ]]; then
+	echo "$CHOSEN"
+	exit 0
+fi
+
+log "launching: CLAUDE_CONFIG_DIR=$CHOSEN claude $*"
+if [[ $VERBOSE -eq 0 ]]; then
+	echo "→ $(basename "$CHOSEN")" >&2
+fi
+
+export CLAUDE_CONFIG_DIR="$CHOSEN"
+exec claude "$@"

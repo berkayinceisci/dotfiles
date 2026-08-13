@@ -36,14 +36,16 @@ precmd() {
   # Auto-heal the Claude Code settings.json stow symlink: Claude's atomic write
   # replaces it with a plain file, silently diverging from the dotfiles repo.
   # Cheap no-op while the link is intact; captures + re-stows when it is broken.
-  # BOTH profiles must be tested: the heal script itself covers personal and
-  # moatlab, but a guard naming only ~/.claude never invokes it when just the
-  # moatlab link breaks -- that detached file then sits undetected until the
-  # next bootstrap.sh run, whose unconditional heal captures a long-stale
-  # snapshot over the repo copy (happened 2026-07-23: a 16 Jun onboarding
-  # stub clobbered 100 lines of claude-moatlab/settings.json).
+  # EVERY profile must be tested: the heal script itself covers personal and
+  # all moatlab accounts, but a guard naming only ~/.claude never invokes it
+  # when just a moatlab link breaks -- that detached file then sits undetected
+  # until the next bootstrap.sh run, whose unconditional heal captures a
+  # long-stale snapshot over the repo copy (happened 2026-07-23: a 16 Jun
+  # onboarding stub clobbered 100 lines of claude-moatlab/settings.json).
+  # The glob covers ~/.claude plus every ~/.claude-moatlabN, so a new profile
+  # needs no edit here; (N) is null_glob, so no match just skips the loop.
   local cc_settings
-  for cc_settings in "$HOME/.claude/settings.json" "$HOME/.claude-moatlab/settings.json"; do
+  for cc_settings in $HOME/.claude*/settings.json(N); do
     if [[ -f "$cc_settings" && ! -L "$cc_settings" ]]; then
       "$HOME/.claude/hooks/heal-settings-symlink.sh"
       break

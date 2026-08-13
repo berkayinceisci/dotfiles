@@ -155,6 +155,25 @@ MACOS_ONLY_PACKAGES=("swiftbar" "duti")
 # Packages to skip on headless cloudlab machines
 CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps" "applications" "vlc")
 
+# Secondary Claude Code profiles (the business accounts). Each entry is BOTH a
+# stow package name AND its live config dir, which is always ~/.<package> --
+# the profile is selected with CLAUDE_CONFIG_DIR=$HOME/.<package> (see the
+# ccm1/ccm2 aliases). Single source of truth: the stow branch, the shared
+# projects/my-session-logs links, and the Playwright MCP registration all
+# iterate this list, so adding a third business account is one line here plus
+# a new claude-moatlabN/ package directory.
+CLAUDE_SECONDARY_PACKAGES=("claude-moatlab" "claude-moatlab2")
+
+is_claude_secondary() {
+	local p
+	for p in "${CLAUDE_SECONDARY_PACKAGES[@]}"; do
+		if [[ "$p" == "$1" ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
 for package in */; do
 	package="${package%/}" # Remove trailing slash
 
@@ -255,18 +274,18 @@ for package in */; do
 			"$package"
 		# Ensure shell scripts in the codex package are executable
 		find "$DOTFILES_DIR/codex" -name "*.sh" -exec chmod +x {} \;
-	elif [[ "$package" == "claude-moatlab" ]]; then
-		# Secondary Claude account (business). CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab
+	elif is_claude_secondary "$package"; then
+		# Secondary Claude account (business). CLAUDE_CONFIG_DIR=$HOME/.<package>
 		# isolates ALL config, not just credentials, so this package shares the
-		# account-independent pieces into ~/.claude-moatlab: an INDEPENDENT
+		# account-independent pieces into ~/.<package>: an INDEPENDENT
 		# settings.json copy, plus CLAUDE.md/skills as committed symlinks into the
 		# claude/agents packages. Credentials/projects/history stay separate.
 		# mkdir first + --no-folding so stow links files individually instead of
 		# folding the whole dir into one symlink (which would divert the
 		# account-local credentials/projects into the repo).
-		mkdir -p "$HOME/.claude-moatlab"
+		mkdir -p "$HOME/.$package"
 		stow --no-folding "$package"
-		# Plugins (~/.claude-moatlab/plugins) are left per-account on purpose: the
+		# Plugins (~/.<package>/plugins) are left per-account on purpose: each
 		# business profile downloads its own marketplace/repos cache (machine-local,
 		# untracked), so it is not shared from ~/.claude. Sharing would require
 		# rm -rf'ing a Claude-managed dir here, which we avoid.
@@ -701,13 +720,13 @@ else
 	echo "  ⊘ Skipping yt-sync-music (not manjaro)"
 fi
 
-# Share Claude Code sessions between the ccn and ccnm accounts
+# Share Claude Code sessions across every account (ccp, ccm1, ccm2, ...)
 echo ""
 echo "Setting up cross-account Claude session sharing..."
 
 # Session transcripts are plain JSONL under <CONFIG>/projects/<slug>/ and carry
-# no account or org identity, so a session started under ccn can be resumed
-# under ccnm and vice versa -- which is how work survives one account hitting
+# no account or org identity, so a session started under ccp can be resumed
+# under ccm1 and vice versa -- which is how work survives one account hitting
 # its rate limit. Both `--resume <id>` and `--continue` locate the transcript by
 # scanning <CONFIG>/projects (by session id and by mtime respectively), so the
 # ONLY requirement is that both profiles see the same project tree.
@@ -715,11 +734,18 @@ echo "Setting up cross-account Claude session sharing..."
 # credentials included, and Claude Code has no separate knob for the projects
 # root (it is hardcoded to <config dir>/projects). Hence a symlink.
 #
-# ~/.claude/projects is the single canonical store and ~/.claude-moatlab/projects
-# is a symlink into it, so EVERY project is shared -- including the per-project
-# auto-memory under <slug>/memory. Only credentials, settings and plugins stay
-# per-account. (This deliberately overrides the account isolation the
-# claude-moatlab stow package sets up for the rest of the profile.)
+# ~/.claude/projects is the single canonical store and every secondary profile's
+# projects/ is a symlink into it, so EVERY project is shared -- including the
+# per-project auto-memory under <slug>/memory. Only credentials, settings and
+# plugins stay per-account. (This deliberately overrides the account isolation
+# the claude-moatlab* stow packages set up for the rest of the profile.)
+#
+# Sharing across ALL profiles is what makes the accounts interchangeable
+# capacity rather than separate identities: hit a rate limit under one, resume
+# the very same session under the next. It assumes every profile belongs to the
+# same org / policy domain -- if a future account does NOT, drop it from
+# CLAUDE_SECONDARY_PACKAGES' sharing rather than moving transcripts across a
+# policy boundary.
 #
 # my-session-logs is shared for the same reason, and must be shared TOGETHER with
 # projects: log-session.py derives its output dir from realpath(transcript_path),
@@ -732,7 +758,8 @@ echo "Setting up cross-account Claude session sharing..."
 # and committing an absolute symlink would hardcode /home/berkay and break
 # macOS, where $HOME is /Users/berkay.
 link_shared_claude_dir() {
-	local name="$1" primary="$HOME/.claude/$1" secondary="$HOME/.claude-moatlab/$1"
+	local name="$1" cfg_dir="$2"
+	local primary="$HOME/.claude/$name" secondary="$HOME/$cfg_dir/$name"
 
 	mkdir -p "$primary"
 	# A populated real directory on the moatlab side must not be linked over: the
@@ -751,16 +778,18 @@ link_shared_claude_dir() {
 	# -n is required: without it, ln -sf on an existing directory symlink creates
 	# the new link INSIDE the target instead of replacing it.
 	ln -sfn "$primary" "$secondary"
-	echo "  ✓ Shared: ~/.claude-moatlab/$name -> ~/.claude/$name"
+	echo "  ✓ Shared: ~/$cfg_dir/$name -> ~/.claude/$name"
 }
 
-if [[ ! -d "$HOME/.claude-moatlab" ]]; then
-	echo "  ⊘ Skipping (no ~/.claude-moatlab on this machine)"
-else
+for secondary_pkg in "${CLAUDE_SECONDARY_PACKAGES[@]}"; do
+	if [[ ! -d "$HOME/.$secondary_pkg" ]]; then
+		echo "  ⊘ Skipping ~/.$secondary_pkg (not on this machine)"
+		continue
+	fi
 	for shared_dir in projects my-session-logs; do
-		link_shared_claude_dir "$shared_dir"
+		link_shared_claude_dir "$shared_dir" ".$secondary_pkg"
 	done
-fi
+done
 
 # Register the Claude Code Playwright MCP server (bundled browser, not a channel)
 echo ""
@@ -800,12 +829,14 @@ if command -v claude >/dev/null 2>&1; then
 		unset CLAUDE_CONFIG_DIR
 		register_playwright_mcp default
 	)
-	if [[ -d "$HOME/.claude-moatlab" ]]; then
-		(
-			export CLAUDE_CONFIG_DIR="$HOME/.claude-moatlab"
-			register_playwright_mcp moatlab
-		)
-	fi
+	for secondary_pkg in "${CLAUDE_SECONDARY_PACKAGES[@]}"; do
+		if [[ -d "$HOME/.$secondary_pkg" ]]; then
+			(
+				export CLAUDE_CONFIG_DIR="$HOME/.$secondary_pkg"
+				register_playwright_mcp "$secondary_pkg"
+			)
+		fi
+	done
 
 	# The MCP launches the bundled browser but never downloads it, and the build
 	# has to match the playwright version @playwright/mcp pins -- otherwise it
