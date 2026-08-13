@@ -92,6 +92,10 @@ export PATH="$HOME/.nvm/versions/node/*/bin:$PATH"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$HOME/.deno/bin:$BUN_INSTALL/bin:$PATH"
+[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"  # bun completions
+
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     export PATH="/usr/local/texlive/2025/bin/x86_64-linux:$PATH"
     export WLR_DRM_NO_MODIFIERS=1
@@ -105,4 +109,4 @@ source ~/.zsh/functions.zsh
 source ~/.zsh/aliases.zsh
 
 # opencode
-export PATH=/home/berkay/.opencode/bin:$PATH
+export PATH="$HOME/.opencode/bin:$PATH"
