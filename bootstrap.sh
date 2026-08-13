@@ -168,6 +168,14 @@ for package in */; do
 		continue
 	fi
 
+	# Skip cc-sessions (not a stow package). It is a symlink to the session-log
+	# dir for this repo, created by the log-session.py Stop hook — and `*/`
+	# matches symlinks-to-directories, so without this it gets stowed and sprays
+	# a symlink per session log into $HOME.
+	if [[ "$package" == "cc-sessions" ]]; then
+		continue
+	fi
+
 	# Skip Linux-only packages on macOS
 	if [[ "$OS" == "macos" ]] && [[ " ${LINUX_ONLY_PACKAGES[@]} " =~ " ${package} " ]]; then
 		echo "  ⊘ Skipping $package (Linux only)"
