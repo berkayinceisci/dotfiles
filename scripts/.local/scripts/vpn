@@ -4,7 +4,6 @@ set -euo pipefail
 
 EXIT_NODE="popos"
 OS="$(uname -s)"
-RESOLV_BACKUP="/tmp/resolv.conf.pre-vpn"
 
 # Detect tailscale binary (macOS app vs standard CLI)
 if [[ "$OS" == "Darwin" ]] && [[ -f "/Applications/Tailscale.app/Contents/MacOS/Tailscale" ]]; then
@@ -20,23 +19,17 @@ if [[ -n "$current" ]]; then
     # Turn VPN off
     if [[ "$OS" == "Linux" ]]; then
         sudo tailscale set --exit-node=
-        # Restore original DNS
-        if [[ -f "$RESOLV_BACKUP" ]]; then
-            sudo cp "$RESOLV_BACKUP" /etc/resolv.conf
-            rm -f "$RESOLV_BACKUP"
-        fi
     else
         "$TS_CMD" set --exit-node=
     fi
     echo "VPN: off"
 else
-    # Turn VPN on
+    # Turn VPN on. No manual /etc/resolv.conf surgery: with accept-dns on,
+    # tailscaled already routes DNS through the exit node itself, and
+    # hand-writing 100.100.100.100 poisons tailscaled's snapshot of the
+    # system DNS config (self-loop, see tailscale.com/s/resolvconf-overwrite).
     if [[ "$OS" == "Linux" ]]; then
-        # Backup current DNS before switching
-        cp /etc/resolv.conf "$RESOLV_BACKUP"
         sudo tailscale set --exit-node="$EXIT_NODE"
-        # Point DNS to Tailscale's resolver (routes through exit node)
-        printf 'nameserver 100.100.100.100\n' | sudo tee /etc/resolv.conf >/dev/null
     else
         "$TS_CMD" set --exit-node="$EXIT_NODE"
     fi
