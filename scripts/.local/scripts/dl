@@ -46,8 +46,13 @@ download_video() {
 # yt-dlp fallback for platform image posts (Instagram image posts, etc.)
 download_platform_image() {
     local url="$1"
+    local name="${2:-}"
     require_ytdlp
-    yt-dlp --print after_move:filepath "$url"
+    local -a extra_args=()
+    if [[ -n "$name" ]]; then
+        extra_args+=(--output "${name}.%(ext)s")
+    fi
+    yt-dlp ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url"
 }
 
 # Twitter/X media posts: yt-dlp's twitter extractor now fails on many tweets
@@ -118,8 +123,13 @@ derive_filename() {
 download_direct() {
     local url="$1"
     local hint="${2:-}"
+    local name="${3:-}"
     local filename
     filename=$(derive_filename "$url" "$hint")
+    # Keep the extension we derived, but swap in the requested stem
+    if [[ -n "$name" ]]; then
+        filename="${name}.${filename##*.}"
+    fi
     curl -fLo "$filename" "$url"
     echo "$filename"
 }
@@ -150,19 +160,107 @@ download_platform() {
     if grep -q "No video could be found" "$errfile"; then
         has_no_video=1
     fi
+    # Reddit image posts fail differently: the extractor resolves the post, then
+    # hands back a media redirect it cannot itself handle ("Unsupported URL:
+    # https://www.reddit.com/media?url=..."), so treat that as "no video" too
+    if [[ "$url" =~ ^https?://([a-z0-9-]+\.)*reddit\.com/ ]] && grep -q "Unsupported URL" "$errfile"; then
+        has_no_video=1
+    fi
     rm -f "$errfile"
 
     if [[ $has_no_video -eq 1 ]]; then
         if [[ "$url" =~ (twitter\.com|x\.com)/ ]]; then
             echo "-> yt-dlp found no video, fetching media via fxtwitter API..." >&2
             download_twitter_media "$url"
+        elif [[ "$url" =~ ^https?://([a-z0-9-]+\.)*reddit\.com/ ]]; then
+            echo "-> No video in post, fetching image(s) from Reddit..." >&2
+            download_reddit_images "$url" "$name"
         else
             echo "-> No video in post, downloading as image..." >&2
-            download_platform_image "$url"
+            download_platform_image "$url" "$name"
         fi
     else
         return $rc
     fi
+}
+
+# Reddit blocks plain HTTP clients at the TLS-fingerprint level (403 on every
+# endpoint, including .json), so the post metadata is only reachable by a client
+# that impersonates a real browser. yt-dlp does exactly that (via curl_cffi), and
+# --write-pages makes it dump the post JSON its Reddit extractor already fetched.
+# So we borrow yt-dlp purely as the impersonating fetcher and parse the media
+# URLs ourselves. The images live on i.redd.it, which plain curl can reach.
+reddit_image_urls() {
+    local url="$1"
+    local tmpdir rc=0
+    tmpdir=$(mktemp -d)
+
+    # yt-dlp itself bails on image posts ("Unsupported URL: .../media?url=..."),
+    # but by then it has already fetched and dumped the JSON, which is all we need
+    (cd "$tmpdir" && yt-dlp --write-pages --skip-download -J "$url" >/dev/null 2>&1) || true
+
+    local dump
+    dump=$(find "$tmpdir" -name '*.json.dump' -print -quit)
+    if [[ -z "$dump" ]]; then
+        rm -rf "$tmpdir"
+        echo "Error: could not fetch Reddit post metadata for $url" >&2
+        return 1
+    fi
+
+    python3 -c '
+import sys, json
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+post = data[0]["data"]["children"][0]["data"]
+urls = []
+if post.get("is_gallery"):
+    meta = post.get("media_metadata") or {}
+    items = (post.get("gallery_data") or {}).get("items") or []
+    # gallery_data preserves the order the poster arranged; media_metadata does not
+    order = [i["media_id"] for i in items] or list(meta)
+    for mid in order:
+        s = (meta.get(mid) or {}).get("s") or {}
+        u = s.get("u") or s.get("gif")
+        if u:
+            urls.append(u.replace("&amp;", "&"))
+else:
+    u = post.get("url_overridden_by_dest") or post.get("url")
+    if u:
+        urls.append(u)
+for u in urls:
+    print(u)
+' "$dump" || rc=$?
+
+    rm -rf "$tmpdir"
+    return $rc
+}
+
+# Download every image in a Reddit post (single image or gallery)
+download_reddit_images() {
+    local url="$1"
+    local name="${2:-}"
+
+    local urls
+    urls=$(reddit_image_urls "$url") || return 1
+    if [[ -z "$urls" ]]; then
+        echo "Error: no images found in Reddit post" >&2
+        return 1
+    fi
+
+    local count
+    count=$(printf '%s\n' "$urls" | wc -l)
+
+    local n=0 target
+    while IFS= read -r image_url; do
+        [[ -z "$image_url" ]] && continue
+        n=$((n + 1))
+        target="$name"
+        # Galleries: suffix each image so they do not overwrite one another
+        if [[ -n "$name" && $count -gt 1 ]]; then
+            target="${name}_${n}"
+        fi
+        download_direct "$image_url" "" "$target"
+    done <<< "$urls"
 }
 
 dispatch() {
