@@ -60,6 +60,22 @@ preexec() {
 eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
+# zle counts some emoji sequences wider than the terminal renders them
+# (flag pairs: 2 regional indicators = 4 columns for zle but one 2-cell
+# glyph on screen; ZWJ/skin-tone/keycap clusters likewise), so whenever the
+# line editor draws such text its cursor math drifts and typed text visibly
+# shifts. Length is NOT the problem -- plain text of any length wraps and
+# redraws fine -- so filter inline suggestions by these width-risky
+# characters, not by length. History saving and Ctrl+R search are
+# unaffected. Two pieces because atuin init (above) registers its own
+# suggestion strategy, which bypasses ZSH_AUTOSUGGEST_HISTORY_IGNORE (that
+# var only filters the built-in history strategy).
+ZSH_AUTOSUGGEST_HISTORY_IGNORE='*['$'\u200D\uFE0F\u20E3'$'\U0001F1E6'-$'\U0001F1FF'$'\U0001F3FB'-$'\U0001F3FF'']*'
+_zsh_autosuggest_strategy_atuin_safe() {
+    _zsh_autosuggest_strategy_atuin "$1"
+    [[ "$suggestion" == ${~ZSH_AUTOSUGGEST_HISTORY_IGNORE} ]] && suggestion=
+}
+ZSH_AUTOSUGGEST_STRATEGY=(atuin_safe history)
 source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 source ~/.zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
