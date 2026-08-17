@@ -1,6 +1,27 @@
 #!/bin/bash
 CITY="Blacksburg"
+# Open-Meteo takes coordinates, not a city name (these are Blacksburg, VA)
+LAT="37.2296"
+LON="-80.4139"
 CACHE_FILE="/tmp/i3blocks_weather_cache"
+
+get_desc() {
+    # Map WMO weather codes (Open-Meteo's weather_code) to text for the
+    # cache/display; get_emoji below matches on this text
+    case "$1" in
+        0) echo "Clear" ;;
+        1|2) echo "Partly cloudy" ;;
+        3) echo "Overcast" ;;
+        45|48) echo "Fog" ;;
+        51|53|55|56|57) echo "Drizzle" ;;
+        61|63|65|66|67) echo "Rain" ;;
+        71|73|75|77) echo "Snow" ;;
+        80|81|82) echo "Rain showers" ;;
+        85|86) echo "Snow showers" ;;
+        95|96|99) echo "Thunderstorm" ;;
+        *) echo "Unknown" ;;
+    esac
+}
 
 get_emoji() {
     case "${1,,}" in
@@ -27,8 +48,10 @@ fi
 
 # Update cache in background for next run
 (
-    json=$(curl -s "wttr.in/$CITY?format=j1" --max-time 10)
-    # API response structure varies: sometimes .current_condition, sometimes .data.current_condition
-    weather=$(echo "$json" | jq -r '(.data.current_condition // .current_condition)[0] | "\(.weatherDesc[0].value) \(.temp_F)°F"' 2>/dev/null)
-    [[ -n "$weather" ]] && echo "$weather" > "$CACHE_FILE"
+    json=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&current=temperature_2m,weather_code&temperature_unit=fahrenheit" --max-time 10)
+    code=$(echo "$json" | jq -r '.current.weather_code' 2>/dev/null)
+    temp=$(echo "$json" | jq -r '.current.temperature_2m | round' 2>/dev/null)
+    if [[ -n "$code" && "$code" != "null" && -n "$temp" && "$temp" != "null" ]]; then
+        echo "$(get_desc "$code") ${temp}°F" > "$CACHE_FILE"
+    fi
 ) &
