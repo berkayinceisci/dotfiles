@@ -60,6 +60,7 @@ BG_ORANGE="\033[48;5;208m"  # Context - orange
 BG_GREEN="\033[48;5;71m"    # Tokens - green
 BG_PINK="\033[48;5;168m"    # 5h usage - pink
 BG_PURPLE="\033[48;5;98m"   # 7d usage - deep purple
+BG_VIOLET="\033[48;5;135m"  # Fable weekly usage - orchid
 BG_GRAY="\033[48;5;240m"    # Cost - gray
 
 # Foreground colors (for text)
@@ -73,6 +74,7 @@ FG_ORANGE="\033[38;5;208m"
 FG_GREEN="\033[38;5;71m"
 FG_PINK="\033[38;5;168m"
 FG_PURPLE="\033[38;5;98m"
+FG_VIOLET="\033[38;5;135m"
 FG_GRAY="\033[38;5;240m"
 
 # Warning colors
@@ -297,12 +299,18 @@ get_usage() {
 	local seven_day=$(echo "$response" | jq -r '.seven_day.utilization // 0' 2>/dev/null)
 	local five_hour_resets=$(echo "$response" | jq -r '.five_hour.resets_at // empty' 2>/dev/null)
 	local seven_day_resets=$(echo "$response" | jq -r '.seven_day.resets_at // empty' 2>/dev/null)
+	# Per-model weekly window (limits[] kind=weekly_scoped; today that is the
+	# Fable weekly cap). Appended as cache fields 5-6 so positional reads of
+	# fields 1-4 (entry_window_current cuts field 3) keep working on entries
+	# written by the old 4-field format.
+	local fable=$(echo "$response" | jq -r '[.limits[]? | select(.kind == "weekly_scoped")][0].percent // empty' 2>/dev/null)
+	local fable_resets=$(echo "$response" | jq -r '[.limits[]? | select(.kind == "weekly_scoped")][0].resets_at // empty' 2>/dev/null)
 
 	# Write to cache
-	log "fetched fresh usage (5h=${five_hour}%, 7d=${seven_day}%)"
-	write_cache "$now" "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
+	log "fetched fresh usage (5h=${five_hour}%, 7d=${seven_day}%, fable=${fable:-?}%)"
+	write_cache "$now" "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}|${fable}|${fable_resets}"
 
-	echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}"
+	echo "${five_hour}|${seven_day}|${five_hour_resets}|${seven_day_resets}|${fable}|${fable_resets}"
 }
 
 # Format reset time as relative (e.g., "2h30m" or "3d12h")
@@ -375,12 +383,16 @@ five_hour_raw=$(echo "$usage_data" | cut -d'|' -f1)
 seven_day_raw=$(echo "$usage_data" | cut -d'|' -f2)
 five_hour_resets_raw=$(echo "$usage_data" | cut -d'|' -f3)
 seven_day_resets_raw=$(echo "$usage_data" | cut -d'|' -f4)
+fable_raw=$(echo "$usage_data" | cut -d'|' -f5)
+fable_resets_raw=$(echo "$usage_data" | cut -d'|' -f6)
 
 # Format reset times
 five_hour_reset=$(format_reset_time "$five_hour_resets_raw")
 seven_day_reset=$(format_reset_time "$seven_day_resets_raw")
+fable_reset=$(format_reset_time "$fable_resets_raw")
 five_hour_clock=$(format_reset_clock "$five_hour_resets_raw" short)
 seven_day_clock=$(format_reset_clock "$seven_day_resets_raw" long)
+fable_clock=$(format_reset_clock "$fable_resets_raw" long)
 
 # Format percentages (API returns values already as percentages, e.g., 18.0 = 18%)
 # A missing value means the reading is unknown, not zero — say so rather than
@@ -395,6 +407,7 @@ format_pct() {
 
 five_hour_pct=$(format_pct "$five_hour_raw")
 seven_day_pct=$(format_pct "$seven_day_raw")
+fable_pct=$(format_pct "$fable_raw")
 context_pct_fmt=$(awk "BEGIN {printf \"%.0f\", ${context_pct:-0}}")
 
 # Format cost
@@ -430,6 +443,10 @@ five_hour_fg=$(echo "$five_hour_colors" | cut -d'|' -f2)
 seven_day_colors=$(get_usage_colors "$seven_day_pct" "$BG_PURPLE" "$FG_PURPLE")
 seven_day_bg=$(echo "$seven_day_colors" | cut -d'|' -f1)
 seven_day_fg=$(echo "$seven_day_colors" | cut -d'|' -f2)
+
+fable_colors=$(get_usage_colors "$fable_pct" "$BG_VIOLET" "$FG_VIOLET")
+fable_bg=$(echo "$fable_colors" | cut -d'|' -f1)
+fable_fg=$(echo "$fable_colors" | cut -d'|' -f2)
 
 # Format context with amount (e.g., "42% 80K/200K")
 # Calculate actual context usage from raw token counts for fine granularity
@@ -492,6 +509,17 @@ fi
 [[ -n "$seven_day_reset" ]] && seven_day_display+=" ${seven_day_reset}"
 [[ -n "$seven_day_clock" ]] && seven_day_display+=" (${seven_day_clock})"
 output+=$(capsule " ${seven_day_display} " "$seven_day_bg" "$seven_day_fg")
+
+# Fable weekly usage segment (violet, or warning color). Shown only when the
+# API reports a per-model weekly window — accounts without one skip the capsule
+# rather than showing a permanent "?".
+if [[ "$fable_pct" != "?" ]]; then
+	output+=" "
+	fable_display="fable:${fable_pct}%"
+	[[ -n "$fable_reset" ]] && fable_display+=" ${fable_reset}"
+	[[ -n "$fable_clock" ]] && fable_display+=" (${fable_clock})"
+	output+=$(capsule " ${fable_display} " "$fable_bg" "$fable_fg")
+fi
 
 # Cost segment (gray)
 output+=" "
