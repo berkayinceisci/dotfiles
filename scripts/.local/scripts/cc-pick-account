@@ -12,9 +12,18 @@
 # candidate. It is a different identity, not spare capacity; auto-routing
 # business work onto it would be a policy decision, not a scheduling one.
 #
-# Selection: for each candidate, the binding constraint is max(5h%, 7d%) --
-# either window being exhausted blocks you equally. Lowest binding constraint
-# wins; ties go to the first profile, so the default stays stable.
+# Selection: each candidate is scored by its rate-limit percentages sorted
+# WORST-FIRST and compared lexicographically -- the binding constraint (worst
+# window) decides, and only on a tie does the second-worst window break it,
+# then the third. Rationale: any window being exhausted blocks you equally,
+# but when both accounts are pinned at the same worst window (e.g. Fable
+# 100%/100%), the account with more headroom in its remaining windows is the
+# useful one to land on (switch model, keep working). Encoding: percentages
+# formatted %06.2f and joined with "," ("100.00,080.00,010.00"), so plain
+# string comparison IS the numeric lexicographic comparison. Full ties keep
+# the first profile, so the default stays stable. The statusline-cache fast
+# path scores on 5h/7d/Fable (statusline.sh's 6-field cache format); the API
+# path (the common case) sees every window in limits[].
 #
 # Usage: cc-pick-account [-v|--verbose] [-n|--dry-run] [--] [claude args...]
 #   -v  log each profile's 5h/7d numbers and the launch command to stderr
@@ -117,7 +126,21 @@ read_cache() {
 		fi
 	fi
 
-	echo "$entry" | cut -d'|' -f1,2
+	# Fields 1-2 are 5h/7d; field 5 is the Fable weekly pct (present since the
+	# statusline's 6-field cache format; empty on old 4-field entries). Emit
+	# five|seven|key so the cache path scores on every known window.
+	local five seven fable
+	five=$(echo "$entry" | cut -d'|' -f1)
+	seven=$(echo "$entry" | cut -d'|' -f2)
+	fable=$(echo "$entry" | cut -d'|' -f5)
+	local key
+	key=$(awk -v a="$five" -v b="$seven" -v c="${fable:-0}" 'BEGIN {
+		n = 3; v[1] = a + 0; v[2] = b + 0; v[3] = c + 0
+		for (i = 1; i < n; i++)
+			for (j = 1; j <= n - i; j++)
+				if (v[j] < v[j+1]) { t = v[j]; v[j] = v[j+1]; v[j+1] = t }
+		printf "%06.2f,%06.2f,%06.2f", v[1], v[2], v[3] }')
+	echo "$five|$seven|$key"
 }
 
 # Queries the usage API for one profile. Linux only: on macOS the OAuth
@@ -160,10 +183,23 @@ fetch_usage() {
 	if [[ -z "$five" || -z "$seven" ]]; then
 		return 1
 	fi
-	echo "$five|$seven"
+	# Scoring key over ALL windows (incl. per-model weeklies like Fable,
+	# which five_hour/seven_day alone miss): percents sorted worst-first,
+	# fixed-width joined. Empty if the API ever drops limits[]; the caller
+	# then falls back to a key built from 5h/7d.
+	key=$(jq -r '[.limits[]?.percent] | sort | reverse | join(" ")' <<<"$response" 2>/dev/null)
+	if [[ -n "$key" ]]; then
+		key=$(awk -v s="$key" 'BEGIN {
+			n = split(s, v, " ")
+			for (i = 1; i <= n; i++) printf "%s%06.2f", (i > 1 ? "," : ""), v[i] }')
+	fi
+	echo "$five|$seven|$key"
 }
 
-# Cache first (free), API second. Writes "<cfg>|<five>|<seven>" to $2.
+# Cache first (free), API second. Writes "<cfg>|<five>|<seven>|<key>|<src>"
+# to $2. Both paths emit three usage fields; the cache path's key covers
+# 5h/7d/Fable (all the statusline cache stores), the API path's covers every
+# window in limits[].
 resolve_usage() {
 	local cfg="$1" out="$2" usage
 	if usage=$(read_cache "$cfg"); then
@@ -174,7 +210,7 @@ resolve_usage() {
 		echo "$cfg|$usage|api" >"$out"
 		return 0
 	fi
-	echo "$cfg|||unknown" >"$out"
+	echo "$cfg||||unknown" >"$out"
 }
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -193,30 +229,37 @@ else
 	done
 	wait
 
-	# Lowest max(5h, 7d) wins. awk does the comparison because the values are
-	# floats ("88.0") and bash arithmetic is integer-only. Unknown profiles get
-	# a binding constraint above any real percentage so they only win when
-	# nothing else is known.
+	# Lowest key wins, compared lexicographically: the worst window decides,
+	# ties fall through to the second-worst, then the third (see the Selection
+	# note up top). Keys are fixed-width "%06.2f,..." strings, so awk's string
+	# comparison IS the numeric lexicographic comparison. Unknown profiles get
+	# a key above any real one so they only win when nothing else is known.
 	CHOSEN=""
 	best=""
 	for result_file in "$WORKDIR"/*; do
 		# A job that died before writing leaves an empty file; `read` then fails
 		# on EOF, which `set -e` would turn into an aborted launch. Skip instead.
-		if ! IFS='|' read -r cfg five seven source <"$result_file"; then
+		if ! IFS='|' read -r cfg five seven key source <"$result_file"; then
 			continue
 		fi
 		if [[ -z "$cfg" ]]; then
 			continue
 		fi
 		if [[ -n "$five" && -n "$seven" ]]; then
-			binding=$(awk -v a="$five" -v b="$seven" 'BEGIN {print (a > b) ? a : b}')
-			log "$(basename "$cfg"): 5h=${five}% 7d=${seven}% binding=${binding}% ($source)"
+			# No limits[]-derived key (older API without limits[]): fall back
+			# to a key over the two windows the top-level fields do give.
+			if [[ -z "$key" ]]; then
+				key=$(awk -v a="$five" -v b="$seven" 'BEGIN {
+					if (a + 0 < b + 0) { t = a; a = b; b = t }
+					printf "%06.2f,%06.2f", a, b }')
+			fi
+			log "$(basename "$cfg"): 5h=${five}% 7d=${seven}% key=${key} ($source)"
 		else
-			binding=999
+			key="999.00"
 			log "$(basename "$cfg"): no usage data ($source)"
 		fi
-		if [[ -z "$best" ]] || awk -v x="$binding" -v y="$best" 'BEGIN {exit !(x < y)}'; then
-			best="$binding"
+		if [[ -z "$best" ]] || awk -v x="$key" -v y="$best" 'BEGIN {exit !(x "" < y "")}'; then
+			best="$key"
 			CHOSEN="$cfg"
 		fi
 	done
