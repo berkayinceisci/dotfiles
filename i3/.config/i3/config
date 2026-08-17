@@ -89,8 +89,11 @@ bindsym Mod1+Shift+Escape exec systemctl poweroff -i
 # lock screen
 bindsym Mod4+l exec --no-startup-id ~/.config/i3/lock.sh
 
-# re-apply display settings (recovery from HDMI signal loss)
-bindsym Mod1+Shift+d exec --no-startup-id ~/.config/i3/display_setup.sh
+# recovery from HDMI signal loss / wedged GPU driver: VT round-trip to force
+# a display-engine reset, then re-apply display settings (see recover_x_vt in
+# display_setup.sh for the full rationale; needs the NOPASSWD chvt sudoers
+# rule from bootstrap.sh)
+bindsym Mod1+Shift+d exec --no-startup-id ~/.config/i3/display_setup.sh --recover
 
 # presentation mode: toggle HDMI-2 rotation (vertical <-> horizontal)
 bindsym Mod1+Shift+p exec --no-startup-id ~/.config/i3/presentation_toggle.sh
@@ -293,4 +296,3 @@ bar {
 # Please remove the following exec line:
 #######################################################################
 exec i3-config-wizard
-

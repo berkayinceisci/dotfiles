@@ -545,6 +545,32 @@ EOF
 		echo "  ⚠ display_setup.sh not found, skipping display manager config"
 	fi
 
+	# Passwordless chvt for display_setup.sh --recover (i3 Alt+Shift+d): the
+	# recovery VT round-trip runs `sudo -n chvt` from a non-interactive i3
+	# keybinding, so grant NOPASSWD for chvt (and only chvt) via a drop-in.
+	echo ""
+	echo "Installing passwordless chvt sudoers rule (display recovery)..."
+	CHVT_BIN="$(command -v chvt || echo /usr/bin/chvt)"
+	# zz- prefix: sudoers.d files are read in lexical order and the LAST
+	# matching entry wins, so this must sort after distro-provided files like
+	# Manjaro's 10-installer (%wheel ALL) or the passworded rule overrides
+	# this NOPASSWD one.
+	CHVT_SUDOERS=/etc/sudoers.d/zz-display-recovery-chvt
+	CHVT_RULE="$USER ALL=(root) NOPASSWD: $CHVT_BIN"
+	if sudo grep -qxF "$CHVT_RULE" "$CHVT_SUDOERS" 2>/dev/null; then
+		echo "  ✓ Passwordless chvt sudoers rule already present"
+	else
+		echo "$CHVT_RULE" | sudo tee "$CHVT_SUDOERS" >/dev/null
+		sudo chmod 440 "$CHVT_SUDOERS"
+		# Validate the drop-in; remove it if broken so a typo cannot break sudo
+		if sudo visudo -cf "$CHVT_SUDOERS" >/dev/null; then
+			echo "  ✓ Passwordless chvt sudoers rule installed"
+		else
+			sudo rm -f "$CHVT_SUDOERS"
+			echo "  ⚠ chvt sudoers rule failed visudo validation; removed"
+		fi
+	fi
+
 	# Install udev rule for display hotplug (laptops only)
 	# Re-runs display_setup.sh when monitors are connected/disconnected
 	if [[ "$HOST" == "manjaro" || "$HOST" == "ubuntu" ]]; then
