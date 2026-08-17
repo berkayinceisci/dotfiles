@@ -1,1 +1,0 @@
-- get rid of ccd and cxd commands

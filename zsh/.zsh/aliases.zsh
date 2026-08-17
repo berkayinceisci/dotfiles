@@ -41,7 +41,8 @@ alias ccm1='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
 alias ccdm1='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude --dangerously-skip-permissions'
 alias ccm2='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab2 claude'
 alias ccdm2='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab2 claude --dangerously-skip-permissions'
-# Auto-select the moatlab account with the most 5h/7d headroom -- the default way
+# Auto-select the moatlab account with the most rate-limit headroom (worst
+# window across 5h/7d/per-model weeklies decides) -- the default way
 # in, hence the shortest name. Args pass through, and because projects/ is shared
 # `ccm --resume <id>` finds the session whichever account wins. Never routes to
 # the personal account -- that is a separate identity, not spare quota.
