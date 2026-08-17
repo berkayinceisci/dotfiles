@@ -269,19 +269,19 @@ dispatch() {
 
     # Fast path: URL patterns (no network)
     if [[ "$url" =~ \.pdf(\?.*)?$ ]]; then
-        download_direct "$url" "pdf"
+        download_direct "$url" "pdf" "$name"
         return
     fi
     if [[ "$url" =~ \.(txt|md|markdown)(\?.*)?$ ]]; then
-        download_direct "$url" "${BASH_REMATCH[1]}"
+        download_direct "$url" "${BASH_REMATCH[1]}" "$name"
         return
     fi
     if [[ "$url" =~ \.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$ ]]; then
-        download_direct "$url" "${BASH_REMATCH[1]}"
+        download_direct "$url" "${BASH_REMATCH[1]}" "$name"
         return
     fi
     if [[ "$url" =~ [?\&]format=(jpg|jpeg|png|gif|webp) ]]; then
-        download_direct "$url" "${BASH_REMATCH[1]}"
+        download_direct "$url" "${BASH_REMATCH[1]}" "$name"
         return
     fi
 
@@ -290,7 +290,7 @@ dispatch() {
     ctype=$(head_content_type "$url")
     case "$ctype" in
         image/*|application/pdf*|text/plain*|text/markdown*|text/x-markdown*)
-            download_direct "$url" "$ctype"
+            download_direct "$url" "$ctype" "$name"
             return
             ;;
     esac
