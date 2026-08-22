@@ -3,12 +3,15 @@
 #
 # Usage: dl <url>           Auto-detect and download
 #        dl -o <name> <url> Download video with custom filename
+#        dl -t <start-end> <url>
+#                           Download a video timeframe
 
 set -euo pipefail
 
 print_usage() {
     echo "Usage: dl <url>           Download (auto-detect video/image/PDF/text)"
     echo "       dl -o <name> <url> Download video with custom filename"
+    echo "       dl -t <start-end> <url> Download a video timeframe"
 }
 
 require_ytdlp() {
@@ -25,6 +28,9 @@ download_video() {
     local -a extra_args=()
     if [[ -n "$name" ]]; then
         extra_args+=(--output "${name}.%(ext)s")
+    fi
+    if [[ -n "$timeframe" ]]; then
+        extra_args+=(--download-sections "*$timeframe" --force-keyframes-at-cuts)
     fi
     local filepath rc=0
     filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" -I 1 ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url") || rc=$?
@@ -305,10 +311,12 @@ if [[ $# -eq 0 ]]; then
 fi
 
 output_name=""
+timeframe=""
 url=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -o) output_name="$2"; shift 2 ;;
+        -t|--timeframe) timeframe="$2"; shift 2 ;;
         -h|--help) print_usage; exit 0 ;;
         *) url="$1"; shift ;;
     esac
