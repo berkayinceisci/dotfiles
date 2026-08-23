@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  gThumb keyboard shortcuts, installed by bootstrap.sh to
+  ~/.config/gthumb/shortcuts.xml (plain copy, not stowed: gThumb rewrites the
+  file with a full dump of all shortcuts whenever they are edited in its GUI,
+  which would spray noise into the repo through a symlink).
+
+  Why: out of the box the viewer binds next/previous FILE to Page_Down/Page_Up
+  and uses the bare arrow keys to scroll (pan) the current image. Panning is
+  useless at fit-to-window zoom, and arrow-key flipping through a mixed
+  image/video folder is the whole point of using gThumb as the viewer. So the
+  arrows become next/previous file, and step-scrolling moves to Ctrl+Shift+
+  arrows (chosen to dodge the media viewer's seek bindings, which occupy
+  Shift/Alt/Ctrl+arrows for 5s/10s/1min skips).
+
+  Bare Right/Left are free in the video viewer too - it only binds MODIFIED
+  arrows for seeking - so one flips straight through videos as well; seeking
+  within a video still works with Shift/Alt/Ctrl+arrows.
+
+  Format: action names come from the *-actions-entries.h tables in gThumb's
+  source; only actions listed here are overridden, everything else keeps its
+  default. gThumb's GMarkup-based parser ignores XML comments.
+-->
+<shortcuts>
+  <shortcut action="show-next-image" accelerator="Right"/>
+  <shortcut action="show-previous-image" accelerator="Left"/>
+  <shortcut action="scroll-step-right" accelerator="&lt;Primary&gt;&lt;Shift&gt;Right"/>
+  <shortcut action="scroll-step-left" accelerator="&lt;Primary&gt;&lt;Shift&gt;Left"/>
+</shortcuts>
