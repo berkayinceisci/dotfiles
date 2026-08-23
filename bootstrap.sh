@@ -404,6 +404,32 @@ if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 	fi
 fi
 
+# Apply gThumb settings (Linux with GUI only)
+# gThumb creates a `.comments/` sidecar directory in every image folder it
+# browses, even with no comment ever typed. gthumb-dconf.ini turns off both code
+# paths that do it; see the comments in that file for the full explanation.
+if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
+	echo ""
+	echo "Applying gThumb settings..."
+
+	if command -v dconf >/dev/null 2>&1; then
+		# `dconf load` merges: only the keys in the file are touched. Idempotent.
+		if dconf load /org/gnome/gthumb/ <"$DOTFILES_DIR/gthumb-dconf.ini"; then
+			echo "  ✓ gThumb .comments/ sidecar creation disabled"
+		else
+			echo "  ⚠ dconf load failed; gThumb may still write .comments/ sidecars"
+		fi
+	else
+		echo "  ⊘ dconf not installed, skipping gThumb settings"
+	fi
+
+	# Arrow-key navigation (next/previous file, including videos) in the
+	# viewer. Copied, not stowed - see the comment in gthumb-shortcuts.xml.
+	mkdir -p ~/.config/gthumb
+	cp -f "$DOTFILES_DIR/gthumb-shortcuts.xml" ~/.config/gthumb/shortcuts.xml
+	echo "  ✓ gThumb arrow-key navigation shortcuts installed"
+fi
+
 # Configure display manager for login screen (Linux with GUI only)
 if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 	echo ""
