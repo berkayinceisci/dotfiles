@@ -5,6 +5,9 @@
 #        dl -o <name> <url> Download video with custom filename
 #        dl -t <start-end> <url>
 #                           Download a video timeframe
+#        dl --extractor-args <args> <url>
+#                           Pass extractor args straight through to yt-dlp
+#                           (e.g. youtube:player_client=web_embedded)
 
 set -euo pipefail
 
@@ -12,6 +15,7 @@ print_usage() {
     echo "Usage: dl <url>           Download (auto-detect video/image/PDF/text)"
     echo "       dl -o <name> <url> Download video with custom filename"
     echo "       dl -t <start-end> <url> Download a video timeframe"
+    echo "       dl --extractor-args <args> <url> Pass extractor args to yt-dlp"
 }
 
 require_ytdlp() {
@@ -31,6 +35,9 @@ download_video() {
     fi
     if [[ -n "$timeframe" ]]; then
         extra_args+=(--download-sections "*$timeframe" --force-keyframes-at-cuts)
+    fi
+    if [[ -n "$extractor_args" ]]; then
+        extra_args+=(--extractor-args "$extractor_args")
     fi
     local filepath rc=0
     filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" -I 1 ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url") || rc=$?
@@ -160,6 +167,28 @@ download_platform() {
     if [[ $rc -eq 0 ]]; then
         rm -f "$errfile"
         return 0
+    fi
+
+    # yt-dlp's default YouTube player clients (visionos/android_vr) sometimes hand
+    # back media URLs that YouTube then refuses to serve (403). Extraction itself
+    # worked, only the fetch was blocked, so retry with a client whose URLs still
+    # are servable. Only when the caller did not pick its own extractor args.
+    # Match loosely: yt-dlp says "HTTP Error 403: Forbidden", but with -t the fetch
+    # goes through ffmpeg, whose own 403 output yt-dlp swallows -- all that reaches
+    # us is "ffmpeg exited with code 8", so treat that as a candidate too. A retry
+    # costs one extra attempt when the ffmpeg failure was unrelated to the 403.
+    if [[ -z "$extractor_args" ]] \
+        && [[ "$url" =~ ^https?://([a-z0-9-]+\.)*(youtube\.com|youtu\.be)/ ]] \
+        && grep -qiE '403:? forbidden|ffmpeg exited with code' "$errfile"; then
+        echo "-> YouTube returned 403 for the default player client, retrying with web_embedded..." >&2
+        extractor_args="youtube:player_client=web_embedded"
+        rc=0
+        download_video "$url" "$name" 2> >(tee "$errfile" >&2) || rc=$?
+        wait 2>/dev/null || true
+        if [[ $rc -eq 0 ]]; then
+            rm -f "$errfile"
+            return 0
+        fi
     fi
 
     local has_no_video=0
@@ -312,11 +341,13 @@ fi
 
 output_name=""
 timeframe=""
+extractor_args=""
 url=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -o) output_name="$2"; shift 2 ;;
         -t|--timeframe) timeframe="$2"; shift 2 ;;
+        --extractor-args) extractor_args="$2"; shift 2 ;;
         -h|--help) print_usage; exit 0 ;;
         *) url="$1"; shift ;;
     esac
