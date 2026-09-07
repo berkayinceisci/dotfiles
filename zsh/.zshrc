@@ -128,3 +128,32 @@ source ~/.zsh/aliases.zsh
 
 # opencode
 export PATH="$HOME/.opencode/bin:$PATH"
+
+# Show the tmux session picker on interactive SSH logins (see
+# scripts/.local/scripts/tmux-connect). Pick an existing session or type a name
+# to create one -- no keybinding, it just appears.
+#
+# Every guard earns its place:
+#   -o interactive : `ssh host 'cmd'` runs zsh non-interactively, so scp/rsync/
+#                    git-over-ssh and every scripted `ssh popos '…'` are untouched.
+#                    zsh would not even source this file for them, but the check
+#                    documents the intent and costs nothing.
+#   $SSH_TTY       : set only when sshd allocated a tty, so this fires on a real
+#                    login and never on a local terminal on the machine itself.
+#   $TMUX empty    : do not recurse when a pane's shell starts inside tmux.
+#   -x <script>    : a machine whose dotfiles predate this script just gets a
+#                    normal shell instead of a "command not found" on every login.
+#
+# Called, not exec'd: tmux-connect execs tmux itself, so detaching returns here
+# to a normal prompt rather than dropping the connection. Escape in the picker
+# does the same.
+#
+# This block replaced the old ssht/mosht wrappers -- bare `ssh`, `ssh -Y` and
+# `mosh` all reach it now. See the "Connecting to remote machines" note in
+# zsh/.zsh/functions.zsh for which transport to pick, and for the one-off
+# `ssh -t host 'exec zsh'` that skips the picker if it ever misbehaves (an ssh
+# COMMAND is never run through .zshrc, so it bypasses this guard entirely).
+if [[ -o interactive ]] && [[ -n "${SSH_TTY:-}" ]] && [[ -z "${TMUX:-}" ]] &&
+    [[ -x "$HOME/.local/scripts/tmux-connect" ]]; then
+    "$HOME/.local/scripts/tmux-connect"
+fi

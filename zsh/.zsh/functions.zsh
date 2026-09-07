@@ -57,29 +57,38 @@ open() {
     fi
 }
 
-ssht() {
-    ssh -t "$@" "tmux attach"
-}
-
-# mosh + tmux: the disconnect-proof variant of ssht. mosh is UDP and keeps the
-# rendered screen client-side, so suspending the laptop / changing networks does
-# not tear the view down -- reopen the lid and the pane is still there, resyncing
+# --- Connecting to remote machines (no wrappers here on purpose) ---
+#
+# There used to be `ssht`/`mosht` (ssh/mosh + `tmux attach`). They are gone: the
+# tmux session picker now runs from the guarded block at the bottom of ~/.zshrc,
+# so bare `ssh host`, `ssh -Y host` and `mosh host` all land in it. The wrappers
+# also ran a BARE `tmux attach`, which picks the most recently active UNATTACHED
+# session -- i.e. it deliberately routes you away from the session you are
+# already sitting in. The picker is both predictable and a superset: typing a
+# name filters to it, and a name that matches nothing creates it.
+#
+# Which transport to use, which is the part no picker can decide for you:
+#
+# `mosh host` when the session must survive a closed lid. mosh is UDP and keeps
+# the rendered screen client-side, so suspending the laptop or changing networks
+# does not tear the view down -- reopen and the pane is still there, resyncing
 # when the link returns. ssh cannot do this: it is TCP, and ~/.ssh/config's
 # ServerAliveInterval 60 / ServerAliveCountMax 3 kills the connection after ~3min
 # of silence. tmux is still what makes the REMOTE side survive (mosh has no
-# scrollback, and a dead mosh-client leaves the tmux server running), so this
-# attaches exactly like ssht rather than replacing it.
+# scrollback of its own, and a dead mosh-client leaves the tmux server running).
 #
-# Use plain `ssh -Y` instead when the task needs remote display (nvim/LaTeX
-# synctex): mosh forwards no X11, no agent and no ports. Its bootstrap ssh exits
-# right after handing off to mosh-server, and the X11 channel dies with it, so
-# `mosh --ssh="ssh -Y"` does NOT work either. Attaching the same tmux session
-# over mosh is safe for shells that already hold a good DISPLAY -- refresh-env
-# below deliberately ignores the `-DISPLAY` unset marker such an attach writes --
-# but panes CREATED during a mosh attach inherit no forwarded DISPLAY.
-mosht() {
-    mosh "$@" -- tmux attach
-}
+# `ssh -Y host` when the task needs remote display (nvim/LaTeX synctex): mosh
+# forwards no X11, no agent and no ports. Its bootstrap ssh exits right after
+# handing off to mosh-server, and the X11 channel dies with it, so
+# `mosh --ssh="ssh -Y"` does NOT work around this either. Attaching the same tmux
+# session over mosh is safe for shells that already hold a good DISPLAY --
+# refresh-env below deliberately ignores the `-DISPLAY` unset marker such an
+# attach writes -- but panes CREATED during a mosh attach inherit no forwarded
+# DISPLAY.
+#
+# Escape hatch: the picker falls through to a plain shell on Escape, so a broken
+# tmux-connect cannot lock you out. To skip it outright on a machine where it is
+# misbehaving: ssh -t host 'exec zsh'
 
 # Pull the latest environment from the tmux server into the current shell.
 # When tmux's update-environment list refreshes on attach, NEW panes inherit
