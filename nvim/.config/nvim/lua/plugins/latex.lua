@@ -1,3 +1,36 @@
+-- Re-read DISPLAY from tmux before launching the viewer.
+--
+-- nvim's environment is a copy made at startup and never updates, so an nvim
+-- that outlives an `ssh -Y` connection keeps pointing at a destroyed X11 proxy
+-- (or, if its pane was created under mosh, at nothing at all). The viewer is
+-- spawned via jobstart and inherits THIS env, not the pane shell's -- which
+-- does self-heal, via the refresh-env precmd in zsh/.zsh/functions.zsh.
+--
+-- Hooked to the keymaps rather than the VimtexEventView autocmd: that event
+-- fires AFTER the viewer has already been started (see the doautocmd at the
+-- end of s:viewer.view in vimtex's autoload/vimtex/view/_template.vim), which
+-- is too late to matter. Setting vim.env applies to the whole nvim process, so
+-- one refresh holds until the next reconnect.
+--
+-- `tmux show-environment DISPLAY` prints either `DISPLAY=localhost:10.0` or
+-- the bare unset marker `-DISPLAY`. The pattern below only matches the former,
+-- so a marker left by a mosh attach can never clobber a good value -- the same
+-- rule refresh-env follows deliberately. No-op outside tmux, and on macOS,
+-- where Skim does not use DISPLAY.
+local function refresh_display()
+	if vim.env.TMUX == nil then
+		return
+	end
+	local out = vim.fn.system({ "tmux", "show-environment", "DISPLAY" })
+	if vim.v.shell_error ~= 0 then
+		return
+	end
+	local value = out:match("^DISPLAY=(.-)%s*$")
+	if value and value ~= "" then
+		vim.env.DISPLAY = value
+	end
+end
+
 return {
 	"lervag/vimtex",
 	ft = { "tex", "latex", "bib" },
@@ -78,14 +111,20 @@ return {
 				local opts = { buffer = true, silent = true }
 
 				-- Compilation
-				vim.keymap.set("n", "<localleader>ll", "<cmd>VimtexCompile<cr>", opts)
+				vim.keymap.set("n", "<localleader>ll", function()
+					refresh_display()
+					vim.cmd("VimtexCompile")
+				end, opts)
 				vim.keymap.set("n", "<localleader>lk", "<cmd>VimtexStop<cr>", opts)
 				vim.keymap.set("n", "<localleader>lK", "<cmd>VimtexStopAll<cr>", opts)
 				vim.keymap.set("n", "<localleader>lc", "<cmd>VimtexClean<cr>", opts)
 				vim.keymap.set("n", "<localleader>lC", "<cmd>VimtexClean!<cr>", opts)
 
 				-- View
-				vim.keymap.set("n", "<localleader>lv", "<cmd>VimtexView<cr>", opts)
+				vim.keymap.set("n", "<localleader>lv", function()
+					refresh_display()
+					vim.cmd("VimtexView")
+				end, opts)
 
 				-- TOC
 				vim.keymap.set("n", "<localleader>lt", "<cmd>VimtexTocToggle<cr>", opts)
