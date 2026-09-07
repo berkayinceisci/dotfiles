@@ -19,6 +19,7 @@
       "git commit and git push require the user's explicit request. If the user has not explicitly asked to commit or push in this session, ask first before running either."
     ]
   },
+  "cleanupPeriodDays": 36500,
   "editorMode": "vim",
   "effortLevel": "high",
   "enabledPlugins": {
