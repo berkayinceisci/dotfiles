@@ -235,11 +235,23 @@ config.keys = {
 	-- lazygit (gocui/tcell) and Claude Code both fold a bare ^H into a one-char
 	-- backspace and keep word-delete on another key, so they still need per-app
 	-- translation. Alt+Backspace is the de-facto word-delete instead: zsh's emacs
-	-- keymap binds `^[^?` to backward-kill-word by DEFAULT, lazygit's editor has the
-	-- ModAlt case (pkg/gui/editors.go), and Claude Code honours it -- all three with no
-	-- translation anywhere, in or out of tmux, and on remote machines whose dotfiles
-	-- have not been bootstrapped yet. nvim insert mode is the one exception, mapped as
-	-- <M-BS> in nvim/lua/config/keymaps.lua.
+	-- keymap binds `^[^?` to backward-kill-word by DEFAULT and Claude Code honours it,
+	-- with no translation anywhere, in or out of tmux, and on remote machines whose
+	-- dotfiles have not been bootstrapped yet. nvim insert mode is one exception,
+	-- mapped as <M-BS> in nvim/lua/config/keymaps.lua.
+	--
+	-- lazygit is the other exception, and the reason this is a callback rather than a
+	-- flat SendString. lazygit used to be covered too -- its editor had a ModAlt case
+	-- in pkg/gui/editors.go -- but 0.64 rewrote the input layer and dropped it, so ESC
+	-- DEL now does nothing there and only the CSI-u encoding of Ctrl+Backspace,
+	-- \e[127;5u, still word-deletes. Inside tmux that swap is done by the M-BSpace
+	-- gate in tmux.conf, but a pane running lazygit *directly* has no such layer,
+	-- hence the same gate here, on the pane's foreground process.
+	--
+	-- The two layers compose rather than fight: when the pane runs tmux,
+	-- get_foreground_process_name() is tmux, the fallback sends ESC DEL, and tmux's
+	-- own gate decides from there. Match on the basename so it holds for both
+	-- /usr/bin/lazygit (Linux, pacman) and ~/go/bin/lazygit (macOS, go install).
 	--
 	-- This makes the ^H handling elsewhere (that keymaps.lua fallback, zsh's
 	-- `bindkey '^H'`, tmux's `bind-key -n C-h` gate) redundant on the wezterm path,
@@ -247,7 +259,18 @@ config.keys = {
 	-- is two bytes where ^H was one, so a reader with escape-time 0 that happens to see
 	-- them in separate reads could take it for a lone Escape; they are written together
 	-- so this should not arise, but a single byte was structurally immune.
-	{ key = "Backspace", mods = "CTRL", action = act.SendString("\x1b\x7f") },
+	{
+		key = "Backspace",
+		mods = "CTRL",
+		action = wezterm.action_callback(function(window, pane)
+			local proc = pane:get_foreground_process_name()
+			local bytes = "\x1b\x7f"
+			if proc and proc:match("[/\\]lazygit$") then
+				bytes = "\x1b[127;5u"
+			end
+			window:perform_action(act.SendString(bytes), pane)
+		end),
+	},
 	{ key = "LeftArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "RightArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "UpArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
