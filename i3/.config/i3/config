@@ -67,6 +67,15 @@ workspace 10 output HDMI-2 eDP-1 HDMI-1-0 HDMI-1-1
 # enable picom
 exec --no-startup-id picom -b
 
+# Flameshot tray daemon. Required by the clipboard bindings below, NOT optional:
+# a one-shot `flameshot ... --clipboard` owns the X11 selection only while it
+# runs, so without a resident instance the capture is copied and then lost the
+# moment the process exits (verified: 0 image/png targets on the clipboard
+# afterwards). D-Bus activation is not enough -- it spawns an instance per
+# request that exits again. `exec`, not `exec_always`, so an i3 reload does not
+# stack a second instance on top of the running one.
+exec --no-startup-id flameshot
+
 # randomly select wallpaper (uses vertical wallpapers for rotated monitors)
 exec_always --no-startup-id ~/.config/i3/wallpaper.sh
 
