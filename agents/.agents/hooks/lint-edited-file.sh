@@ -47,8 +47,11 @@ fi
 # Print linter output (truncated to $2 lines) and block.
 emit() {
 	local out="$1" max="$2" n
-	n=$(printf "%s\n" "$out" | wc -l | tr -d "[:space:]")
-	printf "%s\n" "$out" | head -n "$max" >&2
+	# Here-strings, not pipes: head exits after $max lines, and a pipe would
+	# give the writer SIGPIPE (141) once output exceeds the 64K pipe buffer,
+	# which pipefail + set -e would turn into a silent non-2 exit.
+	n=$(wc -l <<<"$out" | tr -d "[:space:]")
+	head -n "$max" <<<"$out" >&2
 	if [[ $n -gt $max ]]; then
 		echo "... $((n - max)) more lines suppressed" >&2
 	fi
@@ -77,7 +80,11 @@ else
 	case "$shebang" in
 	'#!'*zsh*) kind=zsh ;;
 	'#!'*python*) kind=python ;;
-	'#!'*bash* | '#!'*dash* | '#!'*ksh* | '#!'*/sh | '#!'*[[:space:]]sh) kind=shell ;;
+	'#!'*bash* | '#!'*dash* | '#!'*ksh*) kind=shell ;;
+	# Plain sh needs the trailing-argument forms spelled out: unlike the
+	# *bash*/*ksh* patterns above, these anchor at 'sh' so that #!/bin/shy
+	# does not match, which also excludes '#!/bin/sh -e' without them.
+	'#!'*/sh | '#!'*/sh[[:space:]]* | '#!'*[[:space:]]sh | '#!'*[[:space:]]sh[[:space:]]*) kind=shell ;;
 	esac
 	if [[ -z "$kind" ]]; then
 		vlog "no extension or shebang match, skipping ($filepath)"
