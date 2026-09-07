@@ -147,13 +147,13 @@ echo ""
 echo "Stowing dotfiles..."
 
 # Linux-specific packages to skip on macOS
-LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura" "mimeapps" "applications" "vlc")
+LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura" "mimeapps" "applications" "vlc" "flameshot")
 
 # macOS-specific packages to skip on Linux
 MACOS_ONLY_PACKAGES=("swiftbar" "duti")
 
 # Packages to skip on headless cloudlab machines
-CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps" "applications" "vlc")
+CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps" "applications" "vlc" "flameshot")
 
 # Secondary Claude Code profiles (the business accounts). Each entry is BOTH a
 # stow package name AND its live config dir, which is always ~/.<package> --
