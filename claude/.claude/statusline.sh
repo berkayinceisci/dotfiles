@@ -94,6 +94,65 @@ context_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
 context_used_tokens=$(echo "$input" | jq -r '((.context_window.current_usage.input_tokens // 0) + (.context_window.current_usage.cache_creation_input_tokens // 0) + (.context_window.current_usage.cache_read_input_tokens // 0))')
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 
+# --- Publish the session cwd for i3's terminal_open.sh -----------------------
+# Claude Code never chdirs, so /proc/<claude pid>/cwd is frozen at the directory
+# the session was launched from, while the working directory this status line
+# displays lives only inside the process. i3's terminal_open.sh (Alt+Return)
+# resolves a pane by reading its foreground process's /proc cwd, so on a Claude
+# pane it opens the launch directory rather than where the session actually is.
+# Publish the real one here, keyed by the claude PID: the consumer only reads
+# the file whose name matches the live foreground PID, so a leftover from an
+# exited session can never be mistaken for a current one.
+#
+# Linux only. The consumer ships in the i3 package, which bootstrap.sh never
+# stows on macOS (LINUX_ONLY_PACKAGES), so the write would be dead weight
+# there. Gating also avoids needing a second code path for the parent walk:
+# macOS `ps -o comm=` prints a full executable path where GNU ps prints a bare
+# name.
+publish_session_cwd() {
+	local dir file f pid comm claude_pid depth
+
+	[[ "$(uname -s)" == "Linux" ]] || return 0
+	[[ -n "${1:-}" && -d "$1" ]] || return 0
+
+	# Walk up to the claude process that spawned this status line. Claude Code
+	# may invoke it directly or through a shell, so this cannot assume $PPID is
+	# already claude; the depth cap keeps a surprising tree from looping.
+	pid=$PPID
+	depth=0
+	claude_pid=""
+	while [[ $depth -lt 10 && ${pid:-0} -gt 1 ]]; do
+		comm=$(ps -o comm= -p "$pid" 2>/dev/null) || break
+		if [[ "$comm" == claude ]]; then
+			claude_pid=$pid
+			break
+		fi
+		pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+		depth=$((depth + 1))
+	done
+	[[ -n "$claude_pid" ]] || return 0
+
+	dir="${XDG_RUNTIME_DIR:-/tmp}/claude-cwd"
+	mkdir -p "$dir" 2>/dev/null || return 0
+	file="$dir/$claude_pid"
+
+	# This runs on every render, so skip the write when nothing changed.
+	if [[ -r "$file" && "$(cat "$file" 2>/dev/null)" == "$1" ]]; then
+		return 0
+	fi
+
+	printf '%s\n' "$1" >"$file" 2>/dev/null || return 0
+
+	# Prune entries whose session has exited. Only on an actual write, so the
+	# common unchanged render stays a single read.
+	for f in "$dir"/*; do
+		if [[ -f "$f" ]] && ! kill -0 "${f##*/}" 2>/dev/null; then
+			rm -f "$f"
+		fi
+	done
+}
+publish_session_cwd "$cwd"
+
 # Format directory (shorten home path)
 if [[ -n "$cwd" ]]; then
 	home_dir="${HOME:-$(eval echo ~)}"

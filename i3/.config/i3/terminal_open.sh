@@ -167,8 +167,23 @@ if echo "$WIN_CLASS_LOWER" | grep -qE "$TERMINALS"; then
         if [[ -n "$PANE_JSON" ]]; then
             PANE_TTY=$(jq -r '.tty_name // empty' <<<"$PANE_JSON") || PANE_TTY=""
             if [[ -n "$PANE_TTY" ]]; then
-                FG_INFO=$(ps -o stat=,pid=,comm= -t "${PANE_TTY#/dev/}" 2>/dev/null |
-                    awk '$1 ~ /\+/ {print $2, $3; exit}') || FG_INFO=""
+                # Skip reparented orphans (PPID 1). A process that daemonizes
+                # to hold an X selection -- xclip, as spawned by the `clip`
+                # script or by any clipboard write -- stays in the pane's
+                # foreground process group indefinitely after its launching
+                # shell is gone, and it chdir'd to / like a well-behaved
+                # daemon. Since ps orders by ascending PID, such a leftover
+                # sorts BEFORE the shell and would be mistaken for the
+                # foreground command, opening every new terminal in / from
+                # that pane onwards. A real foreground command always still
+                # has its shell as parent.
+                #
+                # If nothing survives the filter, FG_INFO is empty and both
+                # branches below are skipped, so resolution falls through to
+                # wezterm's cached pane cwd -- one command stale at worst,
+                # never /.
+                FG_INFO=$(ps -o stat=,ppid=,pid=,comm= -t "${PANE_TTY#/dev/}" 2>/dev/null |
+                    awk '$1 ~ /\+/ && $2 != 1 {print $3, $4; exit}') || FG_INFO=""
                 FG_PID=${FG_INFO%% *}
                 FG_COMM=${FG_INFO#* }
                 # tmux refinement: when an attached tmux client is the pane's
@@ -185,6 +200,23 @@ if echo "$WIN_CLASS_LOWER" | grep -qE "$TERMINALS"; then
                     # one command behind (`cd` then Alt+Return would open the
                     # PREVIOUS directory).
                     log "fg pid $FG_PID ($FG_COMM) on $PANE_TTY"
+                    # Claude Code refinement: claude never chdirs, so its
+                    # /proc cwd is frozen at the directory the session was
+                    # launched from, while the working directory the session
+                    # actually operates in (the one its status line shows)
+                    # lives only inside the process. statusline.sh publishes
+                    # that to claude-cwd/<pid> on every render. Keyed by pid,
+                    # so this can only ever read the file belonging to the
+                    # live foreground process -- a leftover from an exited
+                    # session is never consulted. Falls through to /proc below
+                    # when the file is absent (no status line configured, a
+                    # session that has not rendered yet).
+                    CLAUDE_CWD="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-cwd/$FG_PID"
+                    if [[ "$FG_COMM" == claude* && -r "$CLAUDE_CWD" ]]; then
+                        SESSION_DIR=$(cat "$CLAUDE_CWD" 2>/dev/null) || SESSION_DIR=""
+                        log "claude session cwd '$SESSION_DIR' (from $CLAUDE_CWD)"
+                        open_in_dir "$SESSION_DIR"
+                    fi
                     open_in_dir "$(readlink "/proc/$FG_PID/cwd" 2>/dev/null)"
                 fi
             fi
