@@ -8,10 +8,12 @@
 # its SessionStart/SessionEnd hooks and rewrites them to a $HOME-absolute path
 # on every tmux config load, which differs per machine for one shared file. The
 # "claude-settings" filter is jqsort plus normalization of those two commands
-# back to the $HOME-relative guarded form. The moatlab profile is never touched
-# by the plugin, so plain jqsort is enough there.
+# back to the $HOME-relative guarded form. The moatlab profiles are never
+# touched by the plugin, so plain jqsort is enough there. Their pattern is a
+# glob so every future claude-moatlabN account is covered with no edit here,
+# matching how heal-settings-symlink.sh and cc-pick-account discover profiles.
 claude/.claude/settings.json filter=claude-settings
-claude-moatlab/.claude-moatlab/settings.json filter=jqsort
+claude-moatlab*/.claude-moatlab*/settings.json filter=jqsort
 
 # Codex writes local runtime trust/cache state into config.toml. Keep the live
 # file usable, but prevent path-local [projects...] and [hooks.state...] sections
