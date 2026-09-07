@@ -4,7 +4,9 @@
 # Usage: dl <url>           Auto-detect and download
 #        dl -o <name> <url> Download video with custom filename
 #        dl -t <start-end> <url>
-#                           Download a video timeframe
+#                           Download a video timeframe. Timestamps accept
+#                           fractional seconds, so cuts are millisecond-exact
+#                           (e.g. 10.250-12.750, 1:23.456-1:25.25)
 #        dl --extractor-args <args> <url>
 #                           Pass extractor args straight through to yt-dlp
 #                           (e.g. youtube:player_client=web_embedded)
@@ -15,6 +17,7 @@ print_usage() {
     echo "Usage: dl <url>           Download (auto-detect video/image/PDF/text)"
     echo "       dl -o <name> <url> Download video with custom filename"
     echo "       dl -t <start-end> <url> Download a video timeframe"
+    echo "                          (fractional seconds OK: 10.250-12.750)"
     echo "       dl --extractor-args <args> <url> Pass extractor args to yt-dlp"
 }
 
