@@ -1,0 +1,131 @@
+#!/bin/bash
+# tmux-connect - interactive tmux session picker, shown on SSH login.
+#
+# Lists the running tmux sessions in fzf. Pick one to attach to it, or type a
+# name that matches nothing to create a session with that name. Escape leaves
+# you at an ordinary shell, so a broken picker can never lock you out of a
+# machine over SSH.
+#
+# Usage: tmux-connect [-v|--verbose]
+#
+# Wired into ~/.zshrc, guarded to interactive SSH logins only -- see the block
+# at the bottom of zsh/.zshrc for the guard and its rationale. It replaced the
+# ssht/mosht wrappers, whose bare `tmux attach` picked the most recently active
+# UNATTACHED session -- routing you away from the session you were already in.
+# Nothing needs to bypass this deliberately: an ssh COMMAND (ssh host 'cmd')
+# never sources .zshrc, so `ssh -t host 'exec zsh'` skips the picker when needed.
+#
+# Called, not exec'd, from .zshrc: this script execs tmux, so tmux replaces
+# THIS process while the login zsh stays as its parent. Detaching therefore
+# drops you at a shell instead of closing the connection.
+
+# No `-e` on purpose. fzf exits 1 when the query matches nothing -- which is
+# exactly how a NEW session name is entered here -- and 130 on Escape. Both are
+# control flow rather than failure, so `set -e` would abort the script at the
+# precise moments it still has work to do. Same reasoning as save-on-close.sh.
+set -uo pipefail
+
+verbose=0
+if [[ "${1:-}" == "-v" || "${1:-}" == "--verbose" ]]; then
+    verbose=1
+fi
+
+log() {
+    if [[ $verbose -eq 1 ]]; then
+        echo "tmux-connect: $*" >&2
+    fi
+}
+
+if ! command -v tmux >/dev/null 2>&1; then
+    log "tmux not found; leaving a plain shell"
+    exit 0
+fi
+
+# Nested attach would be a mistake; also makes the script safe to run by hand.
+if [[ -n "${TMUX:-}" ]]; then
+    log "already inside tmux; nothing to do"
+    exit 0
+fi
+
+# Read the list into an array instead of piping tmux straight into fzf: with
+# pipefail, `tmux list-sessions` exiting 1 (the perfectly normal "no server
+# running yet" case) would poison the pipeline's status even when fzf itself
+# succeeded. mapfile from a process substitution keeps the two exit codes apart.
+fmt=$'#{session_name}\t#{session_windows} windows#{?session_attached, (attached),}'
+sessions=()
+mapfile -t sessions < <(tmux list-sessions -F "$fmt" 2>/dev/null)
+log "found ${#sessions[@]} session(s)"
+
+# Fallback for machines without fzf: still offer create-or-attach by name.
+if ! command -v fzf >/dev/null 2>&1; then
+    log "fzf not found; falling back to a plain prompt"
+    if ((${#sessions[@]} > 0)); then
+        printf 'existing sessions:\n'
+        printf '  %s\n' "${sessions[@]}"
+    fi
+    read -r -p "tmux session name [main]: " name
+    name="${name:-main}"
+    log "exec tmux new-session -A -s [$name]"
+    exec tmux new-session -A -s "$name"
+fi
+
+list_sessions() {
+    # `printf '%s\n' "${arr[@]}"` on an EMPTY array still emits one blank line,
+    # which fzf would render as a selectable empty entry (and an empty session
+    # name). Guard so an empty list really does produce empty input.
+    if ((${#sessions[@]} > 0)); then
+        printf '%s\n' "${sessions[@]}"
+    fi
+}
+
+rc=0
+out=$(list_sessions | fzf \
+    --print-query \
+    --no-multi \
+    --layout=reverse \
+    --delimiter=$'\t' \
+    --prompt='tmux session: ' \
+    --header='enter=attach   type a new name=create   esc=shell' \
+    --preview='tmux list-windows -t {1} -F "#{window_index}: #{window_name} [#{pane_current_command}]" 2>/dev/null' \
+    --preview-window='right,35%') || rc=$?
+log "fzf exit=$rc"
+
+# --print-query puts the typed query on line 1 and the selection, if any, on
+# line 2.
+query=$(sed -n 1p <<<"$out")
+choice=$(sed -n 2p <<<"$out")
+
+case $rc in
+0)
+    # An entry was selected; take the name field back off the tab-delimited row.
+    name="${choice%%$'\t'*}"
+    name="${name:-$query}"
+    log "selected existing session [$name]"
+    ;;
+1)
+    # Nothing matched the query, so the query itself is the new session's name.
+    name="$query"
+    log "no match; creating [$name]"
+    ;;
+*)
+    # 130 = Escape or Ctrl-C. This is the escape hatch: hand back a normal
+    # shell rather than exiting, so SSH stays usable if tmux or fzf misbehaves.
+    log "aborted (exit $rc); leaving a plain shell"
+    exit 0
+    ;;
+esac
+
+if [[ -z "$name" ]]; then
+    log "empty session name; leaving a plain shell"
+    exit 0
+fi
+
+# -A attaches when a session of this name already exists and creates it
+# otherwise, so both branches above collapse into one command -- and a session
+# created by someone else between the listing and now cannot make this fail.
+# Add -D here if you would rather take a session over than share it: that
+# detaches any other client, which is usually what you want after a dropped
+# connection left a stale client attached, but it also kicks off a client you
+# genuinely left running elsewhere.
+log "exec tmux new-session -A -s [$name]"
+exec tmux new-session -A -s "$name"
