@@ -8,7 +8,10 @@ import re
 import sys
 
 
-RUNTIME_SECTION_RE = re.compile(r'^\[(projects(?:\.|")|hooks\.state(?:\]|\.))')
+RUNTIME_SECTION_RE = re.compile(
+    r'^\[(projects(?:\.|")|hooks\.state(?:\]|\.)|'
+    r'tui\.model_availability_nux\])'
+)
 
 
 def parse_args() -> argparse.Namespace:

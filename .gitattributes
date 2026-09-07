@@ -16,4 +16,5 @@ claude-moatlab/.claude-moatlab/settings.json filter=jqsort
 # Codex writes local runtime trust/cache state into config.toml. Keep the live
 # file usable, but prevent path-local [projects...] and [hooks.state...] sections
 # from becoming tracked dotfiles content.
+# Also exclude [tui.model_availability_nux] startup-tooltip bookkeeping.
 codex/.codex/config.toml filter=codex-runtime
