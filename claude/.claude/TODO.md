@@ -142,6 +142,45 @@
     evidence (severity: silent data loss > loud ENOENT). `gh` not installed
     locally — install or draft+paste.
 
+## tmux-assistant-resurrect rewrites settings.json hooks to absolute paths
+- **Problem:** the plugin's `install_claude_hooks` (`tmux-assistant-resurrect.tmux`)
+  runs on EVERY tmux config load (server start, prefix+I, source-file) and rewrites
+  the SessionStart/SessionEnd hook commands to `bash '${CURRENT_DIR}/hooks/...'`,
+  deleting any variant it does not recognise. `${CURRENT_DIR}` is absolute and
+  machine-specific (`/Users/berkay/...` on macOS vs `/home/berkay/...` on Linux)
+  while settings.json is one stowed file shared by every machine.
+- **Second half of the problem:** it hardcodes `local settings="$HOME/.claude/settings.json"`
+  — no `CLAUDE_CONFIG_DIR` awareness — so it only ever touches the **personal**
+  profile; `claude-moatlab*` keeps the hand-written `$HOME`-relative guarded form.
+  That asymmetry is the *sole* reason `.gitattributes` needs two different filters
+  (`claude-settings` for personal, `jqsort` for the moatlabs) — it is not a
+  personal-vs-business design decision.
+- **Mitigation in place:** the `claude-settings` clean filter
+  (`~/.local/scripts-private/claude-settings-clean-filter`) = `jq -S` plus a
+  `canonicalise()` that rewrites both commands back to the `$HOME`-relative,
+  existence-guarded form at the git boundary. The live file keeps whatever the
+  plugin wrote (correct for THAT machine); the repo stays machine-agnostic.
+- **Upstream: no issue filed yet** (checked 2026-09-07 — nothing matching in
+  timvw/tmux-assistant-resurrect; the only config-adjacent one is #65, TMPDIR
+  mismatch, closed 2026-08-26, unrelated). Two independent asks, either of which
+  would help:
+  1. Write the `$HOME`-relative form instead of the `${CURRENT_DIR}` absolute path
+     (or leave an already-present user-customised command alone). **This is the one
+     that matters for us** — it alone removes the need for `canonicalise()`.
+  2. Honour `CLAUDE_CONFIG_DIR` / support multiple Claude profiles.
+  `gh` is not installed locally (same blocker as the settings.json symlink entry) —
+  install it or draft + paste.
+- **If upstream fixes (1):** delete `canonicalise()` and point all three profiles at
+  plain `jqsort`, collapsing `.gitattributes` to a single
+  `claude*/.claude*/settings.json filter=jqsort` glob.
+- **Meanwhile, if the two-filter split becomes annoying before upstream moves:**
+  `claude-settings` is a strict superset of `jqsort` (its rewrite only fires on
+  commands containing `claude-session-track`/`claude-session-cleanup`, a no-op
+  elsewhere) — verified 2026-09-07 as byte-identical to `jq -S .` output on both
+  moatlab files, so unifying all three on `claude-settings` is safe today.
+- **Plugin pinned at:** `9ea274c` (Merge PR #46, feat/grok-support). Re-check on
+  plugin updates — a fix could land without an issue being filed.
+
 ## Background Task Notifications
 - `TaskOutput` (blocking wait) does NOT suppress task-notification delivery
 - Every background task always fires both: TaskOutput result + async notification
