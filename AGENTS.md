@@ -40,7 +40,7 @@ Two separate repos (each with its own remote) call this repo's `bootstrap.sh` an
 
 - `~/installation` (`github.com/berkayinceisci/installation`) — package installer; `setup.sh` runs `"$DOTFILES_DIR/bootstrap.sh"` *after* installing packages. **OS package installation (pacman/cargo/brew/npm) lives here, not in dotfiles** — which is why this repo's entry point is `bootstrap.sh`, not `install.sh`.
 - `~/cloudlab` (`github.com/berkayinceisci/cloudlab`) — Cloudlab provisioning; `dotfiles.sh` clones this repo and runs `./bootstrap.sh`.
-- This repo's own remote is `github.com/inceisciberkay/dotfiles` — note the **different** GitHub username from the other two.
+- This repo's own remote is `github.com/berkayinceisci/dotfiles` — the **same** GitHub username as the other two.
 
 ## bootstrap.sh
 
