@@ -1,0 +1,160 @@
+#!/bin/bash
+set -euo pipefail
+
+# askpass — SUDO_ASKPASS helper: collect a password without a terminal.
+#
+# Why this exists: sudo reads the password from /dev/tty, never from stdin.
+# Any caller without a controlling terminal — Claude Code's Bash tool, an i3
+# keybinding, cron, a one-shot `ssh host cmd` — therefore dies with
+#     sudo: a terminal is required to read the password
+# even when the user is sitting right in front of the machine. `sudo -A`
+# takes the other path: it execs $SUDO_ASKPASS with the prompt as $1 and
+# reads the password from that helper's stdout, so a GUI dialog can collect
+# it. This script is that helper. The companion `sudo` shim in this same
+# directory is what adds -A automatically when it detects there is no tty;
+# SUDO_ASKPASS is exported from ~/.zshrc.
+#
+# Backends, in preference order (first one present wins):
+#   macOS  — osascript dialog; there is no X11 askpass on Darwin.
+#   Linux  — a purpose-built ssh-askpass binary if one is installed, else
+#            zenity, else rofi in dmenu password mode.
+#
+# rofi is ranked LAST despite being this setup's launcher (and despite being
+# the only backend that shows the prompt text under a title-bar-less i3 --
+# `zenity --password` can only put the prompt in the window TITLE, which
+# `default_border pixel 1` hides). The reason is that rofi enforces a
+# single-instance pidfile lock: a second instance refuses to start with
+#     Failed to set lock on pidfile: Rofi already running?
+# and exits immediately, producing an empty password. Since the launcher is
+# bound to Mod1+space, "rofi happens to be open when something needs sudo" is
+# a perfectly ordinary state, and in it a rofi-backed prompt would silently
+# fail to authenticate. zenity has no such lock, so it is the safer default.
+# Installing an ssh-askpass binary (x11-ssh-askpass) beats both -- purpose
+# built, no lock, and it draws the prompt inside its own window.
+# Either way a graphical session is required, so with no DISPLAY and no
+# WAYLAND_DISPLAY we fail loudly and immediately rather than hang forever
+# on a dialog nobody can see.
+#
+# The password is only ever written to stdout, where sudo consumes it. The
+# -v trace reports the branch taken and never the password itself.
+
+verbose=0
+if [[ "${1:-}" == "-v" || "${1:-}" == "--verbose" ]]; then
+    verbose=1
+    shift
+fi
+# sudo owns argv when it invokes this helper (it passes exactly one argument,
+# the prompt), so -v is only reachable when running the script by hand.
+# ASKPASS_VERBOSE=1 is the way to trace a real sudo invocation.
+if [[ "${ASKPASS_VERBOSE:-0}" == "1" ]]; then
+    verbose=1
+fi
+
+log() {
+    if [[ $verbose -eq 1 ]]; then
+        echo "askpass: $*" >&2
+    fi
+}
+
+prompt="${1:-Password:}"
+log "prompt=$prompt"
+log "os=$(uname -s) DISPLAY=${DISPLAY:-<unset>} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-<unset>}"
+log "backend override ASKPASS_BACKEND=${ASKPASS_BACKEND:-<unset>}"
+
+# --- macOS ------------------------------------------------------------------
+# The prompt is passed through argv rather than interpolated into the
+# AppleScript source, so quotes/backslashes in it cannot break the script.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    log "using osascript dialog"
+    exec osascript - "$prompt" <<'APPLESCRIPT'
+on run argv
+    set thePrompt to item 1 of argv
+    display dialog thePrompt with title "sudo" default answer "" with hidden answer with icon caution
+    return text returned of result
+end run
+APPLESCRIPT
+fi
+
+# --- Linux ------------------------------------------------------------------
+if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
+    echo "askpass: no DISPLAY/WAYLAND_DISPLAY; cannot prompt for a password" >&2
+    echo "askpass: run the command from a real terminal, or grant NOPASSWD for it" >&2
+    exit 1
+fi
+
+try_backend() {
+    case "$1" in
+    ssh-askpass)
+        # Purpose-built helpers; each takes the prompt as $1 and prints the
+        # password on stdout. Paths differ per distro/package.
+        local candidate
+        for candidate in \
+            /usr/lib/ssh/x11-ssh-askpass \
+            /usr/lib/ssh/ssh-askpass \
+            /usr/libexec/openssh/x11-ssh-askpass \
+            /usr/bin/lxqt-openssh-askpass \
+            /usr/bin/ksshaskpass; do
+            if [[ -x "$candidate" ]]; then
+                log "using $candidate"
+                exec "$candidate" "$prompt"
+            fi
+        done
+        return 1
+        ;;
+    zenity)
+        if command -v zenity >/dev/null 2>&1; then
+            log "using zenity --password"
+            # --title is the only place zenity will show the prompt for a
+            # password dialog; it has no --text option here.
+            #
+            # stderr is NOT suppressed: zenity's GTK warnings are noisy but
+            # swallowing them also swallows the reason a dialog failed to
+            # appear, which turns any backend problem into a silent empty
+            # password and an unexplained auth failure.
+            exec zenity --password --title="$prompt"
+        fi
+        return 1
+        ;;
+    rofi)
+        if command -v rofi >/dev/null 2>&1; then
+            log "using rofi -dmenu -password"
+            # Not exec'd, unlike the other backends: rofi is a menu tool, not
+            # an askpass tool, and its exit status describes the *selection*
+            # (a typed entry that matches no list row is a "custom" entry).
+            # Treat any non-empty line as the password and normalise the exit
+            # status, so sudo never sees a spurious failure.
+            # </dev/null: dmenu mode would otherwise block reading a list of
+            # entries. There are none — the typed line is the whole answer.
+            local pw=""
+            pw="$(rofi -dmenu -password -lines 0 -p "$prompt" </dev/null || true)"
+            if [[ -z "$pw" ]]; then
+                # Either the user cancelled, or rofi refused to start because
+                # another instance holds the pidfile lock (see header).
+                log "rofi returned nothing (cancelled, or already running)"
+                exit 1
+            fi
+            printf '%s\n' "$pw"
+            exit 0
+        fi
+        return 1
+        ;;
+    esac
+    return 1
+}
+
+if [[ -n "${ASKPASS_BACKEND:-}" ]]; then
+    if try_backend "$ASKPASS_BACKEND"; then
+        exit 0
+    fi
+    echo "askpass: requested backend '$ASKPASS_BACKEND' is unavailable" >&2
+    exit 1
+fi
+
+for backend in ssh-askpass zenity rofi; do
+    if try_backend "$backend"; then
+        exit 0
+    fi
+done
+
+echo "askpass: no usable password dialog found (tried ssh-askpass, zenity, rofi)" >&2
+exit 1

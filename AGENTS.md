@@ -18,6 +18,30 @@
 - **Claude Code is the only known offender here**, and even it is *inconsistent*: sometimes its settings writer (`/model`, `/config`, `/effort`, permission grants) renames over the literal path (breaks the symlink), sometimes it resolves the symlink and writes through it (change lands in the repo directly). The break case is auto-healed by `claude/.claude/hooks/heal-settings-symlink.sh`, run from the zsh `precmd` and the top of `bootstrap.sh`: it captures the live file **verbatim** into the repo source and re-stows. Capture is verbatim (not `jq -S`/reformatted) on purpose — so the break path and the write-through path leave byte-identical output and the git diff stays down to the value Claude actually changed; reformatting here would make every write-through reappear as a noisy key-reordering diff. See `claude/.claude/TODO.md` for the upstream issue links. So if `~/.claude/settings.json` is ever a regular file instead of a symlink, that is expected and the heal restores it — do not hand-fix.
 - The breakage only affects **individual file symlinks** (top-level dotfiles like `~/.gitconfig`, or `--no-folding` packages like `claude`/`codex`). **Folded directory** symlinks (e.g. `~/.config/htop`, `~/.config/nvim`) are immune: a `rename()` of a file inside lands in the folded repo dir, so it stays tracked. When adding a config that its app auto-rewrites, prefer letting stow fold the directory; if it must be an individual file symlink, consider a heal hook like the Claude one.
 
+## PATH shims (`scripts/.local/scripts`)
+
+`~/.local/scripts` is prepended to `PATH` in `zsh/.zshrc`, so a script there **shadows a system binary of the same name** for every PATH-based caller. Two scripts do this deliberately, and both `exec` the real binary on every path they do not handle, so they degrade to plain passthrough rather than breaking the command:
+
+- **`xdg-open`** — delegates to `gio open`, working around an xdg-utils resolver bug that truncates MIME default chains under i3.
+- **`sudo`** — adds `-A` when there is no controlling terminal, so sudo asks for its password through a GUI dialog instead of dying with `a terminal is required to read the password`.
+
+### The `sudo` shim and `askpass`
+
+sudo reads the password from `/dev/tty`, never stdin, so *any* caller without a controlling terminal — a coding agent's Bash tool, an i3 keybinding, cron — cannot authenticate at all. There is no sudoers `Defaults` that changes this (no `force_askpass` exists); the only escape hatch is `sudo -A`, which routes the prompt to `$SUDO_ASKPASS`. Nothing adds `-A` on its own, hence the shim. `SUDO_ASKPASS` is exported from `zsh/.zshrc` and points at `scripts/.local/scripts/askpass`.
+
+Prepending `-A` unconditionally is safe, and deliberately avoids parsing sudo's own options (where a wrapper like this would get dangerous, since values such as `-u user` make "find the real command" nontrivial). Both properties were verified directly on this setup:
+
+- `-A` is inert unless a password is actually required — with a deliberately broken helper, `sudo -A <NOPASSWD command>` still ran the command and never invoked it. **So on a machine with passwordless sudo the shim changes nothing and no dialog ever appears.**
+- An explicit `-n` beats `-A` — `sudo -A -n true` failed with "a password is required" without invoking the helper. So `i3/.config/i3/display_setup.sh`'s `sudo -n chvt` recovery path keeps its existing semantics.
+
+When a terminal *is* available the shim is a pure passthrough, so interactive sudo in a normal shell is unchanged (prompt in the terminal, no GUI dialog).
+
+Neither script can offer the repo's usual `-v` flag: `askpass` has its argv supplied by sudo (the prompt is `$1`), and `sudo -v` is already sudo's own "validate the timestamp" option, so intercepting it would break a real feature. They use `ASKPASS_VERBOSE=1` and `SUDO_SHIM_VERBOSE=1` instead.
+
+`askpass` backends, in preference order: a purpose-built ssh-askpass binary, then `zenity`, then `rofi` (macOS uses an `osascript` dialog, passing the prompt through argv so quoting in it cannot break the AppleScript). **Install `x11-ssh-askpass`** (in the `installation` repo's `gui_apps.sh`) — it is the one to prefer, because it draws the prompt inside its own window (i3 runs title-bar-less via `default_border pixel 1`, so `zenity --password`'s title-only prompt is invisible) and it grabs the keyboard, so keystrokes cannot leak to whatever window sits underneath. rofi is ranked last despite being the i3 launcher: it enforces a single-instance pidfile lock and refuses to start while one is held, so a rofi-backed prompt fails exactly when the Mod1+space launcher happens to be open.
+
+Scope: this only covers sudo on the local machine. `ssh $REMOTE_HOST 'sudo …'` runs sudo on the remote, where neither the shim nor the local display exists — that still needs NOPASSWD there (as `bootstrap.sh` already installs for `chvt` locally).
+
 ## Coding-agents config infrastructure
 
 This repo is the source of truth for three coding-agent harnesses (Claude Code, Codex, OpenCode), wired so a single canonical instruction file and one skills set serve all three. Most of the wiring is created by `bootstrap.sh`; see its `--- Shared agent instructions ---` / `Shared skills` comment blocks for the authoritative per-harness rationale.

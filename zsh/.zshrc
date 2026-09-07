@@ -103,6 +103,14 @@ fi
 
 export EDITOR="nvim"
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
+
+# sudo reads passwords from /dev/tty, so it dies with "a terminal is required"
+# in any context that has none (Claude Code's Bash tool, i3 keybindings, cron).
+# The `sudo` shim in ~/.local/scripts detects that and adds -A, which makes
+# sudo collect the password through this helper's GUI dialog instead of
+# failing. Inert where sudo needs no password, so passwordless machines are
+# unaffected. See scripts/.local/scripts/{sudo,askpass}.
+export SUDO_ASKPASS="$HOME/.local/scripts/askpass"
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 
 export NVM_DIR="$HOME/.nvm"

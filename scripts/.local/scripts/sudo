@@ -1,0 +1,79 @@
+#!/bin/bash
+set -euo pipefail
+
+# sudo shim — let sudo ask for its password when there is no terminal.
+#
+# Why this exists: sudo opens /dev/tty directly to read a password. In any
+# context without a controlling terminal — Claude Code's Bash tool, an i3
+# keybinding, cron — that open fails and sudo aborts with
+#     sudo: a terminal is required to read the password
+# There is no sudoers Defaults option to change that (no `force_askpass`
+# exists); the only escape hatch is the -A flag, which routes the prompt to
+# $SUDO_ASKPASS instead. Nothing adds -A on its own, so this shim does it.
+# ~/.local/scripts is ahead of /usr/bin on PATH, so it shadows the system
+# sudo for PATH-based callers, exactly like the xdg-open shim beside it.
+#
+# Prepending -A unconditionally is safe, and deliberately requires no parsing
+# of sudo's own arguments (which is where a wrapper like this would otherwise
+# get dangerous — option values such as `-u user` make "find the real command"
+# nontrivial). Both properties that make it safe were verified directly:
+#   * -A is inert unless a password is actually required. With a deliberately
+#     broken helper, `sudo -A <NOPASSWD command>` still ran the command and
+#     never touched the helper. So on a machine with passwordless sudo this
+#     shim changes nothing and no dialog ever appears.
+#   * An explicit -n wins over -A: `sudo -A -n true` errored with "a password
+#     is required" without invoking the helper. So callers that deliberately
+#     ask for non-interactive behaviour, like display_setup.sh's `sudo -n
+#     chvt` recovery path, keep their existing semantics.
+#
+# When a terminal IS available, the shim is a pure passthrough — interactive
+# sudo in a normal shell behaves exactly as it always did, prompt in the
+# terminal, no GUI dialog.
+#
+# No -v flag: argv belongs to sudo, and `sudo -v` is already sudo's own
+# "validate/extend the timestamp" option, so intercepting it would break a
+# real feature. Tracing is via SUDO_SHIM_VERBOSE=1 instead.
+
+log() {
+    if [[ "${SUDO_SHIM_VERBOSE:-0}" == "1" ]]; then
+        echo "sudo(shim): $*" >&2
+    fi
+}
+
+# Locate the real sudo — anything that is not this shim.
+real_sudo=""
+for d in /usr/bin /bin /usr/local/bin /opt/homebrew/bin; do
+    if [[ -x "$d/sudo" ]]; then
+        real_sudo="$d/sudo"
+        break
+    fi
+done
+
+if [[ -z "$real_sudo" ]]; then
+    echo "sudo(shim): no system sudo found" >&2
+    exit 127
+fi
+
+log "real sudo: $real_sudo"
+log "SUDO_ASKPASS=${SUDO_ASKPASS:-<unset>}"
+
+# The precise condition sudo itself would fail on: /dev/tty cannot be opened.
+# The braces matter: redirections are applied left to right, so the bare
+# `: </dev/tty 2>/dev/null` form fails the open while stderr is still the
+# real stderr and leaks "No such device or address" into every command's
+# output. Redirecting the group's stderr covers the inner open regardless of
+# order.
+if { : </dev/tty; } 2>/dev/null; then
+    log "controlling terminal present; passthrough"
+    exec "$real_sudo" "$@"
+fi
+
+log "no controlling terminal"
+
+if [[ -z "${SUDO_ASKPASS:-}" || ! -x "${SUDO_ASKPASS:-}" ]]; then
+    log "no usable SUDO_ASKPASS helper; passthrough"
+    exec "$real_sudo" "$@"
+fi
+
+log "exec: $real_sudo -A $*"
+exec "$real_sudo" -A "$@"
