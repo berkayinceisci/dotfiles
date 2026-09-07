@@ -76,8 +76,15 @@ download_platform_image() {
 # (both photos and videos), then curl each one
 download_twitter_media() {
     local url="$1"
+    local name="${2:-}"
     local api_url
-    api_url=$(echo "$url" | sed -E 's#^https?://(www\.|mobile\.)?(twitter\.com|x\.com)/#https://api.fxtwitter.com/#')
+    # Media permalinks (.../status/123/photo/2, .../status/123/video/1) are valid
+    # on x.com but 404 on the API, which only knows the bare status URL -- strip
+    # that suffix, plus any query/fragment, before rewriting the host
+    api_url=$(echo "$url" \
+        | sed -E 's#[?#].*$##' \
+        | sed -E 's#/(photo|video)/[0-9]+/?$##' \
+        | sed -E 's#^https?://(www\.|mobile\.)?(twitter\.com|x\.com)/#https://api.fxtwitter.com/#')
 
     local media_urls
     media_urls=$(curl -sf --max-time 15 "$api_url" | python3 -c '
@@ -101,9 +108,19 @@ except Exception:
         return 1
     fi
 
+    local count
+    count=$(printf '%s\n' "$media_urls" | wc -l)
+
+    local n=0 target
     while IFS= read -r media_url; do
         [[ -z "$media_url" ]] && continue
-        download_direct "$media_url" ""
+        n=$((n + 1))
+        target="$name"
+        # Multi-media tweets: suffix each file so they do not overwrite one another
+        if [[ -n "$name" && $count -gt 1 ]]; then
+            target="${name}_${n}"
+        fi
+        download_direct "$media_url" "" "$target"
     done <<< "$media_urls"
 }
 
@@ -209,7 +226,7 @@ download_platform() {
     if [[ $has_no_video -eq 1 ]]; then
         if [[ "$url" =~ (twitter\.com|x\.com)/ ]]; then
             echo "-> yt-dlp found no video, fetching media via fxtwitter API..." >&2
-            download_twitter_media "$url"
+            download_twitter_media "$url" "$name"
         elif [[ "$url" =~ ^https?://([a-z0-9-]+\.)*reddit\.com/ ]]; then
             echo "-> No video in post, fetching image(s) from Reddit..." >&2
             download_reddit_images "$url" "$name"
