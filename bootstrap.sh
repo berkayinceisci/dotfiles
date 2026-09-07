@@ -674,13 +674,15 @@ if [[ "$OS" == "macos" ]] || [[ -n "$DISPLAY" ]]; then
 		if [ -d "/Applications/SwiftBar.app" ]; then
 			echo "Configuring SwiftBar..."
 			defaults write com.ameba.SwiftBar PluginDirectory -string "$HOME/.config/swiftbar"
-			# Add to login items (idempotent: osascript won't duplicate)
-			if ! osascript -e 'tell application "System Events" to get the name of every login item' 2>/dev/null | grep -q "SwiftBar"; then
-				osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/SwiftBar.app", hidden:false}' >/dev/null 2>&1
-				echo "  ✓ SwiftBar added to login items"
-			else
-				echo "  ✓ SwiftBar already in login items"
-			fi
+			# Launch-at-login is deliberately NOT scripted. Registering the login
+			# item means driving System Events over osascript, which needs a TCC
+			# Automation grant; run over ssh it is attributed to the responsible
+			# process (/usr/libexec/sshd-keygen-wrapper) and prompts on every run.
+			# SwiftBar ships its own Contents/Library/LoginItems/LaunchAtLoginHelper.app,
+			# so tick "Launch at Login" in its preferences once instead -- the same
+			# SMAppService mechanism Raycast/Tailscale register themselves with.
+			# Same reasoning as Remote Login; see installation/CLAUDE.md
+			# "Manual steps (macOS)".
 			echo "  ✓ SwiftBar configured"
 			open -a SwiftBar
 			echo "  Note: Grant necessary permissions if prompted"
