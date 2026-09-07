@@ -38,7 +38,7 @@
       {
         "hooks": [
           {
-            "command": "filepath=\"$CLAUDE_FILE_PATH\"; case \"$filepath\" in *.sh) command -v shellcheck >/dev/null && shellcheck \"$filepath\" 2>&1 | head -20 ;; *.py) python3 -m py_compile \"$filepath\" 2>&1 ;; *.zshrc) zsh -n \"$filepath\" 2>&1 | head -5 ;; *.bashrc) bash -n \"$filepath\" 2>&1 | head -5 ;; esac",
+            "command": "filepath=$(jq -r \".tool_input.file_path // empty\"); [ -n \"$filepath\" ] || exit 0; case \"$filepath\" in *.sh) if command -v shellcheck >/dev/null; then if ! out=$(shellcheck -f gcc \"$filepath\" 2>&1); then printf \"%s\\n\" \"$out\" | head -20 >&2; exit 2; fi; fi ;; *.py) if command -v ruff >/dev/null; then if ! out=$(ruff check --select F821,F811,F632,E9 --output-format concise \"$filepath\" 2>&1); then printf \"%s\\n\" \"$out\" | head -20 >&2; exit 2; fi; elif ! out=$(python3 -m py_compile \"$filepath\" 2>&1); then printf \"%s\\n\" \"$out\" >&2; exit 2; fi ;; *.zshrc) if ! out=$(zsh -n \"$filepath\" 2>&1); then printf \"%s\\n\" \"$out\" | head -5 >&2; exit 2; fi ;; *.bashrc) if ! out=$(bash -n \"$filepath\" 2>&1); then printf \"%s\\n\" \"$out\" | head -5 >&2; exit 2; fi ;; esac",
             "type": "command"
           }
         ],
@@ -93,7 +93,7 @@
       }
     ]
   },
-  "model": "opus[1m]",
+  "model": "claude-fable-5[1m]",
   "permissions": {
     "defaultMode": "auto"
   },
