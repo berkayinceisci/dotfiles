@@ -27,10 +27,31 @@ Host macos
     User berkay
     HostKeyAlias macos
 
+# X11 forwarding is on for popos alone (not in `Host *`) because that is where
+# papers are written: nvim, latexmk and zathura all run on popos, so SyncTeX
+# forward AND inverse search stay machine-local and work exactly as they do
+# sitting at the machine -- only the rendered window crosses the network.
+# Setting it here means bare `ssh popos` carries the display; no -Y to remember.
+#
+# Trusted (-Y, not -X): untrusted forwarding expires after ForwardX11Timeout
+# (20min default) and then REFUSES new X connections, so the first viewer
+# launch of a long session works and the next one mysteriously does not.
+# Trusted grants popos clients full access to the local X server -- fine
+# between one's own machines, and the reason this is not in `Host *`.
+#
+# Compression: X11 ships bitmaps, and it is a large win on text-heavy PDF pages.
+#
+# mosh CANNOT carry any of this (no X11, no ports, no agent -- and
+# `mosh --ssh="ssh -Y"` does not help, its bootstrap ssh exits immediately).
+# Use ssh for paper sessions, mosh for everything else; see the "Connecting to
+# remote machines" note in zsh/.zsh/functions.zsh.
 Host popos
     HostName ${POPOS_HOST}
     User berkay
     HostKeyAlias popos
+    ForwardX11 yes
+    ForwardX11Trusted yes
+    Compression yes
 
 # VT
 
