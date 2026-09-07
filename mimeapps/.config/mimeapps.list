@@ -1,3 +1,28 @@
+# Default applications, shared by every Linux machine (stow package; the mac
+# uses LaunchServices via the `duti` package instead). Format is the XDG
+# desktop-entry key file, so `#` comments are legal -- see the spec at
+# https://specifications.freedesktop.org/mime-apps-spec/latest/
+#
+# The two sections do DIFFERENT jobs, and the difference is not obvious:
+#
+#   [Default Applications] picks the handler. GIO walks the `;`-separated list
+#   and takes the FIRST INSTALLED entry, so anything after a package that the
+#   `installation` repo guarantees on every machine can never fire. Those tails
+#   are dead weight -- prefer a single entry, and keep a chain only where no one
+#   app is present everywhere (see `inode/directory` below).
+#
+#   [Added Associations] does NOT pick the handler -- it sets the ORDER of the
+#   right-click "Open With" menu. An app already lands in that menu by declaring
+#   the type in its own .desktop `MimeType=`; listing it here PROMOTES it to the
+#   front. So entries here that look redundant with an app's own declaration are
+#   not: deleting them leaves defaults intact but reshuffles the menu (measured
+#   2026-09-06 -- dropping the image lines pushed `chromium` above `gThumb` for
+#   image/png, and `mpv` above `vlc` for video/mp4). Leave them alone.
+#
+# Resolution is done by `dotfiles/scripts/.local/scripts/xdg-open`, which shims
+# `gio open`; the stock xdg-utils resolver truncates these chains at the first
+# `;` and so misreads any multi-entry line.
+
 [Default Applications]
 text/html=zen-browser.desktop
 x-scheme-handler/http=zen-browser.desktop
@@ -14,21 +39,23 @@ application/x-extension-xht=zen-browser.desktop
 x-scheme-handler/obsidian=obsidian.desktop
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 application/pdf=org.gnome.Evince.desktop
-image/png=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/jpeg=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/gif=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/bmp=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/webp=org.gnome.gThumb.desktop;feh.desktop;
-image/tiff=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/svg+xml=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/x-icon=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/x-bmp=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/x-png=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-image/jxl=org.gnome.gThumb.desktop;feh.desktop;
-image/avif=org.gnome.gThumb.desktop;feh.desktop;
-image/heif=org.gnome.gThumb.desktop;feh.desktop;
-text/plain=org.gnome.gedit.desktop
-application/xml=org.gnome.gedit.desktop
+image/png=org.gnome.gThumb.desktop
+image/jpeg=org.gnome.gThumb.desktop
+image/gif=org.gnome.gThumb.desktop
+image/bmp=org.gnome.gThumb.desktop
+image/webp=org.gnome.gThumb.desktop
+image/tiff=org.gnome.gThumb.desktop
+image/svg+xml=org.gnome.gThumb.desktop
+image/x-icon=org.gnome.gThumb.desktop
+image/x-bmp=org.gnome.gThumb.desktop
+image/x-png=org.gnome.gThumb.desktop
+image/jxl=org.gnome.gThumb.desktop
+image/avif=org.gnome.gThumb.desktop
+image/heif=org.gnome.gThumb.desktop
+inode/directory=thunar.desktop;com.system76.CosmicFiles.desktop;org.gnome.Nautilus.desktop;
+text/plain=org.xfce.mousepad.desktop
+text/x-log=org.xfce.mousepad.desktop
+application/xml=org.xfce.mousepad.desktop
 video/mp4=vlc.desktop
 video/x-matroska=vlc.desktop
 video/webm=vlc.desktop
@@ -43,7 +70,7 @@ video/x-ogm+ogg=vlc.desktop
 
 [Added Associations]
 image/png=org.gnome.gThumb.desktop;org.gnome.eog.desktop;feh.desktop;
-text/x-bibtex=org.gnome.gedit.desktop;
+text/x-bibtex=org.xfce.mousepad.desktop;
 x-scheme-handler/http=zen-browser.desktop;
 x-scheme-handler/https=zen-browser.desktop;
 x-scheme-handler/chrome=zen-browser.desktop;
