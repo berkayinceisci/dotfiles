@@ -50,10 +50,13 @@ fi
 # Read the list into an array instead of piping tmux straight into fzf: with
 # pipefail, `tmux list-sessions` exiting 1 (the perfectly normal "no server
 # running yet" case) would poison the pipeline's status even when fzf itself
-# succeeded. mapfile from a process substitution keeps the two exit codes apart.
+# succeeded. Reading from a process substitution keeps the two exit codes apart.
+# Use a read loop because macOS ships Bash 3.2, which has no mapfile builtin.
 fmt=$'#{session_name}\t#{session_windows} windows#{?session_attached, (attached),}'
 sessions=()
-mapfile -t sessions < <(tmux list-sessions -F "$fmt" 2>/dev/null)
+while IFS= read -r session; do
+    sessions+=("$session")
+done < <(tmux list-sessions -F "$fmt" 2>/dev/null)
 log "found ${#sessions[@]} session(s)"
 
 # Fallback for machines without fzf: still offer create-or-attach by name.

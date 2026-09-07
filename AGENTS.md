@@ -1,6 +1,7 @@
 # Dotfiles
 
 - This is a cross-platform dotfiles repo. Always detect the current OS (macOS vs Linux) and handle platform differences. Use `uname -s` or equivalent checks. macOS uses BSD utilities (date, find, sort) which differ from GNU versions. Never assume GNU tools on macOS.
+- macOS ships `/bin/bash` 3.2. Shared Bash scripts must work with Bash 3.2 on macOS and Bash on Linux; do not assume Bash 4+ features such as `mapfile`/`readarray` or associative arrays. Use portable alternatives (e.g. `while IFS= read -r` to populate an array), and verify changes with `/bin/bash` on macOS. A `#!/bin/bash` shebang selects the system Bash regardless of the user's login shell or a newer Bash installed elsewhere.
 
 ## Management approach (stow)
 
