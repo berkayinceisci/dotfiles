@@ -61,6 +61,26 @@ ssht() {
     ssh -t "$@" "tmux attach"
 }
 
+# mosh + tmux: the disconnect-proof variant of ssht. mosh is UDP and keeps the
+# rendered screen client-side, so suspending the laptop / changing networks does
+# not tear the view down -- reopen the lid and the pane is still there, resyncing
+# when the link returns. ssh cannot do this: it is TCP, and ~/.ssh/config's
+# ServerAliveInterval 60 / ServerAliveCountMax 3 kills the connection after ~3min
+# of silence. tmux is still what makes the REMOTE side survive (mosh has no
+# scrollback, and a dead mosh-client leaves the tmux server running), so this
+# attaches exactly like ssht rather than replacing it.
+#
+# Use plain `ssh -Y` instead when the task needs remote display (nvim/LaTeX
+# synctex): mosh forwards no X11, no agent and no ports. Its bootstrap ssh exits
+# right after handing off to mosh-server, and the X11 channel dies with it, so
+# `mosh --ssh="ssh -Y"` does NOT work either. Attaching the same tmux session
+# over mosh is safe for shells that already hold a good DISPLAY -- refresh-env
+# below deliberately ignores the `-DISPLAY` unset marker such an attach writes --
+# but panes CREATED during a mosh attach inherit no forwarded DISPLAY.
+mosht() {
+    mosh "$@" -- tmux attach
+}
+
 # Pull the latest environment from the tmux server into the current shell.
 # When tmux's update-environment list refreshes on attach, NEW panes inherit
 # the new values, but EXISTING shells keep whatever they captured at startup.
