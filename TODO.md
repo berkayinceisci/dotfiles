@@ -1,5 +1,32 @@
 # TODO
 
+## Remote sudo password prompts
+
+Not urgent: every remote machine in the workflow currently grants passwordless
+sudo (popos and hds01 both report `(ALL) NOPASSWD: ALL`), so the askpass helper
+never runs there. Revisit if that changes.
+
+- [ ] Refresh a stale `DISPLAY` from tmux at prompt time in
+  [askpass](scripts/.local/scripts/askpass), line 80. A process that outlives
+  the `ssh -X` connection it was started under keeps a `DISPLAY` pointing at a
+  destroyed X11 proxy, so a dialog raised from a reattached tmux session cannot
+  draw. Claude Code's environment cannot be repaired from outside the way
+  [latex.lua](nvim/.config/nvim/lua/plugins/latex.lua), lines 20-32, repairs
+  nvim's own — but it does not need to be: sudo spawns the helper fresh on each
+  prompt and passes the caller's environment through, so the helper can re-read
+  the value itself. When `$TMUX` is set and `DISPLAY` is either empty or fails
+  `xdpyinfo -display`, take the value from `tmux show-environment DISPLAY`,
+  matching only the `DISPLAY=value` form so a `-DISPLAY` unset marker left by a
+  mosh attach cannot clobber a good value — the rule `refresh-env`
+  ([functions.zsh](zsh/.zsh/functions.zsh), line 108) already follows. Guard the
+  probe with `command -v xdpyinfo`, which is not installed everywhere, and fall
+  back to the current non-empty check. `XAUTHORITY` needs no equivalent
+  handling: ssh forwarding writes the cookie to the default `~/.Xauthority`, and
+  tmux reports `-XAUTHORITY` on popos while X clients still connect. Verify
+  against a tmux session reattached over a fresh `ssh -X` connection (stale
+  DISPLAY replaced), a session created under mosh with no DISPLAY at all (clean
+  error, no hang), and a host with no `xdpyinfo` installed.
+
 ## macOS compatibility audit
 
 Open findings from the script audit. Shared scripts must support macOS Bash
