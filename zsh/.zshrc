@@ -104,6 +104,12 @@ fi
 export EDITOR="nvim"
 export MANPAGER="less -R --use-color -Dd+r -Du+b"
 
+# Keep NLTK's data cache out of $HOME (it defaults to ~/nltk_data). The dir
+# must already exist for nltk to pick it as the download target, hence the
+# mkdir. macOS sets no XDG_DATA_HOME, so the fallback carries both platforms.
+export NLTK_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nltk_data"
+[[ -d "$NLTK_DATA" ]] || mkdir -p "$NLTK_DATA"
+
 # sudo reads passwords from /dev/tty, so it dies with "a terminal is required"
 # in any context that has none (Claude Code's Bash tool, i3 keybindings, cron).
 # The `sudo` shim in ~/.local/scripts detects that and adds -A, which makes
