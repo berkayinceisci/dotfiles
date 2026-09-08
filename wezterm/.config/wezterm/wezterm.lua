@@ -131,6 +131,48 @@ config.scrollback_lines = 50000
 
 config.enable_kitty_keyboard = false
 
+-- Word-wise editing in lazygit's text inputs, for a pane running lazygit *directly*
+-- (no tmux, no nvim). Those layers do the same swap when they are in the way and can
+-- see the process; wezterm is the only one that can when nothing is.
+--
+-- Which bytes lazygit wants is a PLATFORM split, not a version one -- v0.65.0 built
+-- for darwin ships the old gocui/tcell input layer, the same build for linux ships
+-- the new one. Verified against each machine's own binary, under screen-256color,
+-- tmux-256color and xterm-256color alike (so it is not terminfo):
+--
+--                       linux 0.64.1/0.65.0   darwin 0.65.0
+--   ESC b / ESC f            word motion       word motion
+--   \e[1;5D  (Ctrl+Left)     word motion       ignored
+--   \e[127;5u (Ctrl+BS)      word delete       ignored
+--   ESC DEL                  ignored           word delete
+--
+-- So ESC b / ESC f is the one word motion both understand and is sent unconditionally,
+-- while word-delete has to be chosen per platform. On darwin the choice is a no-op --
+-- ESC DEL is already what the Ctrl+Backspace pin below emits -- so nothing changes
+-- there; the swap only ever fires on linux. Ctrl+W word-deletes on every build and
+-- would need no split, but lazygit binds <c-w> globally to toggleWhitespaceInDiffView
+-- and nothing here can tell whether a text input is focused, so Ctrl+Backspace outside
+-- one would silently flip that setting. Every sequence used below is inert outside a
+-- text input on both platforms (verified by diffing the rendered pane).
+local lazygit_word_delete = wezterm.target_triple == "aarch64-apple-darwin" and "\x1b\x7f"
+	or "\x1b[127;5u"
+
+-- Send `for_lazygit` when the pane's foreground process is lazygit, `otherwise` for
+-- anything else. Matches the basename so it holds for /usr/bin/lazygit (Linux, pacman)
+-- and ~/go/bin/lazygit (macOS, go install) alike. When the pane runs tmux or ssh the
+-- name is tmux or ssh, so `otherwise` is sent and that layer decides from there -- the
+-- layers compose rather than fight.
+local function lazygit_key(for_lazygit, otherwise)
+	return wezterm.action_callback(function(window, pane)
+		local proc = pane:get_foreground_process_name()
+		local bytes = otherwise
+		if proc and proc:match("[/\\]lazygit$") then
+			bytes = for_lazygit
+		end
+		window:perform_action(act.SendString(bytes), pane)
+	end)
+end
+
 config.keys = {
 	{ key = "\r", mods = super_key, action = act.ToggleFullScreen },
 	{ key = "r", mods = super_key, action = act.ReloadConfiguration },
@@ -241,17 +283,9 @@ config.keys = {
 	-- mapped as <M-BS> in nvim/lua/config/keymaps.lua.
 	--
 	-- lazygit is the other exception, and the reason this is a callback rather than a
-	-- flat SendString. lazygit used to be covered too -- its editor had a ModAlt case
-	-- in pkg/gui/editors.go -- but 0.64 rewrote the input layer and dropped it, so ESC
-	-- DEL now does nothing there and only the CSI-u encoding of Ctrl+Backspace,
-	-- \e[127;5u, still word-deletes. Inside tmux that swap is done by the M-BSpace
-	-- gate in tmux.conf, but a pane running lazygit *directly* has no such layer,
-	-- hence the same gate here, on the pane's foreground process.
-	--
-	-- The two layers compose rather than fight: when the pane runs tmux,
-	-- get_foreground_process_name() is tmux, the fallback sends ESC DEL, and tmux's
-	-- own gate decides from there. Match on the basename so it holds for both
-	-- /usr/bin/lazygit (Linux, pacman) and ~/go/bin/lazygit (macOS, go install).
+	-- flat SendString -- see the lazygit_key/lazygit_word_delete block above for which
+	-- bytes it wants and why that is a platform split. On darwin the two branches carry
+	-- the same bytes, so this behaves exactly like the old flat SendString there.
 	--
 	-- This makes the ^H handling elsewhere (that keymaps.lua fallback, zsh's
 	-- `bindkey '^H'`, tmux's `bind-key -n C-h` gate) redundant on the wezterm path,
@@ -259,18 +293,13 @@ config.keys = {
 	-- is two bytes where ^H was one, so a reader with escape-time 0 that happens to see
 	-- them in separate reads could take it for a lone Escape; they are written together
 	-- so this should not arise, but a single byte was structurally immune.
-	{
-		key = "Backspace",
-		mods = "CTRL",
-		action = wezterm.action_callback(function(window, pane)
-			local proc = pane:get_foreground_process_name()
-			local bytes = "\x1b\x7f"
-			if proc and proc:match("[/\\]lazygit$") then
-				bytes = "\x1b[127;5u"
-			end
-			window:perform_action(act.SendString(bytes), pane)
-		end),
-	},
+	{ key = "Backspace", mods = "CTRL", action = lazygit_key(lazygit_word_delete, "\x1b\x7f") },
+	-- Ctrl+Left / Ctrl+Right likewise, and here the split does bite on darwin: its
+	-- lazygit ignores \e[1;5D outright, so without this the arrows do nothing in a bare
+	-- lazygit pane there. ESC b / ESC f is understood by every build, and the fallthrough
+	-- re-emits the standard sequence unchanged for everything else.
+	{ key = "LeftArrow", mods = "CTRL", action = lazygit_key("\x1bb", "\x1b[1;5D") },
+	{ key = "RightArrow", mods = "CTRL", action = lazygit_key("\x1bf", "\x1b[1;5C") },
 	{ key = "LeftArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "RightArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },
 	{ key = "UpArrow", mods = "CTRL|SHIFT", action = wezterm.action.DisableDefaultAssignment },

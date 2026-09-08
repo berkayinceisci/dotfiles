@@ -24,24 +24,29 @@ return {
 			require("gitsigns").refresh()
 		end
 
-		-- Ctrl+Backspace = delete previous word in lazygit's text inputs (commit
-		-- message, search, prompts). Those inputs are gocui's, and gocui/tcell fold
-		-- both ^H (0x08) and DEL into a plain Backspace, so lazygit deletes a single
-		-- char; ESC DEL it ignores outright. It does decode the CSI-u encoding of
-		-- Ctrl+Backspace, \e[127;5u, as word-delete, so send that. Ctrl+W would work
-		-- too but is not used: lazygit binds <c-w> globally to
-		-- toggleWhitespaceInDiffView, so pressing Ctrl+Backspace outside a text input
-		-- would silently flip that setting, whereas \e[127;5u is inert there.
+		-- Word-wise editing in lazygit's text inputs (commit message, search, prompts).
+		-- Those inputs are gocui's, and gocui/tcell fold both ^H (0x08) and DEL into a
+		-- plain Backspace, so lazygit deletes a single char. Which sequence word-deletes
+		-- instead is a PLATFORM split, not a version one -- lazygit v0.65.0 built for
+		-- darwin ships the old gocui/tcell input layer while the same version for linux
+		-- ships the new one. Verified against each machine's own binary, under
+		-- screen-256color, tmux-256color and xterm-256color alike, so not terminfo:
 		--
-		-- Two maps because the byte depends on the terminal: wezterm.lua pins
-		-- Ctrl+Backspace to ESC DEL, which nvim names <M-BS>, while terminals that do
-		-- no such pinning still send legacy ^H.
+		--                         linux 0.64.1/0.65.0   darwin 0.65.0
+		--   ESC b / ESC f              word motion       word motion
+		--   \e[1;5D  (Ctrl+Left)       word motion       ignored
+		--   \e[127;5u (Ctrl+BS)        word delete       ignored
+		--   ESC DEL                    ignored           word delete
 		--
-		-- Ctrl+Left / Ctrl+Right need no translation: lazygit parses \e[1;5D / \e[1;5C
-		-- natively. It could not before 0.64 -- tcell only learned those xterm-style
-		-- modified-cursor sequences from terminfo's kLFT5/kRIT5 caps, absent from our
-		-- screen-256color TERM -- so this used to rewrite them to Alt+Left/Alt+Right,
-		-- which 0.64 in turn ignores. Requires lazygit >= 0.64 everywhere.
+		-- So word motion is sent as ESC b / ESC f unconditionally -- the one form both
+		-- understand -- while word-delete is chosen per platform below. Ctrl+W would
+		-- word-delete on every build and need no split, but lazygit binds <c-w> globally
+		-- to toggleWhitespaceInDiffView and nothing here can tell whether a text input
+		-- is focused, so Ctrl+Backspace outside one would silently flip that setting.
+		--
+		-- Two Ctrl+Backspace maps because its byte depends on the terminal: wezterm.lua
+		-- pins it to ESC DEL, which nvim names <M-BS>, while terminals that do no such
+		-- pinning still send legacy ^H. On darwin both simply re-emit ESC DEL.
 		--
 		-- ~/.config/tmux/tmux.conf does the same rewrite for panes whose foreground
 		-- process IS lazygit, but here lazygit runs inside nvim's floating terminal,
@@ -66,9 +71,13 @@ return {
 					end
 				end
 				local opts = { buffer = ev.buf, silent = true }
-				-- \27 = ESC, so this is ESC [ 127;5u -- Ctrl+Backspace in CSI-u.
-				vim.keymap.set("t", "<C-h>", send("\27[127;5u"), opts)
-				vim.keymap.set("t", "<M-BS>", send("\27[127;5u"), opts)
+				-- \27 = ESC, \127 = DEL. So darwin gets ESC DEL and linux gets
+				-- ESC [ 127;5u, the CSI-u encoding of Ctrl+Backspace.
+				local word_delete = vim.fn.has("mac") == 1 and "\27\127" or "\27[127;5u"
+				vim.keymap.set("t", "<C-h>", send(word_delete), opts)
+				vim.keymap.set("t", "<M-BS>", send(word_delete), opts)
+				vim.keymap.set("t", "<C-Left>", send("\27b"), opts)
+				vim.keymap.set("t", "<C-Right>", send("\27f"), opts)
 			end,
 		})
 	end,
