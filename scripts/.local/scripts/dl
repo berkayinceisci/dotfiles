@@ -7,6 +7,8 @@
 #                           Download a video timeframe. Timestamps accept
 #                           fractional seconds, so cuts are millisecond-exact
 #                           (e.g. 10.250-12.750, 1:23.456-1:25.25)
+#        dl -f <url>        Overwrite existing files without asking
+#        dl -n <url>        Skip files that already exist (do not overwrite)
 #        dl --extractor-args <args> <url>
 #                           Pass extractor args straight through to yt-dlp
 #                           (e.g. youtube:player_client=web_embedded)
@@ -18,12 +20,103 @@ print_usage() {
     echo "       dl -o <name> <url> Download video with custom filename"
     echo "       dl -t <start-end> <url> Download a video timeframe"
     echo "                          (fractional seconds OK: 10.250-12.750)"
+    echo "       dl -f <url>        Overwrite existing files without asking"
+    echo "       dl -n <url>        Skip files that already exist"
     echo "       dl --extractor-args <args> <url> Pass extractor args to yt-dlp"
 }
 
 require_ytdlp() {
     if ! command -v yt-dlp >/dev/null 2>&1; then
         echo "Error: yt-dlp not found" >&2
+        exit 1
+    fi
+}
+
+# macOS stat is BSD, Linux stat is GNU -- incompatible flags for both queries
+file_size() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        stat -f%z "$1"
+    else
+        stat -c%s "$1"
+    fi
+}
+
+file_mtime() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        stat -f '%Sm' -t '%Y-%m-%d %H:%M' "$1"
+    else
+        stat -c '%y' "$1" | cut -d. -f1
+    fi
+}
+
+human_size() {
+    numfmt --to=iec "$1" 2>/dev/null || echo "$1 bytes"
+}
+
+cleanup_staging() {
+    if [[ -n "$staging" && -d "$staging" ]]; then
+        rm -rf "$staging"
+    fi
+}
+
+# yt-dlp skips a download whose target already exists, so an attempt that runs
+# after a failed one must not inherit what the failed one left behind
+reset_staging() {
+    if [[ -n "$staging" && -d "$staging" ]]; then
+        find "$staging" -mindepth 1 -delete
+    fi
+}
+
+# Ask before destroying an existing file. The answer is read from the terminal
+# rather than stdin, so the filepath this script prints on stdout stays pipeable.
+# Returns 0 to overwrite, 1 to keep what is already there.
+confirm_overwrite() {
+    local target="$1"
+    local reply=""
+
+    # No controlling terminal (piped, cron, another script): refuse rather than
+    # guess, since either guess silently does the wrong thing to real data
+    if ! { : >/dev/tty; } 2>/dev/null; then
+        echo "Error: $target already exists and there is no terminal to ask." >&2
+        echo "       Pass -f to overwrite it or -n to skip it." >&2
+        cleanup_staging
+        exit 1
+    fi
+
+    printf '%s exists (%s, modified %s). Overwrite? [y/N/a] ' \
+        "$target" "$(human_size "$(file_size "$target")")" "$(file_mtime "$target")" >/dev/tty
+    read -r reply </dev/tty || reply=""
+    case "$reply" in
+        [yY]) return 0 ;;
+        [aA]) overwrite_all=1; return 0 ;;  # rest of this run, e.g. a gallery
+        *)    return 1 ;;
+    esac
+}
+
+# The single place a download is allowed to replace something already on disk.
+# Every backend routes through here: curl overwrites silently and yt-dlp instead
+# skips silently, so leaving the decision to either one gives two different
+# behaviours for the same collision. Returns 1 when the file was not installed.
+install_staged() {
+    local staged="$1"
+    local target="$2"
+
+    if [[ -e "$target" ]]; then
+        if [[ $no_clobber -eq 1 ]]; then
+            echo "-> $target exists, skipping" >&2
+            return 1
+        fi
+        if [[ $force -eq 0 && $overwrite_all -eq 0 ]]; then
+            if ! confirm_overwrite "$target"; then
+                echo "-> kept existing $target" >&2
+                return 1
+            fi
+        fi
+    fi
+
+    if ! mv -f "$staged" "$target"; then
+        echo "Error: failed to install $target" >&2
+        cleanup_staging
         exit 1
     fi
 }
@@ -43,19 +136,17 @@ download_video() {
         extra_args+=(--extractor-args "$extractor_args")
     fi
     local filepath rc=0
-    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" -I 1 ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url") || rc=$?
+    filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" -I 1 -P "$staging" ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url") || rc=$?
     if [[ $rc -ne 0 ]]; then
         return $rc
     fi
-    echo "$filepath"
-    if [[ -f "$filepath" ]]; then
-        local size
-        if [[ "$(uname -s)" == "Darwin" ]]; then
-            size=$(stat -f%z "$filepath")
-        else
-            size=$(stat -c%s "$filepath")
+    local target
+    target=$(basename "$filepath")
+    if install_staged "$filepath" "$target"; then
+        echo "$PWD/$target"
+        if [[ -f "$target" ]]; then
+            echo "Size: $(human_size "$(file_size "$target")")"
         fi
-        echo "Size: $(numfmt --to=iec "$size" 2>/dev/null || echo "${size} bytes")"
     fi
 }
 
@@ -68,7 +159,13 @@ download_platform_image() {
     if [[ -n "$name" ]]; then
         extra_args+=(--output "${name}.%(ext)s")
     fi
-    yt-dlp ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url"
+    local filepath
+    filepath=$(yt-dlp -P "$staging" ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url")
+    local target
+    target=$(basename "$filepath")
+    if install_staged "$filepath" "$target"; then
+        echo "$PWD/$target"
+    fi
 }
 
 # Twitter/X media posts: yt-dlp's twitter extractor now fails on many tweets
@@ -163,8 +260,10 @@ download_direct() {
     if [[ -n "$name" ]]; then
         filename="${name}.${filename##*.}"
     fi
-    curl -fLo "$filename" "$url"
-    echo "$filename"
+    curl -fLo "$staging/$filename" "$url"
+    if install_staged "$staging/$filename" "$filename"; then
+        echo "$filename"
+    fi
 }
 
 # Fetch Content-Type via HEAD (following redirects); empty string on failure
@@ -202,6 +301,7 @@ download_platform() {
         && grep -qiE '403:? forbidden|ffmpeg exited with code' "$errfile"; then
         echo "-> YouTube returned 403 for the default player client, retrying with web_embedded..." >&2
         extractor_args="youtube:player_client=web_embedded"
+        reset_staging
         rc=0
         download_video "$url" "$name" 2> >(tee "$errfile" >&2) || rc=$?
         wait 2>/dev/null || true
@@ -224,6 +324,7 @@ download_platform() {
     rm -f "$errfile"
 
     if [[ $has_no_video -eq 1 ]]; then
+        reset_staging
         if [[ "$url" =~ (twitter\.com|x\.com)/ ]]; then
             echo "-> yt-dlp found no video, fetching media via fxtwitter API..." >&2
             download_twitter_media "$url" "$name"
@@ -362,11 +463,17 @@ fi
 output_name=""
 timeframe=""
 extractor_args=""
+force=0
+no_clobber=0
+overwrite_all=0   # set by answering "a" to a prompt, for the rest of the run
+staging=""
 url=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -o) output_name="$2"; shift 2 ;;
         -t|--timeframe) timeframe="$2"; shift 2 ;;
+        -f|--force) force=1; shift ;;
+        -n|--no-clobber) no_clobber=1; shift ;;
         --extractor-args) extractor_args="$2"; shift 2 ;;
         -h|--help) print_usage; exit 0 ;;
         *) url="$1"; shift ;;
@@ -378,4 +485,20 @@ if [[ -z "$url" ]]; then
     exit 1
 fi
 
-dispatch "$url" "$output_name"
+if [[ $force -eq 1 && $no_clobber -eq 1 ]]; then
+    echo "Error: -f and -n are mutually exclusive" >&2
+    exit 1
+fi
+
+# Download into a staging dir and move each result into place afterwards, so the
+# overwrite decision belongs to install_staged rather than to whichever backend
+# ran. Staging sits in the destination directory so every install is a rename,
+# and it starts empty, which is also what stops yt-dlp from silently skipping a
+# download because the finished file from a previous run is already there.
+staging=$(mktemp -d "./.dl-tmp.XXXXXX")
+trap cleanup_staging INT TERM
+
+rc=0
+dispatch "$url" "$output_name" || rc=$?
+cleanup_staging
+exit $rc
