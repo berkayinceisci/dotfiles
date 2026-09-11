@@ -4,9 +4,17 @@
 # Usage: dl <url>           Auto-detect and download
 #        dl -o <name> <url> Download video with custom filename
 #        dl -t <start-end> <url>
-#                           Download a video timeframe. Timestamps accept
-#                           fractional seconds, so cuts are millisecond-exact
-#                           (e.g. 10.250-12.750, 1:23.456-1:25.25)
+#                           Download a video timeframe. Each timestamp is
+#                           [[H:]M:]S, so a bare number means SECONDS: 90, 1:30
+#                           and 0:1:30 are the same instant, and 5:6 is 5m6s --
+#                           not 5s 600ms. Milliseconds go after a decimal point
+#                           instead, which makes cuts millisecond-exact:
+#                           5.600 is 5s 600ms. Either side may be left off --
+#                           5.600- runs to the end (same as 5.600-inf) and -2
+#                           starts at the beginning
+#                           (e.g. 10.250-12.750, 1:23.456-1:25.25, 0:02.5-0:04)
+#        dl --max <url>     Download the best resolution available, instead of
+#                           the default 1080p cap
 #        dl -f <url>        Overwrite existing files without asking
 #        dl -n <url>        Skip files that already exist (do not overwrite)
 #        dl --extractor-args <args> <url>
@@ -19,7 +27,14 @@ print_usage() {
     echo "Usage: dl <url>           Download (auto-detect video/image/PDF/text)"
     echo "       dl -o <name> <url> Download video with custom filename"
     echo "       dl -t <start-end> <url> Download a video timeframe"
-    echo "                          (fractional seconds OK: 10.250-12.750)"
+    echo "                          Timestamps are [[H:]M:]S, so a bare number is"
+    echo "                          seconds (90 = 1:30 = 0:1:30). Milliseconds go"
+    echo "                          after a decimal point, not another colon:"
+    echo "                          5.600 is 5s 600ms, while 5:6 is 5m 6s."
+    echo "                          Omit either side: 5.600- (= 5.600-inf) runs to"
+    echo "                          the end, -2 starts at the beginning."
+    echo "                          e.g. 10.250-12.750, 1:23.456-1:25.25, 0:02.5-0:04"
+    echo "       dl --max <url>     Best resolution available (default: 1080p cap)"
     echo "       dl -f <url>        Overwrite existing files without asking"
     echo "       dl -n <url>        Skip files that already exist"
     echo "       dl --extractor-args <args> <url> Pass extractor args to yt-dlp"
@@ -130,10 +145,28 @@ download_video() {
         extra_args+=(--output "${name}.%(ext)s")
     fi
     if [[ -n "$timeframe" ]]; then
-        extra_args+=(--download-sections "*$timeframe" --force-keyframes-at-cuts)
+        # A section cut is downloaded by ffmpeg, and --print puts yt-dlp in quiet
+        # mode, which it forwards as -loglevel quiet -- so ffmpeg's account of why
+        # a cut failed is discarded and only "ffmpeg exited with code N" survives.
+        # A later -loglevel wins, so this restores ffmpeg's diagnostics on stderr
+        # (where download_platform reads them) without touching the stdout parsed
+        # for the filepath.
+        extra_args+=(--download-sections "*$timeframe" --force-keyframes-at-cuts
+                     --downloader-args "ffmpeg:-loglevel error")
     fi
     if [[ -n "$extractor_args" ]]; then
         extra_args+=(--extractor-args "$extractor_args")
+    fi
+    # Cap the resolution unless --max asked for whatever the source has. yt-dlp
+    # computes res as min(width, height), so one cap reads correctly in both
+    # orientations -- a 1080x1920 portrait clip counts as 1080, where a
+    # [height<=1080] filter would have rejected it and left only a 426x760
+    # rendition. ":" sets a limit rather than a hard filter: formats at or below
+    # the cap rank first (largest first), those above it only afterwards
+    # (smallest first), so a source with nothing under the cap still downloads
+    # instead of matching no format at all.
+    if [[ -n "$max_res" ]]; then
+        extra_args+=(-S "res:$max_res")
     fi
     local filepath rc=0
     filepath=$(yt-dlp --format "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]" -I 1 -P "$staging" ${extra_args[@]+"${extra_args[@]}"} --print after_move:filepath "$url") || rc=$?
@@ -292,13 +325,17 @@ download_platform() {
     # back media URLs that YouTube then refuses to serve (403). Extraction itself
     # worked, only the fetch was blocked, so retry with a client whose URLs still
     # are servable. Only when the caller did not pick its own extractor args.
-    # Match loosely: yt-dlp says "HTTP Error 403: Forbidden", but with -t the fetch
-    # goes through ffmpeg, whose own 403 output yt-dlp swallows -- all that reaches
-    # us is "ffmpeg exited with code 8", so treat that as a candidate too. A retry
-    # costs one extra attempt when the ffmpeg failure was unrelated to the 403.
+    # Two spellings of the same 403 reach us: yt-dlp's own "HTTP Error 403:
+    # Forbidden" from the native downloader, and "Server returned 403 Forbidden"
+    # from ffmpeg on a -t cut (visible because download_video unmutes it). The
+    # exit code is matched as well, but exactly: ffmpeg reports a 403 as
+    # AVERROR_HTTP_FORBIDDEN, whose low byte is 8, so only code 8 means 403.
+    # Matching any ffmpeg exit code here instead claimed a 403 for every failed
+    # cut -- a section starting past the end of the video exits 222 -- which hid
+    # the real reason behind a wrong message and a pointless second attempt.
     if [[ -z "$extractor_args" ]] \
         && [[ "$url" =~ ^https?://([a-z0-9-]+\.)*(youtube\.com|youtu\.be)/ ]] \
-        && grep -qiE '403:? forbidden|ffmpeg exited with code' "$errfile"; then
+        && grep -qiE '403:? forbidden|ffmpeg exited with code 8($|[^0-9])' "$errfile"; then
         echo "-> YouTube returned 403 for the default player client, retrying with web_embedded..." >&2
         extractor_args="youtube:player_client=web_embedded"
         reset_staging
@@ -463,6 +500,7 @@ fi
 output_name=""
 timeframe=""
 extractor_args=""
+max_res=1080      # memes do not need 4K; --max lifts it to whatever exists
 force=0
 no_clobber=0
 overwrite_all=0   # set by answering "a" to a prompt, for the rest of the run
@@ -472,6 +510,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -o) output_name="$2"; shift 2 ;;
         -t|--timeframe) timeframe="$2"; shift 2 ;;
+        --max) max_res=""; shift ;;
         -f|--force) force=1; shift ;;
         -n|--no-clobber) no_clobber=1; shift ;;
         --extractor-args) extractor_args="$2"; shift 2 ;;
