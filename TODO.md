@@ -198,3 +198,55 @@ Intentional platform scope: i3 scripts and CPU/kernel tools are Linux-specific;
 `bootstrap.sh` excludes the i3 package on macOS. `ccinsights-all` delegates to
 `popos` before reaching its `mapfile` call. These are not additional shared
 macOS execution bugs.
+
+## terminal_open.sh: per-machine file managers
+
+Alt+Return (i3 `bindsym Mod1+Return`) opens a terminal in the focused window's
+directory via [terminal_open.sh](i3/.config/i3/terminal_open.sh). For GUI file
+managers it scrapes the X window title and maps it back to a path — which only
+works if the title carries enough information, and the fleet's file managers
+differ. Verified 2026-09-10:
+
+|machine|file managers installed|`xdg-mime query default inode/directory`|
+|-|-|-|
+|manjaro|thunar 4.20.9|`thunar.desktop`|
+|popos|cosmic-files 1.3.0, nautilus 46.4|`com.system76.CosmicFiles.desktop`|
+
+Thunar is handled as of the `misc-window-title-style` step in `bootstrap.sh`,
+which makes its title the absolute path. popos has neither Thunar nor
+`xfconf-query`, so that step is a no-op there — but popos does run i3 on X11
+(`/usr/bin/i3`, `/usr/share/xsessions/i3.desktop`, with `xdotool` and `xprop`
+installed), so the script runs there against file managers it does not know.
+
+- [ ] Add COSMIC Files to the `GUI_FMS` table,
+  [terminal_open.sh](i3/.config/i3/terminal_open.sh), line 241. It is popos's
+  default folder handler and has no entry, so the `for entry in "${GUI_FMS[@]}"`
+  loop (line 250) matches nothing and execution falls through to the final
+  `exec $WEZTERM`, opening in `$HOME` rather than the focused folder. Its
+  `WM_CLASS` is unknown — `/usr/share/applications/com.system76.CosmicFiles.desktop`
+  declares no `StartupWMClass` — and so is its title format, including whether
+  it has a full-path option equivalent to Thunar's. Both need a live window:
+  run `xprop WM_CLASS` and `xdotool getwindowname` against a COSMIC Files
+  window in an i3 session on popos.
+
+- [ ] Recheck the Nautilus title regex, `"nautilus| – [^–]+$"`,
+  [terminal_open.sh](i3/.config/i3/terminal_open.sh), line 243. The en-dash
+  ` – Nautilus` suffix it strips is the GTK3-era format; popos ships Nautilus
+  46.4, whose window title is believed to be the bare folder name [[VERIFY:
+  not checked against a live window]]. If so the entry still "matches" but
+  yields a basename, landing in the ambiguous `find` path below rather than
+  failing visibly.
+
+- [ ] Make the basename fallback deterministic,
+  [terminal_open.sh](i3/.config/i3/terminal_open.sh), line 90:
+  `find "$HOME" -maxdepth 4 -type d -name "$name" -print -quit`. `find` has no
+  defined traversal order, so with four `~/Lectures/*/*/project` directories
+  the same lookup returned `VT/CS5504/project` on one run and
+  `Bilkent/CS223/project` on the next two (measured 2026-09-10) — this is the
+  bug that opened the wrong project folder. Options: collect all matches and
+  disambiguate (shallowest, most recently modified, or a rofi prompt), or drop
+  title-scraping for GUI file managers entirely in favour of reading
+  `/proc/<pid>/cwd` of the file manager process, the way the TUI branch already
+  does — path-exact and title-format-independent, but needs a way to pick the
+  right process when one file manager process owns several windows (Thunar is a
+  single daemon: one pid, many windows).
