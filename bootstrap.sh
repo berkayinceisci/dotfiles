@@ -306,6 +306,23 @@ done
 
 echo "  ✓ Stowing complete"
 
+# --- Thunar: absolute path in the window title --------------------------------
+# i3/terminal_open.sh resolves a focused GUI file manager's directory out of its
+# X window title. Thunar's default title is the folder's basename alone, which
+# is ambiguous whenever the same name occurs more than once (several
+# .../<course>/project dirs here) -- the script then falls back to a bounded
+# `find` whose -print -quit picks an arbitrary match, so Alt+Return lands in the
+# wrong project. `misc-window-title-style` puts the absolute path in the title,
+# which terminal_open.sh consumes directly via its "title is already an absolute
+# path" branch. NOT to be confused with `misc-full-path-in-tab-title`: that one
+# only affects per-tab labels, leaving the window title -- the only thing
+# xdotool getwindowname can see -- as the bare basename.
+if [[ "$OS" == "linux" ]] && command -v xfconf-query >/dev/null 2>&1; then
+	xfconf-query -c thunar -p /misc-window-title-style -n -t string \
+		-s full-path-with-suffix
+	echo "  ✓ Thunar window title set to the absolute directory path"
+fi
+
 # --- Shared agent instructions ---------------------------------------------
 # One canonical, harness-agnostic instruction file lives at ~/.agents/core.md
 # (stowed from the 'agents' package). Each harness consumes it via its own
