@@ -2,10 +2,40 @@
 # Save clipboard image to PNG file
 # Usage: clip2png [filename]
 
-filename="${1:-clipboard_$(date +%Y%m%d_%H%M%S).png}"
+filename="${1:-clipboard_$(date +%Y%m%d_%H%M%S)}"
+
+# The script name already pins the format, so .png is appended when not typed.
+# tr rather than ${var,,} to stay Bash 3.2 compatible for the darwin branch.
+case "$(printf '%s' "$filename" | tr '[:upper:]' '[:lower:]')" in
+    *.png) ;;
+    *) filename="$filename.png" ;;
+esac
+
+# Stage into a temp file beside the destination: redirecting straight into
+# "$filename" creates and truncates it before the clipboard is known to hold
+# an image, leaving a 0-byte file (or clobbering an existing one) on failure.
+tmp="$(mktemp "$(dirname "$filename")/.clip2png.XXXXXX")" || exit 1
+trap 'rm -f "$tmp"' INT TERM
+
+# mktemp creates the file 0600; restore the mode a plain redirect would have
+# produced, so saved images are not surprisingly unreadable to other accounts.
+chmod "$(printf '%o' $(( 0666 & ~0$(umask) )))" "$tmp"
+
+fail() {
+    rm -f "$tmp"
+    echo "$1" >&2
+    exit 1
+}
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    xclip -selection clipboard -t image/png -o > "$filename" 2>/dev/null && echo "Saved: $filename" || echo "No image in clipboard"
+    xclip -selection clipboard -t image/png -o > "$tmp" 2>/dev/null || fail "No image in clipboard"
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    pngpaste "$filename" 2>/dev/null && echo "Saved: $filename" || echo "No image in clipboard (requires: brew install pngpaste)"
+    pngpaste "$tmp" 2>/dev/null || fail "No image in clipboard (requires: brew install pngpaste)"
+else
+    fail "Unsupported platform: $OSTYPE"
 fi
+
+[[ -s "$tmp" ]] || fail "No image in clipboard"
+
+mv -f "$tmp" "$filename"
+echo "Saved: $filename"
