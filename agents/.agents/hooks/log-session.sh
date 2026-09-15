@@ -16,10 +16,33 @@
 #      assistant message to the transcript yet -> the render would miss the last
 #      message. `--delay` lets it land first (cheap, since the render is
 #      detached and off the turn's critical path).
+#
+# macOS ships no `setsid` executable, so there a foreground python helper forks,
+# the child calls os.setsid() and execs the renderer, and the helper exits only
+# once that exec has happened (a close-on-exec pipe reaches EOF). Backgrounding
+# a python helper instead would leave it in the hook's process group for the
+# ~tens of ms python takes to start, so an immediate group reap would kill it.
+# Either way the renderer leads its own session and survives the reap.
+#
+# -v / --verbose: log the chosen detach method and the exact command to stderr
+# (also forwarded to the renderer, whose output is discarded once detached).
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RENDERER="${HERE}/log-session.py"
+
+verbose=0
+for arg in "$@"; do
+    if [[ "$arg" == "-v" || "$arg" == "--verbose" ]]; then
+        verbose=1
+    fi
+done
+
+vlog() {
+    if [[ $verbose -eq 1 ]]; then
+        echo "[log-session.sh] $*" >&2
+    fi
+}
 
 payload="$(cat)"   # the Stop-hook JSON on stdin
 
@@ -32,7 +55,30 @@ cwd="$(printf '%s' "$payload" | python3 -c 'import json,sys; print(json.load(sys
 
 # Detached, args-based render: setsid + </dev/null so it outlives this hook and
 # is not reaped; --delay lets the transcript flush the final message first.
-setsid python3 "$RENDERER" --transcript "$tpath" --cwd "$cwd" --delay 1.0 "$@" \
-    </dev/null >/dev/null 2>&1 &
+if command -v setsid >/dev/null 2>&1; then
+    vlog "detach: setsid executable ($(command -v setsid))"
+    vlog "cmd: setsid python3 $RENDERER --transcript $tpath --cwd $cwd --delay 1.0 $*"
+    setsid python3 "$RENDERER" --transcript "$tpath" --cwd "$cwd" --delay 1.0 "$@" \
+        </dev/null >/dev/null 2>&1 &
+else
+    vlog "detach: python3 fork+os.setsid() fallback (no setsid in PATH)"
+    vlog "cmd: python3 -c <fork-setsid-exec> python3 $RENDERER --transcript $tpath --cwd $cwd --delay 1.0 $*"
+    # Foreground on purpose: returns as soon as the detached renderer has exec'd.
+    python3 -c '
+import os, sys
+r, w = os.pipe()
+if os.fork() == 0:
+    os.close(r)
+    os.setsid()
+    os.set_inheritable(w, False)  # closes on exec -> parent read() sees EOF
+    try:
+        os.execvp(sys.argv[1], sys.argv[1:])
+    finally:
+        os._exit(127)
+os.close(w)
+os.read(r, 1)
+' python3 "$RENDERER" --transcript "$tpath" --cwd "$cwd" --delay 1.0 "$@" \
+        </dev/null >/dev/null 2>&1
+fi
 
 exit 0
