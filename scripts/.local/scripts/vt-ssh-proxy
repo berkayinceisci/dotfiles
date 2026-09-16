@@ -1,0 +1,79 @@
+#!/bin/bash
+set -euo pipefail
+# ProxyCommand tunnel for MoatLab hosts (hds01..07, kopernik, genesis, r2d2).
+#
+# Connects directly when the target is reachable; otherwise:
+#   - off popos: tunnel through popos (jump host on the VT lab network).
+#   - on popos (the jump host itself, so no fallback path): diagnose. The
+#     usual cause is Wi-Fi falling back from eduroam to "VT Open WiFi",
+#     which has no route to the internal lab VLAN (172.21.0.0/16). Print
+#     the diagnosis to stderr, try to reclaim eduroam once, and retry.
+#
+# This replaces the inline `Match ... exec "! nc -z $f ..."` probe in
+# ssh_config.template: bootstrap.sh renders the template with envsubst,
+# which substituted the (undefined) "f" timeout-flag variable with an
+# empty string, so the probe always failed and every machine always
+# jumped. Keeping the logic in a real script keeps it out of envsubst's
+# reach.
+#
+# Note: macOS nc uses -G for connect timeout; Linux nc uses -w (-w on macOS
+# is idle-only and causes ~75s hangs when the host is unreachable).
+
+verbose=0
+if [[ "${1:-}" == "-v" || "${1:-}" == "--verbose" ]]; then
+    verbose=1
+    shift
+fi
+host="$1"
+port="$2"
+
+log() {
+    if [[ "$verbose" -eq 1 ]]; then echo "vt-ssh-proxy: $*" >&2; fi
+}
+diag() {
+    echo "vt-ssh-proxy: $*" >&2
+}
+
+case "$(uname)" in
+Darwin) f='-G' ;;
+*) f='-w' ;;
+esac
+
+reachable() {
+    nc -z "$f" 2 "$host" "$port" 2>/dev/null
+}
+
+# No timeout flag on the tunnel itself: Linux nc's -w is also an idle
+# timeout and would kill a quiet ssh session mid-connection; reachability
+# was just probed, so a plain connect is safe.
+if reachable; then
+    log "direct: nc $host $port"
+    exec nc "$host" "$port"
+fi
+
+if [[ "$(hostname)" != popos ]]; then
+    log "unreachable directly, tunneling: ssh -W $host:$port popos"
+    exec ssh -W "$host:$port" popos
+fi
+
+# We ARE popos -- there is no jump host to fall back to. Diagnose.
+wifi=""
+if command -v nmcli >/dev/null 2>&1; then
+    wifi="$(nmcli -t -f ACTIVE,SSID device wifi list --rescan no 2>/dev/null |
+        awk -F: '$1 == "yes" { print $2; exit }')"
+fi
+
+if [[ "$wifi" != eduroam ]]; then
+    diag "$host:$port unreachable: Wi-Fi is on '${wifi:-none}', not eduroam,"
+    diag "which has no route to the internal lab VLAN (172.21.0.0/16)."
+    diag "trying to reclaim eduroam..."
+    if nmcli connection up eduroam >/dev/null 2>&1 && reachable; then
+        diag "reconnected to eduroam."
+        exec nc "$host" "$port"
+    fi
+    diag "could not reclaim eduroam -- fix manually: nmcli connection up eduroam"
+else
+    diag "$host:$port unreachable even though Wi-Fi is on eduroam."
+    diag "host down, or VLAN/routing issue? try: ping $host"
+fi
+exit 1

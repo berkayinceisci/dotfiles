@@ -148,7 +148,12 @@ Host gnr-astera
 
 # ProxyJump for MoatLab hosts: if target not directly reachable and not on
 # popos, jump through popos (on VT lab network + Tailscale). Otherwise direct.
-# Note: macOS nc uses -G for connect timeout; Linux nc uses -w (-w on macOS
-# is idle-only and causes ~75s hangs when the host is unreachable).
-Match originalhost hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2 exec "case $(uname) in Darwin) f='-G';; *) f='-w';; esac; ! nc -z $f 2 %h %p 2>/dev/null && [ $(hostname) != popos ]"
-    ProxyJump popos
+# The probe + jump/diagnose logic lives in vt-ssh-proxy (scripts package):
+# an inline `Match exec` probe here gets mangled by envsubst during
+# rendering (it substituted the undefined nc timeout-flag variable with an
+# empty string, so the probe always failed and every machine always
+# jumped), and a script can also explain and self-heal failures (eduroam
+# fallback on popos). The macOS-nc-vs-Linux-nc timeout-flag note moved
+# into vt-ssh-proxy alongside the nc calls.
+Match originalhost hds01,hds02,hds03,hds04,hds05,hds06,hds07,kopernik,genesis,r2d2
+    ProxyCommand ~/.local/scripts/vt-ssh-proxy %h %p
