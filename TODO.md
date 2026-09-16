@@ -132,12 +132,6 @@ Open findings from the script audit. Shared scripts must support macOS Bash
   line 42, with a Bash 3.2-compatible reader that preserves NUL-delimited
   paths. Verify empty input and paths containing spaces or newlines.
 
-- [ ] Add portable quota-reset timestamp parsing to
-  [cc-pick-account](scripts/.local/scripts/cc-pick-account), line 122.
-  BSD date rejects `date -d`; the suppressed error skips reset validation and
-  leaves pre-reset cache entries eligible until their TTL expires. Verify
-  rejection of an otherwise fresh cache entry whose quota window has reset.
-
 - [ ] Replace the GNU-only `rmdir --ignore-fail-on-non-empty` option in
   [bootstrap.sh](bootstrap.sh), line 249. macOS rejects the option and the
   suppressed error skips empty-directory cleanup. Verify empty directories
