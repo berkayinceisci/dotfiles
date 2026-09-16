@@ -1,0 +1,75 @@
+#!/bin/bash
+set -euo pipefail
+
+# mosh shim — point mosh at Homebrew's mosh-server when the target is macos.
+#
+# Why this exists: mosh starts the server with `ssh host -- mosh-server ...`,
+# which on macOS runs a non-login, non-interactive zsh. That shell reads only
+# ~/.zshenv, never /etc/zprofile (path_helper), so /opt/homebrew/bin is not on
+# PATH and mosh fails with
+#     zsh:1: command not found: mosh-server
+#     mosh: Did not find mosh server startup message.
+# Once found, mosh-server also refuses to start: that shell has no locale, and
+# the one mosh forwards from Linux (LANG=en_US.utf8) is not a name macOS knows
+# (it wants en_US.UTF-8), so it sees US-ASCII and exits with
+#     mosh-server needs a UTF-8 native locale to run.
+# mosh has no per-host config file, so the fix is a --server that carries both
+# the absolute path and a locale. The LANG prefix works because mosh hands the
+# --server string to the remote shell as-is. It only applies to mosh-server's
+# own startup check; nothing else on the Mac changes.
+#
+# ~/.local/scripts is ahead of /usr/bin on PATH, so this shadows the system
+# mosh for PATH-based callers, like the sudo and xdg-open shims beside it.
+# Every other host, and any call that already passes --server, is a pure
+# passthrough.
+#
+# No -v flag: argv belongs to mosh. Tracing is via MOSH_SHIM_VERBOSE=1.
+
+MACOS_SERVER='LANG=en_US.UTF-8 /opt/homebrew/bin/mosh-server'
+
+log() {
+    if [[ "${MOSH_SHIM_VERBOSE:-0}" == "1" ]]; then
+        echo "mosh(shim): $*" >&2
+    fi
+}
+
+# Locate the real mosh — anything that is not this shim.
+real_mosh=""
+for d in /usr/bin /bin /usr/local/bin /opt/homebrew/bin; do
+    if [[ -x "$d/mosh" ]]; then
+        real_mosh="$d/mosh"
+        break
+    fi
+done
+
+if [[ -z "$real_mosh" ]]; then
+    echo "mosh(shim): no system mosh found" >&2
+    exit 127
+fi
+
+log "real mosh: $real_mosh"
+
+# Only look at mosh's own arguments: everything after `--` is the remote
+# command, where "macos" may legitimately appear (e.g. `mosh popos -- ssh
+# macos`). An explicit --server always wins.
+target_macos=0
+for arg in "$@"; do
+    if [[ "$arg" == "--" ]]; then
+        break
+    fi
+    if [[ "$arg" == --server || "$arg" == --server=* ]]; then
+        log "explicit --server given; passthrough"
+        exec "$real_mosh" "$@"
+    fi
+    if [[ "$arg" == "macos" || "$arg" == *@macos ]]; then
+        target_macos=1
+    fi
+done
+
+if [[ $target_macos -eq 1 ]]; then
+    log "exec: $real_mosh --server='$MACOS_SERVER' $*"
+    exec "$real_mosh" --server="$MACOS_SERVER" "$@"
+fi
+
+log "exec: $real_mosh $*"
+exec "$real_mosh" "$@"
