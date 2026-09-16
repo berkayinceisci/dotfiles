@@ -116,12 +116,6 @@ in the way, and tmux sees `nvim`. All of the following exists solely for this:
 Open findings from the script audit. Shared scripts must support macOS Bash
 3.2 and Linux; verify fixes with the appropriate interpreter and native tools.
 
-- [ ] Make session logging work without the `setsid` executable.
-  [log-session.sh](agents/.agents/hooks/log-session.sh), line 35, launches the
-  renderer with `setsid`, which was absent from this Mac's PATH during the
-  audit. Errors are discarded and the hook returns success. Verify that the
-  renderer completes after the hook exits on both platforms.
-
 - [ ] Replace negative array indices in
   [rdiff](scripts/.local/scripts/rdiff), lines 11–12.
   `${args[-2]}` and `${args[-1]}` fail under Bash 3.2 with `bad array subscript`.
