@@ -6,6 +6,9 @@
 # Honor CLAUDE_CONFIG_DIR so a secondary account (e.g. the business profile run
 # with CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab) reads its own credentials and
 # keeps a separate usage cache instead of clobbering the personal account's.
+# The value as Claude Code saw it (empty for the default profile) is kept apart
+# from the defaulted one: the macOS keychain entry name depends on it.
+CLAUDE_CONFIG_DIR_SET="${CLAUDE_CONFIG_DIR:-}"
 CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 CACHE_FILE="/tmp/claude-usage-cache-${CLAUDE_CONFIG_DIR##*/}"
 CACHE_TTL=120 # seconds
@@ -204,8 +207,16 @@ to_epoch() {
 # Read the raw credentials blob from the platform's store
 read_creds() {
 	if [[ "$OSTYPE" == "darwin"* ]]; then
-		# macOS - use Keychain
-		security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null
+		# macOS - use Keychain. Claude Code keeps one entry per profile: the
+		# default profile uses "Claude Code-credentials", a CLAUDE_CONFIG_DIR
+		# profile appends "-" + the first 8 hex chars of sha256(<that dir>)
+		# (verified: -8eccd678 == sha256("/Users/berkay/.claude-moatlab")).
+		local service="Claude Code-credentials"
+		if [[ -n "$CLAUDE_CONFIG_DIR_SET" ]]; then
+			service="$service-$(printf '%s' "$CLAUDE_CONFIG_DIR_SET" | shasum -a 256 | cut -c1-8)"
+		fi
+		log "keychain service: $service"
+		security find-generic-password -s "$service" -w 2>/dev/null
 	else
 		# Linux - read from credentials file (honor CLAUDE_CONFIG_DIR set above)
 		local creds_file="$CLAUDE_CONFIG_DIR/.credentials.json"
