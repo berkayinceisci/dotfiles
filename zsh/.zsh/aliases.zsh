@@ -10,9 +10,8 @@ alias tldr='tldr -c'
 # not a launch wrapper — it runs no matter how claude starts (incl. the tmux
 # resurrect plugin's bare `claude --resume`), so these call the claude binary directly.
 #
-# Naming: cc + [d = --dangerously-skip-permissions] + [p = personal | m = moatlab]
-# + [account number; omitted for moatlab = let cc-pick-account choose]. There is
-# deliberately NO letter for the permission mode: auto mode comes from
+# Naming: cc + [d = --dangerously-skip-permissions] + [p = personal | m = moatlab].
+# There is deliberately NO letter for the permission mode: auto mode comes from
 # settings.json ("permissions": {"defaultMode": "auto"}), never from the alias,
 # and as of 2026-08-14 it is Claude Code's own default for Pro/Max/Team anyway.
 # The old `n` in ccn/ccnm encoded neither -- it documented a setting that lives
@@ -31,26 +30,13 @@ alias tldr='tldr -c'
 # prompts for login. Only the *absence* of the var reproduces default behavior.
 alias ccp='env -u CLAUDE_CONFIG_DIR claude'
 alias ccdp='env -u CLAUDE_CONFIG_DIR claude --dangerously-skip-permissions'
-# Business (moatlab) accounts: separate CLAUDE_CONFIG_DIR isolates creds/settings.
+# Business (moatlab) account: the lab has exactly one shared Claude Code account.
+# Its own CLAUDE_CONFIG_DIR isolates creds/settings; which account it is logged into
+# is decided by /login, not by anything here. bootstrap.sh symlinks its projects/ +
+# my-session-logs/ into ~/.claude, so `ccm --resume <id>` also finds personal sessions.
 # `claude` is a real command (not an alias), so it IS reached after the env-var assignment.
-# The two moatlab accounts are interchangeable CAPACITY, not separate identities:
-# bootstrap.sh symlinks every profile's projects/ + my-session-logs/ into ~/.claude,
-# so a session started under one is resumable under the other -- which is how work
-# survives a rate limit. Pick by hand with ccm1/ccm2, or let ccm pick for you.
-alias ccm1='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
-alias ccdm1='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude --dangerously-skip-permissions'
-alias ccm2='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab2 claude'
-alias ccdm2='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab2 claude --dangerously-skip-permissions'
-# Auto-select the moatlab account with the most rate-limit headroom (worst
-# window across 5h/7d/per-model weeklies decides) -- the default way
-# in, hence the shortest name. Args pass through, and because projects/ is shared
-# `ccm --resume <id>` finds the session whichever account wins. Never routes to
-# the personal account -- that is a separate identity, not spare quota.
-# Picker flags must precede claude's, so `ccm -n` prints the account it would
-# pick, but `ccdm -v` sends -v to CLAUDE (parsing already stopped at
-# --dangerously-skip-permissions); to debug that case run `cc-pick-account -v -n`.
-alias ccm='cc-pick-account'
-alias ccdm='cc-pick-account --dangerously-skip-permissions'
+alias ccm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
+alias ccdm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude --dangerously-skip-permissions'
 alias cxn='~/.local/scripts-private/codex-with-untracked-state'
 alias cxd='~/.local/scripts-private/codex-with-untracked-state --dangerously-bypass-approvals-and-sandbox'
 alias ocn='~/.local/scripts-private/opencode-with-session-logging'

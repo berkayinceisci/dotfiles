@@ -11,7 +11,7 @@
 # back to the $HOME-relative guarded form. The moatlab profiles are never
 # touched by the plugin, so plain jqsort is enough there. Their pattern is a
 # glob so every future claude-moatlabN account is covered with no edit here,
-# matching how heal-settings-symlink.sh and cc-pick-account discover profiles.
+# matching how heal-settings-symlink.sh discovers profiles.
 claude/.claude/settings.json filter=claude-settings
 claude-moatlab*/.claude-moatlab*/settings.json filter=jqsort
 

@@ -158,9 +158,9 @@ CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapp
 # Secondary Claude Code profiles (the business accounts). Each entry is BOTH a
 # stow package name AND its live config dir, which is always ~/.<package> --
 # the profile is selected with CLAUDE_CONFIG_DIR=$HOME/.<package> (see the
-# ccm1/ccm2 aliases). Single source of truth: the stow branch, the shared
+# ccm alias). Single source of truth: the stow branch, the shared
 # projects/my-session-logs links, and the Playwright MCP registration all
-# iterate this list, so adding a third business account is one line here plus
+# iterate this list, so another business profile would be one line here plus
 # a new claude-moatlabN/ package directory.
 CLAUDE_SECONDARY_PACKAGES=("claude-moatlab" "claude-moatlab2")
 
@@ -791,13 +791,13 @@ else
 	echo "  ⊘ Skipping yt-sync-music (not manjaro)"
 fi
 
-# Share Claude Code sessions across every account (ccp, ccm1, ccm2, ...)
+# Share Claude Code sessions across every account (ccp, ccm)
 echo ""
 echo "Setting up cross-account Claude session sharing..."
 
 # Session transcripts are plain JSONL under <CONFIG>/projects/<slug>/ and carry
 # no account or org identity, so a session started under ccp can be resumed
-# under ccm1 and vice versa -- which is how work survives one account hitting
+# under ccm and vice versa -- which is how work survives one account hitting
 # its rate limit. Both `--resume <id>` and `--continue` locate the transcript by
 # scanning <CONFIG>/projects (by session id and by mtime respectively), so the
 # ONLY requirement is that both profiles see the same project tree.
