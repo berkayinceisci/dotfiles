@@ -41,8 +41,12 @@ bcd() {
     fi
 }
 
+# Root shell in the given directory. No `sudo -i`: it re-joins the command
+# through root's login shell and never escapes `$`, so any `$`/`"` in the
+# path would be expanded or break parsing. Plain `sudo` execs bash directly
+# and the path travels verbatim as a positional argument.
 rcd() {
-    sudo -i bash -c "cd \"$1\" && exec bash"
+    sudo bash -c 'cd -- "$1" && exec bash -l' bash "$1"
 }
 
 mkcd() {
