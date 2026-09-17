@@ -13,6 +13,7 @@ return {
 				"bash",
 				"c",
 				"cpp",
+				"java",
 				"make",
 				"lua",
 				"toml",
@@ -29,6 +30,14 @@ return {
 				"diff",
 				"ssh_config",
 				"csv",
+				"html",
+				"solidity",
+				"tmux",
+				"systemverilog", -- serves the `verilog` filetype (see nvim-treesitter plugin/filetypes.lua)
+				"requirements",
+				"git_config",
+				"gitignore",
+				"gitattributes",
 			}
 			local already_installed = require("nvim-treesitter.config").get_installed()
 			local to_install = vim.iter(ensure_installed)
