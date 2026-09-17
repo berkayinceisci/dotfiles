@@ -4,7 +4,7 @@
     "pr": "",
     "sessionUrl": false
   },
-  "autoCompactEnabled": false,
+  "autoCompactEnabled": true,
   "autoMode": {
     "environment": [
       "$defaults",
@@ -95,7 +95,7 @@
       }
     ]
   },
-  "model": "fable[1m]",
+  "model": "claude-fable-5-1[1m]",
   "permissions": {
     "defaultMode": "auto"
   },
