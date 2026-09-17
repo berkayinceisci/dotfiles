@@ -14,3 +14,5 @@ ssh/.ssh/config
 atuin/.config/atuin/config.toml
 yt-sync-music.secrets
 ticktick.secrets
+agents/.agents/skills/synced/
+agents/.agents/skills/.trash/
