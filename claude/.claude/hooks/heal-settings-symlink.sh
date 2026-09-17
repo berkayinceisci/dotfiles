@@ -11,9 +11,8 @@
 # It covers EVERY Claude profile managed by this repo:
 #   - personal: ~/.claude/settings.json           -> claude package
 #   - business: ~/.claude-moatlab/settings.json   -> claude-moatlab package
-#               ~/.claude-moatlab2/settings.json  -> claude-moatlab2 package
-# (each business profile is a CLAUDE_CONFIG_DIR=$HOME/.<package> account; their
-# settings are INDEPENDENT copies, so each heals into its own repo source.)
+# (the business profile is the CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab account;
+# its settings are an INDEPENDENT copy, so it heals into its own repo source.)
 #
 # It is intentionally lifecycle-independent: invoked from the zsh `precmd`
 # (runs before every shell prompt; a near-instant no-op while the links are
@@ -82,7 +81,7 @@ heal_one "$HOME/.claude/settings.json" "$DOTFILES_DIR/claude/.claude/settings.js
 	--no-folding --ignore='cc-session\.md' --ignore='history\.jsonl' \
 	--ignore='cache' --ignore='my-session-logs' claude
 
-# Secondary (business) profiles: claude-moatlab, claude-moatlab2, ...
+# Secondary (business) profiles: claude-moatlab.
 # Discovered by glob rather than a hardcoded list, so a newly added profile
 # package is covered the moment it exists. This script runs from the zsh precmd
 # and cannot source bootstrap.sh, hence the glob instead of reusing its
