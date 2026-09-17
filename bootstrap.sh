@@ -162,7 +162,7 @@ CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapp
 # projects/my-session-logs links, and the Playwright MCP registration all
 # iterate this list, so another business profile would be one line here plus
 # a new claude-moatlabN/ package directory.
-CLAUDE_SECONDARY_PACKAGES=("claude-moatlab" "claude-moatlab2")
+CLAUDE_SECONDARY_PACKAGES=("claude-moatlab")
 
 is_claude_secondary() {
 	local p
