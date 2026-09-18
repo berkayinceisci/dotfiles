@@ -147,13 +147,13 @@ echo ""
 echo "Stowing dotfiles..."
 
 # Linux-specific packages to skip on macOS
-LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura" "mimeapps" "applications" "vlc" "flameshot")
+LINUX_ONLY_PACKAGES=("i3" "rofi" "Xresources" "zathura" "mimeapps" "applications" "vlc" "flameshot" "systemd")
 
 # macOS-specific packages to skip on Linux
 MACOS_ONLY_PACKAGES=("swiftbar" "duti")
 
 # Packages to skip on headless cloudlab machines
-CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps" "applications" "vlc" "flameshot")
+CLOUDLAB_EXCLUDE_PACKAGES=("i3" "rofi" "wezterm" "Xresources" "zathura" "mimeapps" "applications" "vlc" "flameshot" "systemd")
 
 # Secondary Claude Code profiles (the business accounts). Each entry is BOTH a
 # stow package name AND its live config dir, which is always ~/.<package> --
@@ -305,6 +305,25 @@ for package in */; do
 done
 
 echo "  ✓ Stowing complete"
+
+# --- systemd user units ------------------------------------------------------
+# The `systemd` stow package drops unit files into ~/.config/systemd/user. The
+# manager caches unit files, so an *edited* unit keeps running the old text
+# until a reload; a brand-new one is picked up on demand, but reloading covers
+# both. No `systemctl --user enable` here on purpose -- greenclip.service is
+# started by i3 (`exec_always`), because it needs an X display that does not
+# exist yet when the user manager reaches default.target. Query, so `if`
+# absorbs the non-zero exit on machines with no running user manager (cloudlab,
+# containers, macOS). The probe is the manager's private socket, NOT
+# `systemctl --user is-system-running`: that reports `degraded` and exits 1 when
+# any single user unit has failed, which is exactly the state a broken
+# greenclip.service puts it in -- the reload would then be skipped on the very
+# run meant to fix it.
+if [[ "$OS" == "linux" ]] && command -v systemctl >/dev/null 2>&1 &&
+	[[ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/systemd/private" ]]; then
+	systemctl --user daemon-reload
+	echo "  ✓ Reloaded systemd user units"
+fi
 
 # --- Thunar: absolute path in the window title --------------------------------
 # i3/terminal_open.sh resolves a focused GUI file manager's directory out of its

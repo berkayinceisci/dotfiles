@@ -1,0 +1,34 @@
+[Unit]
+Description=greenclip clipboard history daemon
+Documentation=https://github.com/erebe/greenclip
+
+# Lifecycle is owned by i3, not by an [Install] target: greenclip has to watch X
+# selections, so it needs a live display, and `exec_always` in
+# ~/.config/i3/config is the earliest point where DISPLAY is guaranteed. That is
+# why this unit is deliberately NOT enabled -- `systemctl --user enable` would
+# start it with the user manager, which comes up before X. DISPLAY/XAUTHORITY
+# are inherited from the user manager's environment (lightdm's session already
+# puts them there; check with `systemctl --user show-environment`). If they ever
+# go missing, greenclip fails loudly through the OnFailure path below instead of
+# dying quietly.
+
+# The start limit is what makes a permanently broken binary visible. Restart=
+# alone would retry forever and the unit would never reach `failed`, so
+# OnFailure= would never fire -- which is precisely the silent-death mode this
+# unit exists to prevent (the AUR build rotted away in May 2026 and went
+# unnoticed for four months). Three failures inside two minutes end the retry
+# loop and hand over to the notifier.
+StartLimitIntervalSec=120
+StartLimitBurst=3
+OnFailure=notify-unit-failure@%n.service
+
+[Service]
+Type=simple
+# Absolute path, never a PATH lookup: the user manager's PATH is only
+# /usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin, which would find the
+# distro-packaged /usr/bin/greenclip -- the dynamically-linked Haskell build
+# that breaks on every haskell-*/ghc rebuild. ~/.local/bin holds the upstream
+# static binary (installed by the `installation` repo). See AGENTS.md.
+ExecStart=%h/.local/bin/greenclip daemon
+Restart=on-failure
+RestartSec=5s
