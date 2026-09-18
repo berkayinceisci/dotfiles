@@ -293,6 +293,14 @@ for package in */; do
 		# --no-folding keeps ~/.config/opencode a real directory so the shared
 		# AGENTS.md symlink (created below) lands there, not inside the repo.
 		stow --no-folding "$package"
+	elif [[ "$package" == "systemd" ]]; then
+		# --no-folding keeps ~/.config/systemd a real directory. Only the unit
+		# files are tracked; systemd itself writes into ~/.config/systemd/user
+		# (`enable` creates *.target.wants/ links, `mask` creates -> /dev/null
+		# links, `edit` creates drop-in dirs), and on a machine where the dir did
+		# not exist yet stow would fold it into one symlink and divert all of
+		# that into the repo -- which is what happened on Pop!_OS.
+		stow --no-folding "$package"
 	elif [[ "$package" == "vlc" ]]; then
 		# --no-folding keeps ~/.config/vlc a real directory. Only vlcrc is
 		# tracked; VLC also writes vlc-qt-interface.conf (window geometry,
