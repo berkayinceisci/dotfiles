@@ -30,5 +30,12 @@ Type=simple
 # that breaks on every haskell-*/ghc rebuild. ~/.local/bin holds the upstream
 # static binary (installed by the `installation` repo). See AGENTS.md.
 ExecStart=%h/.local/bin/greenclip daemon
-Restart=on-failure
+# `always`, not `on-failure`: on-failure treats an exit status of 0 and death by
+# SIGTERM/SIGINT/SIGHUP/SIGPIPE as a clean stop, so the unit would go inactive
+# with no restart and -- never reaching `failed` -- no OnFailure= popup either.
+# greenclip has no legitimate reason to exit on its own (on Pop!_OS it vanished
+# mid-session on 2026-08-27 leaving no trace of how), so every exit is treated
+# as one to recover from. `systemctl --user stop` still stops it for good, and
+# the start limit above still turns a restart loop into a notification.
+Restart=always
 RestartSec=5s
