@@ -30,6 +30,10 @@ set -euo pipefail
 # sudo in a normal shell behaves exactly as it always did, prompt in the
 # terminal, no GUI dialog.
 #
+# The shim does not rely on the environment to find its helper: it defaults
+# SUDO_ASKPASS to the askpass script beside it. See the comment at that
+# default below for why depending on ~/.zshrc's export is not enough.
+#
 # No -v flag: argv belongs to sudo, and `sudo -v` is already sudo's own
 # "validate/extend the timestamp" option, so intercepting it would break a
 # real feature. Tracing is via SUDO_SHIM_VERBOSE=1 instead.
@@ -69,6 +73,32 @@ if { : </dev/tty; } 2>/dev/null; then
 fi
 
 log "no controlling terminal"
+
+# Default SUDO_ASKPASS to the helper shipped beside this script.
+#
+# ~/.zshrc exports SUDO_ASKPASS, but that only reaches processes descended
+# from an interactive zsh — and the no-tty callers this shim exists for
+# frequently are not: cron gets a near-empty environment, i3 keybindings
+# inherit i3's, and Claude Code's Bash tool runs from a shell snapshot that
+# was captured once and does not pick up later ~/.zshrc changes. With the
+# variable unset, `sudo -A` has no helper to run, so this branch used to fall
+# back to plain sudo and reproduce the exact
+#     sudo: a terminal is required to read the password
+# failure the shim exists to prevent — a silent degradation, since the
+# passthrough looks like normal behaviour. Both scripts live in
+# scripts/.local/scripts and are stowed together, so the sibling path is
+# always the right answer; $HOME is the fallback for the case where this
+# script was invoked through a path whose directory has no askpass in it.
+if [[ -z "${SUDO_ASKPASS:-}" || ! -x "${SUDO_ASKPASS:-}" ]]; then
+    shim_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+    for candidate in "$shim_dir/askpass" "$HOME/.local/scripts/askpass"; do
+        if [[ -x "$candidate" ]]; then
+            log "SUDO_ASKPASS unusable (${SUDO_ASKPASS:-<unset>}); defaulting to $candidate"
+            export SUDO_ASKPASS="$candidate"
+            break
+        fi
+    done
+fi
 
 if [[ -z "${SUDO_ASKPASS:-}" || ! -x "${SUDO_ASKPASS:-}" ]]; then
     log "no usable SUDO_ASKPASS helper; passthrough"
