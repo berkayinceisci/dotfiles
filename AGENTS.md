@@ -42,6 +42,20 @@ Neither script can offer the repo's usual `-v` flag: `askpass` has its argv supp
 
 Scope: this only covers sudo on the local machine. `ssh $REMOTE_HOST 'sudo …'` runs sudo on the remote, where neither the shim nor the local display exists — that still needs NOPASSWD there (as `bootstrap.sh` already installs for `chvt` locally).
 
+## systemd user units (`systemd` package)
+
+`systemd/.config/systemd/user/` holds user units. `~/.config/systemd/user` is a real directory with unmanaged entries in it (`price-tracker.service`, the `xfce4-notifyd.service` → `/dev/null` mask), so stow links the unit files individually instead of folding the directory — nothing else in there is disturbed. Linux-only (`LINUX_ONLY_PACKAGES`, and excluded on headless cloudlab). `bootstrap.sh` runs `systemctl --user daemon-reload` after stowing, because the manager caches unit files and an *edited* unit otherwise keeps running its old text.
+
+- **Nothing here is `enable`d.** `greenclip.service` needs a live X display, and the user manager reaches `default.target` before X exists, so i3 owns the lifecycle: `exec_always --no-startup-id systemctl --user start --no-block greenclip.service`. `exec_always` (not `exec`) so an i3 restart also revives a unit that has given up; `start` on a running unit is a no-op, so it cannot stack a second daemon. DISPLAY/XAUTHORITY come from the user manager's environment, which lightdm's session already populates (`systemctl --user show-environment`).
+- **`notify-unit-failure@.service` is a generic failure alarm.** Any user unit can route its own death to a dunst popup with `OnFailure=notify-unit-failure@%n.service`. It exists because the failure it was written for was invisible for four months (below).
+- **A start limit is what makes `OnFailure=` reachable.** With `Restart=on-failure` alone, a permanently broken binary retries forever and the unit never enters `failed`, so the notifier never runs. Units here pair `Restart=` with `StartLimitIntervalSec=120` / `StartLimitBurst=3` so three quick failures end the loop and hand over to the alarm.
+
+### greenclip: why the binary comes from `~/.local/bin`
+
+The unit's `ExecStart` is the absolute path `%h/.local/bin/greenclip`, never a PATH lookup, and the `installation` repo installs upstream's **statically linked** release binary there (`install_greenclip_linux` in `packages/gui_apps.sh`). The distro package must not be used: Arch's build (pkgname `greenclip`, which is what the `rofi-greenclip` AUR entry installs) links dynamically against GHC's Haskell libraries, whose ABI hashes are part of the `.so` filenames and change on **every** `haskell-*`/`ghc` rebuild. It was installed 2026-05-02, the 2026-05-14 `haskell-vector` rebuild broke it, and from then on `greenclip daemon` exited 127 with `error while loading shared libraries` at every login — invisibly, since a dynamic-loader failure leaves no coredump and i3 discards its children's stderr. Four months of no clipboard history. The user manager's PATH (`/usr/local/bin:/usr/bin:/var/lib/snapd/snap/bin`) would find exactly that broken copy, hence the absolute path.
+
+**greenclip is a history manager, not a clipboard-persistence daemon.** It never takes ownership of a selection when the owning process exits — verified directly: kill the owner and `xclip -o -selection clipboard` immediately returns `Error: target STRING not available`, with greenclip running. X11 keeps the copied bytes inside the owning process, so copying in a short-lived program and then quitting it empties the live clipboard; the text survives only in greenclip's history (`Mod1+space` → clipboard).
+
 ## Coding-agents config infrastructure
 
 This repo is the source of truth for three coding-agent harnesses (Claude Code, Codex, OpenCode), wired so a single canonical instruction file and one skills set serve all three. Most of the wiring is created by `bootstrap.sh`; see its `--- Shared agent instructions ---` / `Shared skills` comment blocks for the authoritative per-harness rationale.

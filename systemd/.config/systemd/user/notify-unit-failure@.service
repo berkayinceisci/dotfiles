@@ -1,0 +1,13 @@
+[Unit]
+Description=Desktop notification for failed user unit %i
+
+[Service]
+# Generic OnFailure= handler for user units: `OnFailure=notify-unit-failure@%n.service`
+# in any unit routes its failure to a dunst popup, so a daemon that dies at 3am
+# is noticed the next time the screen is looked at rather than months later.
+# dunst owns org.freedesktop.Notifications on the session bus (started from i3),
+# and the user manager already carries DBUS_SESSION_BUS_ADDRESS, so notify-send
+# needs no extra environment.
+Type=oneshot
+ExecStart=/usr/bin/notify-send --urgency=critical --app-name=systemd \
+    "%i failed" "Run: systemctl --user status %i"

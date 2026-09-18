@@ -34,8 +34,21 @@ bindsym Mod1+space exec --no-startup-id rofi -show drun -theme ~/.config/rofi/co
 # TickTick quick-add task (rofi prompt -> POST to TickTick API)
 bindsym Mod1+t exec --no-startup-id ~/.config/i3/ticktick_add.sh
 
-# greenclip clipboard history daemon
-exec --no-startup-id greenclip daemon
+# greenclip clipboard history daemon (the rofi `clipboard` mode's backend).
+#
+# Started through systemd rather than run directly: a bare `exec greenclip
+# daemon` fails silently. The distro-packaged /usr/bin/greenclip is dynamically
+# linked against GHC libs whose ABI hashes change on every haskell-* rebuild, so
+# it started exiting 127 in May 2026 -- i3 discards the child's stderr and there
+# is no coredump for a loader failure, so it went unnoticed until September.
+# ~/.config/systemd/user/greenclip.service pins the upstream static binary in
+# ~/.local/bin, restarts it if it dies, and pops a dunst notification if it
+# cannot start at all.
+#
+# `exec_always`, not `exec`: an i3 restart then also revives a unit that has
+# given up (`systemctl start` on an already-running unit is a no-op, so this
+# cannot stack a second daemon).
+exec_always --no-startup-id systemctl --user start --no-block greenclip.service
 
 # notification daemon — start dunst explicitly so it owns org.freedesktop.Notifications
 # at login, instead of relying on non-deterministic D-Bus activation (manjaro also ships
