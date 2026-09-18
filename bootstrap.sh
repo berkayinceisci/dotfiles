@@ -657,6 +657,41 @@ EOF
 			echo "  ⚠ hotplug_display.sh not found, skipping udev rule"
 		fi
 	fi
+
+	# Persistent X keyboard layout (us + tr, toggled with Win+Space).
+	# i3/.config/i3/xsettings.sh runs setxkbmap, but that is RUNTIME-only state:
+	# X re-applies matching InputClass sections to every input device it adds, so
+	# a udev reload (pacman's 35-systemd-udev-reload.hook fires on most -Syu
+	# runs) or an external keyboard being plugged in re-adds every keyboard and
+	# silently drops the second group -- Win+Space stops switching layouts.
+	# Installing our own InputClass makes the two-group layout the per-device
+	# default, so it survives every re-add. See xorg-keyboard.conf for why this
+	# ships as our own 99- file rather than going through localectl: the file
+	# localectl writes differs between Manjaro and Pop!_OS, and on Pop!_OS it is
+	# one X never reads.
+	# Only affects devices added from here on -- an already-reset session is
+	# repaired by re-running ~/.config/i3/xsettings.sh (which lock.sh also does
+	# on unlock).
+	echo ""
+	echo "Installing X keyboard layout InputClass..."
+	KEYBOARD_CONF_SRC="$DOTFILES_DIR/xorg-keyboard.conf"
+	KEYBOARD_CONF_DST=/etc/X11/xorg.conf.d/99-keyboard-layout.conf
+	if [[ -f "$KEYBOARD_CONF_SRC" ]]; then
+		# Compare first so a re-run is a silent no-op instead of a sudo prompt.
+		# cmp exits non-zero when the destination does not exist yet, which
+		# simply falls through to the install below.
+		if cmp -s "$KEYBOARD_CONF_SRC" "$KEYBOARD_CONF_DST" 2>/dev/null; then
+			echo "  ✓ X keyboard InputClass already installed"
+		else
+			sudo mkdir -p /etc/X11/xorg.conf.d
+			sudo cp -f "$KEYBOARD_CONF_SRC" "$KEYBOARD_CONF_DST"
+			sudo chmod 644 "$KEYBOARD_CONF_DST"
+			echo "  ✓ X keyboard InputClass installed to $KEYBOARD_CONF_DST"
+			echo "    (applies to input devices added from now on; run ~/.config/i3/xsettings.sh to fix the current session)"
+		fi
+	else
+		echo "  ⚠ xorg-keyboard.conf not found, skipping X keyboard InputClass"
+	fi
 fi
 
 # System-level configurations (GUI only)

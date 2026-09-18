@@ -52,12 +52,16 @@ command -v dbus-update-activation-environment >/dev/null &&
 # size pinned by Xcursor.size in ~/.Xresources.
 command -v xsetroot >/dev/null && xsetroot -cursor_name left_ptr
 
-# fast keystrokes
-xset r rate 300 60
-
 # screen timeout (3 hours)
 xset dpms 10800 10800 10800
 xset s 10800
 
-# keyboard layout
-setxkbmap -layout "us,tr" -option "grp:win_space_toggle"
+# keyboard settings: repeat rate, and the us/tr layout switched with Win+Space.
+# Both are runtime-only X state that is wiped whenever X (re-)adds an input
+# device, so they live in their own script -- inputplug.service re-runs it on
+# the device-added event, which it could not do with this file (re-merging
+# xrdb and poking gsettings on every hotplug would be wasteful, and the
+# `i3-msg restart` branch above must not be reachable from a hotplug). Running
+# it here covers i3 start, and lock.sh re-runs this whole file on unlock.
+# keyboard_setup.sh carries the full rationale.
+~/.config/i3/keyboard_setup.sh
