@@ -42,6 +42,18 @@ opt.backspace = "indent,eol,start"
 -- opt.clipboard:append("unnamedplus")
 -- instead, <leader> y is used to copy from vim into clipboard
 -- and Ctrl Shift v to paste from system clipboard to vim buffer
+--
+-- Over ssh the default provider still picks xclip/wl-copy whenever DISPLAY is
+-- set (the remote may have a real screen, and tmux/zsh keep DISPLAY alive), so
+-- the yank lands on the REMOTE machine's clipboard, not the one we ssh'd from.
+-- Key the choice on SSH_TTY instead of touching DISPLAY:
+--   - inside tmux: the tmux provider (load-buffer -w) fills a tmux buffer and
+--     tmux relays it via OSC 52 to whichever client is currently attached
+--   - bare ssh:    emit OSC 52 straight to the terminal we ssh'd from
+-- Local (non-ssh) sessions keep the default xclip/wl-copy/pbcopy detection.
+if vim.env.SSH_TTY then
+  vim.g.clipboard = vim.env.TMUX and "tmux" or "osc52"
+end
 
 -- split windows
 opt.splitright = true
