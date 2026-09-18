@@ -61,6 +61,20 @@ bindsym Mod1+Q kill
 # apply X settings (keyboard rate, screen timeout, keyboard layout)
 exec --no-startup-id ~/.config/i3/xsettings.sh
 
+# inputplug -- re-applies the keyboard settings whenever X (re-)adds an input
+# device. X hands every newly added device its InputClass config, which wipes
+# the runtime XKB state: a udev reload (pacman's 35-systemd-udev-reload.hook
+# fires on most -Syu runs) or an external keyboard being plugged in silently
+# reverts `xset r rate` and, on a host where 99-keyboard-layout.conf is not
+# installed, the us/tr layout too. inputplug watches XInput hierarchy events and
+# runs keyboard_setup.sh on each one.
+#
+# Started through systemd for the same reasons as greenclip above: Restart=,
+# a start limit, and a dunst popup via OnFailure= if it cannot run at all.
+# `exec_always` so an i3 restart revives a unit that has given up; `start` on a
+# running unit is a no-op, so it cannot stack a second daemon.
+exec_always --no-startup-id systemctl --user start --no-block inputplug.service
+
 # display settings
 exec --no-startup-id ~/.config/i3/display_setup.sh
 

@@ -1,0 +1,38 @@
+[Unit]
+Description=inputplug XInput monitor (re-applies keyboard settings on device changes)
+Documentation=https://github.com/andrewshadura/inputplug
+
+# Same lifecycle rule as greenclip.service, for the same reason: this needs a
+# live X display, so it is deliberately NOT enabled -- `systemctl --user enable`
+# would start it with the user manager, which comes up before X, and inputplug
+# exits immediately when it cannot open a display. i3 owns the lifecycle via
+# `exec_always ... systemctl --user start` in ~/.config/i3/config, the earliest
+# point where DISPLAY is guaranteed. DISPLAY/XAUTHORITY come from the user
+# manager's environment (`systemctl --user show-environment`).
+
+# Start limit, as on greenclip.service: with Restart= alone a permanently broken
+# invocation retries forever, never reaches `failed`, and OnFailure= never fires.
+StartLimitIntervalSec=120
+StartLimitBurst=3
+OnFailure=notify-unit-failure@%n.service
+
+[Service]
+Type=simple
+# -d/--foreground despite the name: inputplug daemonizes by default, which would
+# leave Type=simple tracking a parent that exits at once and systemd killing the
+# real process. Staying in the foreground is what makes it a normal service.
+#
+# No -0/--bootstrap: that replays an added+enabled pair for every device already
+# present, and i3 runs keyboard_setup.sh through xsettings.sh at startup anyway.
+#
+# inputplug appends "<event type> <device id> <device type> <device name>" to
+# the command; keyboard_setup.sh filters on those and no-ops for everything
+# except a keyboard being enabled.
+ExecStart=/usr/bin/inputplug -d -c %h/.config/i3/keyboard_setup.sh
+# `always`, not `on-failure`, for the same reason as greenclip.service (see
+# AGENTS.md): on-failure treats exit 0 and death by SIGTERM/SIGHUP/SIGPIPE as a
+# clean stop, so the unit would go inactive with no restart and no OnFailure=
+# popup. inputplug has no legitimate reason to exit on its own, so every exit is
+# one to recover from; `systemctl --user stop` still stops it for good.
+Restart=always
+RestartSec=5s
