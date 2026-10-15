@@ -785,6 +785,30 @@ if [[ "$HOST" == "manjaro" || "$HOST" == "popos" ]]; then
 	fi
 fi
 
+# Lower the tailscale0 MTU on manjaro (see tailscaled-mtu.conf for why)
+if [[ "$HOST" == "manjaro" ]]; then
+	echo ""
+	echo "Installing tailscaled MTU drop-in..."
+	TS_MTU_SRC="$DOTFILES_DIR/tailscaled-mtu.conf"
+	TS_MTU_DST=/etc/systemd/system/tailscaled.service.d/mtu.conf
+	if [[ -f "$TS_MTU_SRC" ]]; then
+		# Compare first so a re-run is a silent no-op instead of a sudo prompt
+		# and a tailscaled restart (which briefly drops every tailscale link).
+		if cmp -s "$TS_MTU_SRC" "$TS_MTU_DST" 2>/dev/null; then
+			echo "  ✓ tailscaled MTU drop-in already installed"
+		else
+			sudo mkdir -p "$(dirname "$TS_MTU_DST")"
+			sudo cp -f "$TS_MTU_SRC" "$TS_MTU_DST"
+			sudo chmod 644 "$TS_MTU_DST"
+			sudo systemctl daemon-reload
+			sudo systemctl restart tailscaled
+			echo "  ✓ tailscaled MTU drop-in installed to $TS_MTU_DST and tailscaled restarted"
+		fi
+	else
+		echo "  ⚠ tailscaled-mtu.conf not found, skipping tailscaled MTU drop-in"
+	fi
+fi
+
 # Set up ccusage-push cron job (only on specific machines)
 echo ""
 echo "Setting up ccusage sync..."
