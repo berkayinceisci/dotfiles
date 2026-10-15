@@ -130,7 +130,10 @@ echo "Setting up TickTick secrets..."
 TICKTICK_SECRETS="$DOTFILES_DIR/ticktick.secrets"
 TICKTICK_SECRETS_ENC="$DOTFILES_DIR/ticktick.secrets.age"
 
-if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
+# Gated by hostname (the i3 desktops), not $DISPLAY: an X11-forwarded ssh
+# session sets DISPLAY on any host, and a plain ssh/tmux shell on an i3
+# desktop has none
+if [[ "$HOST" == "manjaro" || "$HOST" == "popos" ]]; then
 	if [[ -f "$TICKTICK_SECRETS_ENC" ]]; then
 		if [[ ! -f "$TICKTICK_SECRETS" ]] || [[ "$TICKTICK_SECRETS_ENC" -nt "$TICKTICK_SECRETS" ]]; then
 			if command -v age >/dev/null 2>&1; then
@@ -149,7 +152,7 @@ if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 		echo "  ⚠ ticktick.secrets.age not found, skipping (run ~/.local/scripts-private/ticktick-oauth.sh to bootstrap)."
 	fi
 else
-	echo "  ⊘ Skipping TickTick secrets (i3/rofi GUI not active)"
+	echo "  ⊘ Skipping TickTick secrets (not an i3 desktop: manjaro/popos)"
 fi
 
 # Stow packages
