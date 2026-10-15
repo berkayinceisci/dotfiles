@@ -131,6 +131,75 @@ config.scrollback_lines = 50000
 
 config.enable_kitty_keyboard = false
 
+-- Session save/restore (resurrect.wezterm, vendored under ./resurrect -- see
+-- resurrect/VENDORED). WezTerm keeps no tab state on disk, so a crash or dead
+-- battery loses every tab. The workspace (windows, tabs, splits, cwds, and each
+-- pane's text) is saved every 5 minutes; restoring is manual via the keybind
+-- below, so a normal launch still starts with a single clean tab. Pane text
+-- lands unencrypted in the state dir, same tradeoff as tmux-resurrect's
+-- capture-pane-contents.
+local resurrect = {
+	state_manager = require("resurrect.state_manager"),
+	workspace_state = require("resurrect.workspace_state"),
+	window_state = require("resurrect.window_state"),
+	tab_state = require("resurrect.tab_state"),
+	fuzzy_loader = require("resurrect.fuzzy_loader"),
+}
+local resurrect_dir = wezterm.home_dir .. "/.local/share/wezterm/resurrect/"
+resurrect.state_manager.change_state_save_dir(resurrect_dir)
+
+-- The config is re-evaluated on every reload; GLOBAL survives that, so only the
+-- first evaluation starts the save timer instead of stacking one per reload.
+if not wezterm.GLOBAL.resurrect_periodic_save then
+	wezterm.GLOBAL.resurrect_periodic_save = true
+	resurrect.state_manager.periodic_save({ interval_seconds = 300, save_workspaces = true })
+end
+
+-- After a crash, the first periodic save of the fresh launch would overwrite the
+-- state you want back. So at GUI startup, move the previous session's save aside
+-- as "previous-launch"; the picker then offers both. No window is spawned here,
+-- so wezterm still creates its default window as usual.
+wezterm.on("gui-startup", function()
+	local ws = resurrect_dir .. "workspace/"
+	local src = ws .. "default.json"
+	local f = io.open(src, "r")
+	if f then
+		f:close()
+		os.remove(ws .. "previous-launch.json")
+		os.rename(src, ws .. "previous-launch.json")
+	end
+end)
+
+-- Restore only the saved text, never re-run the saved program (ssh tabs come back
+-- as a local prompt showing the old remote screen; reconnect by hand).
+local function resurrect_restore_text(pane_tree)
+	if pane_tree.text then
+		pane_tree.pane:inject_output((pane_tree.text:gsub("%s+$", "")))
+	end
+end
+
+-- Pick a saved state and rebuild it in new window(s), leaving current tabs alone.
+local resurrect_load = wezterm.action_callback(function(win, pane)
+	resurrect.fuzzy_loader.fuzzy_load(win, pane, function(id)
+		local type = string.match(id, "^([^/]+)") -- before '/'
+		id = string.match(id, "([^/]+)$") -- after '/'
+		id = string.match(id, "(.+)%..+$") -- drop extension
+		local opts = {
+			relative = true,
+			restore_text = true,
+			on_pane_restore = resurrect_restore_text,
+		}
+		local state = resurrect.state_manager.load_state(id, type)
+		if type == "workspace" then
+			resurrect.workspace_state.restore_workspace(state, opts)
+		elseif type == "window" then
+			resurrect.window_state.restore_window(pane:window(), state, opts)
+		elseif type == "tab" then
+			resurrect.tab_state.restore_tab(pane:tab(), state, opts)
+		end
+	end, { show_state_with_date = true })
+end)
+
 -- Word-wise editing in lazygit's text inputs, for a pane running lazygit *directly*
 -- (no tmux, no nvim). Those layers do the same swap when they are in the way and can
 -- see the process; wezterm is the only one that can when nothing is.
@@ -247,6 +316,7 @@ config.keys = {
 			end
 		end),
 	},
+	{ key = "r", mods = super_key .. "|SHIFT", action = resurrect_load },
 	{ key = "[", mods = super_key, action = act.MoveTabRelative(-1) },
 	{ key = "]", mods = super_key, action = act.MoveTabRelative(1) },
 	{ key = "h", mods = "CTRL", action = wezterm.action.DisableDefaultAssignment },

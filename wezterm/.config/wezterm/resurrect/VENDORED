@@ -1,0 +1,3 @@
+Vendored from https://github.com/MLFlexer/resurrect.wezterm (archived)
+at commit 65cbbbf6d2c76f3e36af7610a356fc190fcb6147.
+Local change: pane_tree.lua saves text for alt-screen panes too.
