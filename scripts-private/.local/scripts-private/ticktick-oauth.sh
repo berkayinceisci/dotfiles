@@ -11,7 +11,7 @@
 #      (the script will create a stub on first run).
 #
 # After running successfully, re-encrypt the secrets file with:
-#   age -p -o ~/dotfiles/ticktick.secrets.age ~/dotfiles/ticktick.secrets
+#   age -R ~/dotfiles/age-recipients.txt -o ~/dotfiles/ticktick.secrets.age ~/dotfiles/ticktick.secrets
 
 set -euo pipefail
 
@@ -130,4 +130,4 @@ echo
 echo "✓ Access token saved to $SECRETS"
 echo
 echo "Next: re-encrypt the secrets file for git:"
-echo "  age -p -o $SECRETS.age $SECRETS"
+echo "  age -R $HOME/dotfiles/age-recipients.txt -o $SECRETS.age $SECRETS"

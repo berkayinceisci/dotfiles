@@ -1,0 +1,10 @@
+# age recipients for the *.secrets.age files (decrypted by bootstrap.sh).
+# Re-encrypt with: age -R age-recipients.txt -o <file>.age <file>
+# master identity (age-identity.age, passphrase-protected)
+age1t0gtujrw9cc0cy0z0zlggxmvze6ne5lsz5lkluc6t62p7c9gqsvqec2hgx
+# CloudLab nodes' SSH key (cloudlab repo keys/id_ed25519.pub)
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAHaX7ViP9g9yCz+aR4BLjv1Dzh19IXDnCRjD4SOVmRu berkay@cloudlab
+# personal machines' SSH keys (~/.ssh/id_ed25519.pub)
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAvOsc8m9stzzk7LYw7QLG9TsISs2rq6K88qn+2rDOPt berkay@popos
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKmtaoZE3VdVEIgLpa/znsFn4JxHW3hHwaR2tY9S3R+h berkay@manjaro
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF/K27Hn60QBqhYwh2u5SbwSwiGfpiXlwcBOk+YPwQZp berkay@macos
