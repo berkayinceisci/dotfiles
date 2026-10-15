@@ -54,6 +54,16 @@ else
 	exit 1
 fi
 
+# age identities for the *.secrets.age files, all encrypted to
+# age-recipients.txt: machines whose SSH key is listed there decrypt without a
+# prompt; elsewhere age falls through to the passphrase-protected master
+# identity (prompts)
+AGE_IDS=()
+if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
+	AGE_IDS+=(-i "$HOME/.ssh/id_ed25519")
+fi
+AGE_IDS+=(-i "$DOTFILES_DIR/age-identity.age")
+
 # Generate SSH config from encrypted template before stowing
 echo ""
 echo "Setting up SSH config..."
@@ -68,8 +78,8 @@ if [[ -f "$SSH_TEMPLATE" ]]; then
 	if [[ ! -f "$SSH_SECRETS" ]] || [[ "$SSH_SECRETS_ENC" -nt "$SSH_SECRETS" ]]; then
 		if [[ -f "$SSH_SECRETS_ENC" ]]; then
 			if command -v age >/dev/null 2>&1; then
-				echo "  Decrypting ssh_config.secrets.age (enter passphrase)..."
-				while ! age -d -o "$SSH_SECRETS" "$SSH_SECRETS_ENC"; do
+				echo "  Decrypting ssh_config.secrets.age (may ask for passphrase)..."
+				while ! age -d "${AGE_IDS[@]}" -o "$SSH_SECRETS" "$SSH_SECRETS_ENC"; do
 					echo "  ✗ Incorrect passphrase, please try again..."
 				done
 			else
@@ -124,8 +134,8 @@ if [[ "$OS" == "linux" ]] && [[ -n "$DISPLAY" ]]; then
 	if [[ -f "$TICKTICK_SECRETS_ENC" ]]; then
 		if [[ ! -f "$TICKTICK_SECRETS" ]] || [[ "$TICKTICK_SECRETS_ENC" -nt "$TICKTICK_SECRETS" ]]; then
 			if command -v age >/dev/null 2>&1; then
-				echo "  Decrypting ticktick.secrets.age (enter passphrase)..."
-				while ! age -d -o "$TICKTICK_SECRETS" "$TICKTICK_SECRETS_ENC"; do
+				echo "  Decrypting ticktick.secrets.age (may ask for passphrase)..."
+				while ! age -d "${AGE_IDS[@]}" -o "$TICKTICK_SECRETS" "$TICKTICK_SECRETS_ENC"; do
 					echo "  ✗ Incorrect passphrase, please try again..."
 				done
 				chmod 600 "$TICKTICK_SECRETS"
@@ -845,8 +855,8 @@ if [[ "$HOST" == "manjaro" ]]; then
 	if [[ ! -f "$YT_SECRETS" ]] || [[ "$YT_SECRETS_ENC" -nt "$YT_SECRETS" ]]; then
 		if [[ -f "$YT_SECRETS_ENC" ]]; then
 			if command -v age >/dev/null 2>&1; then
-				echo "  Decrypting yt-sync-music.secrets.age (enter passphrase)..."
-				while ! age -d -o "$YT_SECRETS" "$YT_SECRETS_ENC"; do
+				echo "  Decrypting yt-sync-music.secrets.age (may ask for passphrase)..."
+				while ! age -d "${AGE_IDS[@]}" -o "$YT_SECRETS" "$YT_SECRETS_ENC"; do
 					echo "  ✗ Incorrect passphrase, please try again..."
 				done
 				echo "  ✓ yt-sync-music secrets decrypted"
