@@ -95,6 +95,7 @@
       }
     ]
   },
+  "idleCompaction": false,
   "model": "claude-fable-5-1[1m]",
   "permissions": {
     "defaultMode": "auto"

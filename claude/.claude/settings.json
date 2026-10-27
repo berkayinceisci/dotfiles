@@ -95,7 +95,13 @@
       }
     ]
   },
-  "model": "opus[1m]",
+  "idleCompaction": false,
+  "model": "opus",
+  "modelSettings": {
+    "claude-fable-5-1": {
+      "effortLevel": "xhigh"
+    }
+  },
   "permissions": {
     "defaultMode": "auto"
   },
