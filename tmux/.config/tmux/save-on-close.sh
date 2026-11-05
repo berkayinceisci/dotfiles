@@ -26,6 +26,16 @@ log() {
 
 save_script="$HOME/.config/tmux/plugins/tmux-resurrect/scripts/save.sh"
 
+# tmux-resurrect's restore kills session 0 before its post-restore hook runs,
+# so window-unlinked fires mid-restore and lands here. Saving now would empty
+# assistant-sessions.json just before the agents are relaunched from it, so
+# skip; continuum's periodic save catches up afterwards. This script's own
+# command line never contains the pattern, so pgrep cannot self-match.
+if pgrep -f 'tmux-resurrect/scripts/restore\.sh' >/dev/null 2>&1; then
+  log "tmux-resurrect restore in progress; skipping save"
+  exit 0
+fi
+
 # Query: non-zero exit / empty output are expected states, not errors
 if windows="$(tmux list-windows -a 2>/dev/null)" && [[ -n "$windows" ]]; then
   log "windows remain; running $save_script quiet"

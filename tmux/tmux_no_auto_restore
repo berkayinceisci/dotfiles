@@ -1,0 +1,4 @@
+tmux-continuum skips its auto-restore when this file exists at
+~/tmux_no_auto_restore (the path is hardcoded in the plugin).
+~/.config/tmux/restore-on-start.sh does the restore instead.
+Continuum's periodic save is unaffected.
