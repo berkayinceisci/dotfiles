@@ -300,6 +300,14 @@ case "$HOST" in
 		if output_connected HDMI-1; then
 			reset_link_status HDMI-1
 		fi
+
+		# Only a full off/on makes the driver rewrite the monitor's HDMI 2.0
+		# scrambling settings; the VT round-trip alone does not. This also moves
+		# HDMI-2 to 0x0, so it must stay ahead of the configure_* calls below.
+		if output_active HDMI-1; then
+			run xrandr --output HDMI-1 --off
+			run sleep 1
+		fi
 	fi
 
 	# Query connection state after recovery; the old implementation reused the
