@@ -1,0 +1,13 @@
+# sudoers drop-in (Linux), installed by bootstrap.sh to
+# /etc/sudoers.d/zz-timestamp-global.
+#
+# The default timestamp_type=tty keys the cached authentication to the
+# terminal; with no terminal (the sudo shim's askpass path: a coding agent's
+# Bash tool, i3 keybindings, cron) it falls back to the parent process, and
+# every agent tool call is a fresh shell, so each sudo raised its own dialog.
+# `global` keys it to the user: one password covers every caller until it
+# expires. The window is widened from the 5-minute default; letting any
+# process running as the user sudo silently inside it is accepted on these
+# single-user machines.
+Defaults timestamp_type=global
+Defaults timestamp_timeout=30
