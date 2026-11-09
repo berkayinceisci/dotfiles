@@ -822,6 +822,37 @@ if [[ "$HOST" == "manjaro" ]]; then
 	fi
 fi
 
+# Hand /etc/resolv.conf to openresolv on manjaro (see networkmanager-dns.conf for why)
+if [[ "$HOST" == "manjaro" ]]; then
+	echo ""
+	echo "Installing NetworkManager rc-manager drop-in..."
+	NM_DNS_SRC="$DOTFILES_DIR/networkmanager-dns.conf"
+	NM_DNS_DST=/etc/NetworkManager/conf.d/dns.conf
+	if [[ -f "$NM_DNS_SRC" ]]; then
+		# Compare first so a re-run is a silent no-op instead of a sudo prompt
+		# and a NetworkManager restart.
+		if cmp -s "$NM_DNS_SRC" "$NM_DNS_DST" 2>/dev/null; then
+			echo "  ✓ NetworkManager rc-manager drop-in already installed"
+		else
+			sudo mkdir -p "$(dirname "$NM_DNS_DST")"
+			sudo cp -f "$NM_DNS_SRC" "$NM_DNS_DST"
+			sudo chmod 644 "$NM_DNS_DST"
+			# One-time handover, in this order: the old NM instance rewrites
+			# resolv.conf on its way out, so restart it first; `resolvconf -u`
+			# then re-signs the file (openresolv refuses to touch one it did
+			# not sign); NM re-pushes its resolvers; tailscaled re-reads the
+			# header and picks openresolv mode.
+			sudo systemctl restart NetworkManager
+			sudo resolvconf -u
+			sudo nmcli general reload dns-rc
+			sudo systemctl restart tailscaled
+			echo "  ✓ NetworkManager rc-manager drop-in installed to $NM_DNS_DST, NetworkManager and tailscaled restarted"
+		fi
+	else
+		echo "  ⚠ networkmanager-dns.conf not found, skipping NetworkManager rc-manager drop-in"
+	fi
+fi
+
 # Set up ccusage-push cron job (only on specific machines)
 echo ""
 echo "Setting up ccusage sync..."
