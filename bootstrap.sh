@@ -853,6 +853,33 @@ if [[ "$HOST" == "manjaro" ]]; then
 	fi
 fi
 
+# Share one sudo authentication across terminals and tty-less callers (Linux)
+if [[ "$(uname -s)" == "Linux" ]]; then
+	echo ""
+	echo "Installing sudo global-timestamp drop-in..."
+	SUDO_TS_SRC="$DOTFILES_DIR/sudoers-timestamp"
+	# zz- prefix sorts after distro drop-ins (see the chvt rule above); no
+	# dot in the name, sudo skips sudoers.d files containing '.' or '~'.
+	SUDO_TS_DST=/etc/sudoers.d/zz-timestamp-global
+	if [[ -f "$SUDO_TS_SRC" ]]; then
+		if sudo cmp -s "$SUDO_TS_SRC" "$SUDO_TS_DST" 2>/dev/null; then
+			echo "  ✓ sudo global-timestamp drop-in already installed"
+		else
+			sudo cp -f "$SUDO_TS_SRC" "$SUDO_TS_DST"
+			sudo chmod 440 "$SUDO_TS_DST"
+			# Validate the drop-in; remove it if broken so a typo cannot break sudo
+			if sudo visudo -cf "$SUDO_TS_DST" >/dev/null; then
+				echo "  ✓ sudo global-timestamp drop-in installed to $SUDO_TS_DST"
+			else
+				sudo rm -f "$SUDO_TS_DST"
+				echo "  ⚠ sudo global-timestamp drop-in failed visudo validation; removed"
+			fi
+		fi
+	else
+		echo "  ⚠ sudoers-timestamp not found, skipping sudo global-timestamp drop-in"
+	fi
+fi
+
 # Set up ccusage-push cron job (only on specific machines)
 echo ""
 echo "Setting up ccusage sync..."
