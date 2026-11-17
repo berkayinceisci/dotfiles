@@ -30,6 +30,8 @@ require("lazy").setup({
 	-- Configure any other settings here. See the documentation for more details.
 	-- automatically check for plugin updates
 	checker = { enabled = true, notify = false },
+	-- Avoid blocking idle editors at a config-change notification.
+	change_detection = { enabled = true, notify = false },
 	ui = {
 		border = "single",
 	},

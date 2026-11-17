@@ -9,6 +9,8 @@ return {
 			return
 		end
 
+		require("config.lualine_timers").setup()
+
 		lualine.setup({
 			options = {
 				theme = "auto",
