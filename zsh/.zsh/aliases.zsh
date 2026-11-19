@@ -60,10 +60,15 @@ else
 fi
 
 if [[ -e ~/.cargo/bin/eza ]]; then
-    alias ls="eza"
-    alias ll="eza -l"
-    alias la="eza -a"
-    alias lla="eza -la"
+    # Functions, not aliases: eza reads the paths to list from stdin when stdin is
+    # not a terminal and no path is given, so a bare `ls` blocks forever in shells
+    # whose stdin never closes (coding agents). Fall back to the real ls there.
+    # The unalias keeps a re-source from expanding an old alias in the definitions.
+    unalias ls ll la lla 2>/dev/null
+    function ls { if [[ -t 0 ]]; then eza "$@"; else command ls "$@"; fi }
+    function ll { if [[ -t 0 ]]; then eza -l "$@"; else command ls -l "$@"; fi }
+    function la { if [[ -t 0 ]]; then eza -a "$@"; else command ls -a "$@"; fi }
+    function lla { if [[ -t 0 ]]; then eza -la "$@"; else command ls -la "$@"; fi }
 else
     alias ll="ls -l"
     alias la="ls -a"
