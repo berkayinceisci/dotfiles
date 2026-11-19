@@ -42,6 +42,7 @@ status_line = [
   "five-hour-limit",
   "weekly-limit",
 ]
+screen_reader_detection_done = true
 
 [notice]
 "hide_gpt-5.1-codex-max_migration_prompt" = true
