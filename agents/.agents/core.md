@@ -34,6 +34,17 @@ Don't echo back file contents you just read — the user can see them.
 Don't narrate tool calls ("Let me read the file..." / "Now I'll edit..."). Just do it.
 Keep explanations proportional to complexity. Simple changes need one sentence, not three paragraphs.
 
+Use plain, direct language in every reply, including explanations and progress updates.
+
+- Answer the question first. Introduce details in the order needed to understand them.
+- Prefer familiar words and concrete verbs. Name what acts, what it acts on, and what changes.
+- Keep necessary technical terms. Explain unfamiliar terms at first use, then use the same name consistently.
+- Give each sentence one main idea. Keep sentences short while making cause and effect explicit.
+- Simplify the language while preserving technical detail, conditions, and uncertainty. Never turn a possibility into a fact or a recommendation into a requirement.
+- Use prose by default; use lists for steps or parallel items and tables for comparisons. Avoid filler, decorative headings, and repeated summaries.
+- Use a small example or a diagram when it makes a mechanism easier to understand. Use an interactive example when changing an input helps explain the behavior. Skip visuals that only repeat the prose.
+- For detailed explanations and plain-language rewrites, use the `plain-explanations` skill. Keep research-paper editing in `paper-writing`.
+
 **Tables — STRICT RULES (apply everywhere, always):**
 - Markdown tables: use minimum separator (`|-|-|`). Never pad with repeated hyphens (`|---|---|`).
 - NEVER use box-drawing / ASCII-art tables with characters like `┌`, `┬`, `─`, `│`, `└`, `┘`, `├`, `┤`, `┼`. These are completely banned.
