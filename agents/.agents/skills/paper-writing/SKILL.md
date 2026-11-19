@@ -156,9 +156,9 @@ Each rule has one example here; the reference files hold dozens more.
    are speedups against a named baseline.
    Numeric ranges take an en dash, "16--45 ms" and "8--64 GiB", never
    "16 to 45 ms"; "from 5.6 to 13.2" stays only for a change along an axis
-   (agos-project 2026-11-01). "Only" goes before the verb it limits: "a
-   hardware prefetcher only requests addresses it can predict", not
-   "requests only addresses" (agos-project 2026-11-01).
+   (agos-project 2026-11-01). Prefer "only" before the main verb, and move
+   it there during editing unless that changes the intended meaning or
+   introduces ambiguity.
 
 10. **Claims calibrated to evidence, caveats kept.** Causal verbs only for
     controlled interventions; "shows", "establishes", "demonstrates" only when

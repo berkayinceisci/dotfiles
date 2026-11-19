@@ -26,7 +26,7 @@
 #   colon        mid-sentence explanatory colons (lowercase continuation)
 #   semicolon    semicolons joining clauses in prose
 #   range        numeric ranges written "N to M" instead of "N--M"
-#   onlyafter    "only" placed after the verb it limits
+#   Placement of "only" needs a manual meaning check; no regex category.
 #   incomment    a LaTeX comment line inside a paragraph (next line is body text)
 #   longsent     sentences over 40 words
 #   twins        adjacent \item lines, or consecutive sentences, that open with
@@ -42,7 +42,7 @@ set -euo pipefail
 
 verbose=0
 summary=0
-cats="weasel,passive,opener,negpar,cleft,emdash,middot,metaphor,jargon,hype,slop,figshows,question,colon,semicolon,range,onlyafter,incomment,longsent,twins"
+cats="weasel,passive,opener,negpar,cleft,emdash,middot,metaphor,jargon,hype,slop,figshows,question,colon,semicolon,range,incomment,longsent,twins"
 maxwords=40
 
 usage() {
@@ -103,9 +103,8 @@ semicolon='[a-z0-9)}%]; +[a-z\\$]'
 # "from N to M" along an axis is a judgment call, review by hand
 range='\b([A-Z]{0,2}[0-9]+(\.[0-9]+)?|one|two|three|four|five|six|eight|ten|twelve|sixteen)(\\,)?[A-Za-z%$\\]* to ([A-Z]{0,2}[0-9]+(\.[0-9]+)?|one|two|three|four|five|six|eight|ten|twelve|sixteen|thirty|sixty)\b'
 
-# "only" after a verb: requests only, recovers only, is only, can only
-# (-ing forms left out, "tiering only pays" is a noun subject)
-onlyafter='\b([a-z]+(s|es|ed)|is|are|was|were|be|can|could|has|have|had|does|did|will|would|may|must) only\b'
+# "only" placement is reviewed manually: requests only, recovers only,
+# is only, and can only can all express the intended restriction clearly.
 
 strip_tex() {
   # drop full-line and trailing comments, keep escaped percent signs
@@ -227,7 +226,6 @@ for file in "$@"; do
       colon)    run_grep colon    "$colon" "$file" ;;
       semicolon) run_grep semicolon "$semicolon" "$file" ;;
       range)    run_grep range    "$range" "$file" ;;
-      onlyafter) run_grep onlyafter "$onlyafter" "$file" ;;
       incomment) in_paragraph_comments "$file" ;;
       longsent) long_sentences "$file" ;;
       twins)    twins "$file" ;;

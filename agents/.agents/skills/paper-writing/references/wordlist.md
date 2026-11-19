@@ -167,7 +167,7 @@ list" (the negated half is the mistake the reader would make).
 | stall-based ranking, criticality | ranks pages by how long the CPU waits on them | agos-project 2026-11-01 |
 | elapsed time / runtime / traversal time (three names for the primary metric) | traversal time, defined once in Method as the wall-clock time of one kernel invocation | agos-project 2026-11-01 |
 | 15 to 30 us, regions of 8 to 64 GiB, one to sixteen threads (a range written with "to") | 15--30 us, 8--64 GiB, 1--16 threads; "from 5.6 to 13.2" only for a change along an axis | agos-project 2026-11-01 |
-| requests only addresses, recovers only 18%, is possible only when (only after the verb) | only requests addresses, only recovers 18%, is only possible when | agos-project 2026-11-01 |
+| placement of "only" | Prefer before the main verb, and move it there during editing unless that changes the intended meaning or introduces ambiguity. | agos-project 2026-11-01; preference qualified 2026-11-19 |
 | lead time (prefetching-literature term, undefined) | "issue the request early enough that the data arrive before the program needs them"; "requests issued too late" | agos-project 2026-11-01 |
 | on/off/on triples (protocol name in a caption, undefined) | drop from the caption; if the drift bound matters, say "runs with the prefetchers on, off and on again in one session" in the body | agos-project 2026-11-01 |
 | annotation (for the primitive) | primitive | epic terms_rules.yaml |
