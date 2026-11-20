@@ -44,6 +44,16 @@ if [[ -z "$filepath" || ! -f "$filepath" ]]; then
 	exit 0
 fi
 
+# Scratch and temp files (agent scratchpads, /tmp) are throwaway fragments,
+# often snippets that use names defined elsewhere. Linting them only blocks
+# writes with noise such as F821, so skip them.
+case "$filepath" in
+/tmp/* | */scratchpad/*)
+	vlog "scratch/temp file, skipping ($filepath)"
+	exit 0
+	;;
+esac
+
 # Print linter output (truncated to $2 lines) and block.
 emit() {
 	local out="$1" max="$2" n
