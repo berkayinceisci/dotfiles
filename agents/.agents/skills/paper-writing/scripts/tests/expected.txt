@@ -1,0 +1,45 @@
+fixture.tex:5:The result is very large. [weasel]
+fixture.tex:7:The latency was measured on the target host. [passive]
+fixture.tex:46:The lock is held. This, in turn, causes a stall. [passive]
+fixture.tex:50:\item contains() would not be read-only anymore. [passive]
+fixture.tex:9:Moreover, the cache holds the set. [opener]
+fixture.tex:11:The model is a fit, not a prediction. [negpar]
+fixture.tex:13:What fails is the validation. [cleft]
+fixture.tex:15:The device stalls---the queue fills. [emdash]
+fixture.tex:17:Latency vs. load · 4 KiB · random reads. [middot]
+fixture.tex:19:The policy pays a tax on every miss. [metaphor]
+fixture.tex:21:Each campaign ran for a day. [jargon]
+fixture.tex:23:We compare against a state-of-the-art system. [hype]
+fixture.tex:33:The first clause ends here; the second begins. [hype]
+fixture.tex:25:We leverage the counters. [slop]
+fixture.tex:27:Figure~\ref{fig:x} shows that the queue fills. [figshows]
+fixture.tex:29:Why does the queue fill? The device stalls. [question]
+fixture.tex:31:The cache itself works: the device reports a hit. [colon]
+fixture.tex:33:The first clause ends here; the second begins. [semicolon]
+fixture.tex:35:Latency ranges from 16 to 45 ms in our runs. [range]
+fixture.tex:39: The sentence after the comment. [incomment]
+fixture.tex: 45 words: The policy samples records at a fixed period and ranks pages by their stall time over a sliding window and then promotes [longsent]
+fixture.tex:43:The buffer drains slowly. This means the writer waits. [vaguethis]
+fixture.tex:46:The lock is held. This, in turn, causes a stall. [vaguethis]
+fixture.tex: items: \item contains() would not be wait-free anymore. / \item contains() would not be read-only anymore. [twins]
+== summary (hits per category across 1 file(s))
+weasel     1
+passive    3
+opener     1
+negpar     1
+cleft      1
+emdash     1
+middot     1
+metaphor   1
+jargon     1
+hype       2
+slop       1
+figshows   1
+question   1
+colon      1
+semicolon  1
+range      1
+incomment  1
+longsent   1
+vaguethis  2
+twins      1
