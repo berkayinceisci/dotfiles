@@ -10,8 +10,9 @@ alias tldr='tldr -c'
 # not a launch wrapper — it runs no matter how claude starts (incl. the tmux
 # resurrect plugin's bare `claude --resume`), so these call the claude binary directly.
 #
-# Naming: cc + [d = --dangerously-skip-permissions] + [p = personal | m = moatlab].
-# There is deliberately NO letter for the permission mode: auto mode comes from
+# Naming: cc + [d = --dangerously-skip-permissions] + [p = personal | m = moatlab]
+# + [moatlab account number]. There is no un-numbered ccm: there is no picker,
+# so every moatlab launch names its account explicitly. There is deliberately NO letter for the permission mode: auto mode comes from
 # settings.json ("permissions": {"defaultMode": "auto"}), never from the alias,
 # and as of 2026-08-14 it is Claude Code's own default for Pro/Max/Team anyway.
 # The old `n` in ccn/ccnm encoded neither -- it documented a setting that lives
@@ -30,13 +31,16 @@ alias tldr='tldr -c'
 # prompts for login. Only the *absence* of the var reproduces default behavior.
 alias ccp='env -u CLAUDE_CONFIG_DIR claude'
 alias ccdp='env -u CLAUDE_CONFIG_DIR claude --dangerously-skip-permissions'
-# Business (moatlab) account: the lab has exactly one shared Claude Code account.
-# Its own CLAUDE_CONFIG_DIR isolates creds/settings; which account it is logged into
-# is decided by /login, not by anything here. bootstrap.sh symlinks its projects/ +
-# my-session-logs/ into ~/.claude, so `ccm --resume <id>` also finds personal sessions.
+# Business (moatlab) accounts, one profile per login: account 1 is ~/.claude-moatlab,
+# account N>1 is ~/.claude-moatlabN. Each CLAUDE_CONFIG_DIR isolates creds/settings;
+# which account a profile is logged into is decided by /login, not by anything here.
+# bootstrap.sh symlinks every profile's projects/ + my-session-logs/ into ~/.claude,
+# so `ccm2 --resume <id>` also finds sessions started under ccp or ccm1.
 # `claude` is a real command (not an alias), so it IS reached after the env-var assignment.
-alias ccm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
-alias ccdm='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude --dangerously-skip-permissions'
+alias ccm1='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude'
+alias ccdm1='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab claude --dangerously-skip-permissions'
+alias ccm2='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab2 claude'
+alias ccdm2='CLAUDE_CONFIG_DIR=$HOME/.claude-moatlab2 claude --dangerously-skip-permissions'
 alias cxn='~/.local/scripts-private/codex-with-untracked-state'
 alias cxd='~/.local/scripts-private/codex-with-untracked-state --dangerously-bypass-approvals-and-sandbox'
 alias ocn='~/.local/scripts-private/opencode-with-session-logging'
