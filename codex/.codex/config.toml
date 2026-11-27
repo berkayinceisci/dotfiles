@@ -19,6 +19,7 @@ project_doc_max_bytes = 131072
 
 [features]
 goals = true
+local_thread_store_compression = false
 
 # Block writes to NFS/shared filesystems (local mounts + remote /proj, /share,
 # /work) — same script Claude Code uses from settings.json. Blocks via exit 2.
